@@ -1,0 +1,92 @@
+.gradient-container {
+    background: #1c1f2b;
+    text-align: center;
+    position: relative;
+    padding: 2em;
+}
+
+.card {
+    width: 300px;
+    border-radius: 10px;
+}
+
+.circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+@property --angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
+.gradient-container::before,
+.gradient-container::after {
+    content: '';
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    z-index: -1;
+    padding: 3px;
+    animation: 3s spin linear infinite;
+}
+
+.card::before, .card::after {
+    border-radius: 10px;
+}
+
+.circle::before, .circle::after {
+    border-radius: 50%;
+}
+
+.gradient-container::before {
+    filter: blur(1.5rem);
+    opacity: 0.5;
+}
+
+.theme-red-blue::before, .theme-red-blue::after {
+    background-image: conic-gradient(from var(--angle), #ff4545, #006aff, #ff4545);
+}
+
+.theme-green-purple::before, .theme-green-purple::after {
+    background-image: conic-gradient(from var(--angle), #00ff99, #9900ff, #00ff99);
+}
+
+.theme-rainbow::before, .theme-rainbow::after {
+    background-image: conic-gradient(from var(--angle), #ff4545, #ffa500, #ffff00, #00ff99, #006aff, #9900ff, #ff4545);
+}
+
+.theme-fire::before, .theme-fire::after {
+    background-image: conic-gradient(from var(--angle), #ff4500, #ff8c00, #ffcc00, #ff4500);
+}
+
+.theme-ocean::before, .theme-ocean::after {
+    background-image: conic-gradient(from var(--angle), #006aff, #00ccff, #00ffff, #006aff);
+}
+
+@keyframes spin {
+    from { --angle: 0deg; }
+    to { --angle: 360deg; }
+}
+
+.speed-control {
+    margin-top: 1rem;
+}
+
+.speed-control label {
+    margin-right: 0.5rem;
+    color: white;
+}
+
+.speed-control input {
+    width: 100%;
+    margin-top: 0.5rem;
+}
