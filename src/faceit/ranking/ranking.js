@@ -63,7 +63,12 @@ function insertAllLevelsToTable(table, currentLevel) {
         if (level === currentLevel) {
             svgSpan.style.width = "36px";
             svgSpan.style.height = "36px";
-            rankingModule.appendToAndHide(svgNode, table.querySelector("[class*=current-level]").getElementsByTagName("span")[0])
+            let currentLevelNode = svgNode.cloneNode(true)
+            let targetPath = currentLevelNode.querySelector('path[fill="#111111"]');
+            if (targetPath) {
+                targetPath.setAttribute('fill', '#1F1F22');
+            }
+            rankingModule.appendToAndHide(currentLevelNode, table.querySelector("[class*=current-level]").getElementsByTagName("span")[0])
         }
     })
 }

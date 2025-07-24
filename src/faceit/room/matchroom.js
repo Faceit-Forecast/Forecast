@@ -25,10 +25,9 @@ async function setupPlayerCardMatchData(playerId, targetNode) {
     let tableId = `${matchRoomModule.sessionId}-player-table-${playerId}`
     if (targetNode.querySelector("[class~=tableId]")) return null
     let htmlResource = getHtmlResource('src/visual/tables/player.html').cloneNode(true);
-    targetNode.insertAdjacentElement('beforeend', htmlResource);
+    appendTo(htmlResource, targetNode)
     let table = htmlResource.querySelector("[class~=player-table]")
     table.classList.add(tableId)
-    table.closest(`[class*="UserCardPopup__UserCardContainer"]`).style.minHeight = "530px"
     return table
 }
 
@@ -87,22 +86,19 @@ async function getMatchWinRates(matchId) {
     await displayWinRates(matchStats);
 }
 
-async function findUserCard(playerId, callback) {
-    const player = await fetchPlayerStatsById(playerId);
-    const currentCountry = extractLanguage();
-    const match = player.faceit_url.match(/\/players\/[^/]+/);
-    const playerLink = "/" + currentCountry + match[0];
-
-    await matchRoomModule.doAfterNodeAppear(`[class*="UserCard__Container"]:has(a[href="${playerLink}"])`, async (node) => {
-        if (!matchRoomModule.isProcessedNode(node)) {
-            matchRoomModule.processedNode(node);
-            callback(node);
+async function findUserCard(nickname, callback) {
+    let nickNodeSelector = 'div[class*="styles__PopoverStyled"] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > h5'
+    await matchRoomModule.doAfterNodeAppearWithCondition(nickNodeSelector, (node) => node.innerText === nickname, (node) => {
+        let parentNode = node.parentElement.parentElement.parentElement.querySelector('div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]')
+        if (!matchRoomModule.isProcessedNode(parentNode)) {
+            matchRoomModule.processedNode(parentNode);
+            callback(parentNode);
         }
-    })
+    }, `${nickNodeSelector}-${nickname}`)
 }
 
 
-async function calculateStats(team, playerId, matchAmount) {
+async function calculateStats(team, playerId, nickname, matchAmount) {
     let gameType = extractGameType()
     let data = await fetchPlayerInGameStats(playerId, gameType, matchAmount);
 
@@ -135,8 +131,7 @@ async function calculateStats(team, playerId, matchAmount) {
         mapData.wins += result;
         mapData.totalGames += 1;
     });
-
-    await findUserCard(playerId, async userCardElement => {
+    await findUserCard(nickname, async userCardElement => {
         let table = await setupPlayerCardMatchData(playerId, userCardElement)
         if (!table) return;
 
@@ -153,10 +148,10 @@ async function displayWinRates(matchDetails) {
     const matchAmount = await getSettingValue('sliderValue',30);
 
     const team1Promises = team1["roster"].map(player =>
-        calculateStats(`${team1.name}$roster1`, player["player_id"], matchAmount)
+        calculateStats(`${team1.name}$roster1`, player["player_id"], player["nickname"], matchAmount)
     );
     const team2Promises = team2["roster"].map(player =>
-        calculateStats(`${team2.name}$roster2`, player["player_id"], matchAmount)
+        calculateStats(`${team2.name}$roster2`, player["player_id"], player["nickname"], matchAmount)
     );
 
     await Promise.all([...team1Promises, ...team2Promises]);

@@ -49,20 +49,20 @@ class ObserveHandler {
         this.observerDisappearTasks.delete(id)
     }
 
-    async doAfterNodeDisappear(selector, callback){
-        this.observeDisappear(selector, async (node) => {
+    async doAfterNodeDisappear(selector, callback, id){
+        this.observeDisappear(id ? id : selector, async (node) => {
             if (node.matches && node.matches(selector)) {
                 callback(node)
-                this.releaseAppearTask(selector)
+                this.releaseAppearTask(id ? id : selector)
             }
         })
     }
 
-    async doAfterNodeAppear(selector, callback) {
+    async doAfterNodeAppear(selector, callback, id) {
         let element = document.querySelector(selector);
         if (element) await callback(element);
 
-        this.observeAppear(selector, async (node) => {
+        this.observeAppear(id ? id : selector, async (node) => {
             if (node.matches && node.matches(selector)) {
                 await callback(node);
             } else if (node.nodeType === 1) {
@@ -73,8 +73,25 @@ class ObserveHandler {
             }
         });
     }
+    async doAfterNodeAppearWithCondition(selector, conditionFn, callback, id) {
+        let element = document.querySelector(selector);
+        if (element && conditionFn(element)) await callback(element);
 
-    async doAfterAllNodeAppear(selector, callback) {
+        this.observeAppear(id ? id : selector, async (node) => {
+            if (node.matches && node.matches(selector) && conditionFn(node)) {
+                await callback(node);
+            } else if (node.nodeType === 1) {
+                const matchingChildren = node.querySelectorAll(selector);
+                for (const child of matchingChildren) {
+                    if (conditionFn(child))
+                    await callback(child);
+                }
+            }
+        });
+    }
+
+
+    async doAfterAllNodeAppear(selector, callback, id) {
         let elements = document.querySelectorAll(selector);
         if (elements.length !== 0) {
             for (const element of elements) {
@@ -82,7 +99,7 @@ class ObserveHandler {
             }
         }
 
-        this.observeAppear(selector, async (node) => {
+        this.observeAppear(id ? id : selector, async (node) => {
             if (node.matches && node.matches(selector)) {
                 await callback(node);
             }
@@ -96,11 +113,11 @@ class ObserveHandler {
         });
     }
 
-    async doAfterAllNodeAppearPack(selector, callback) {
+    async doAfterAllNodeAppearPack(selector, callback, id) {
         let elements = document.querySelectorAll(selector);
         if (elements.length !== 0) await callback(elements);
 
-        this.observeAppear(selector, async () => {
+        this.observeAppear(id ? id : selector, async () => {
             let elements = document.querySelectorAll(selector);
             if (elements.length !== 0) await callback(elements);
         });

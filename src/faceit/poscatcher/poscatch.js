@@ -9,7 +9,7 @@ const maps = {
     Ancient: "de_ancient",
     Train: "de_train",
     Inferno: "de_inferno",
-    Anubis: "de_anubis"
+    Overpass: "de_overpass"
 };
 
 const posCatcherModule = new Module("poscatcher", async () => {

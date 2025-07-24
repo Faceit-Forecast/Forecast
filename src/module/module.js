@@ -102,17 +102,22 @@ class Module {
         this.hidedNodes.push(hiddenNode)
     }
 
-    async doAfterNodeDisappear(selector, callback) {
-        return this.observeHandler.doAfterNodeDisappear(selector,callback)
+    async doAfterNodeDisappear(selector, callback, id) {
+        return this.observeHandler.doAfterNodeDisappear(selector,callback, id)
     }
-    async doAfterNodeAppear(selector, callback) {
-        return this.observeHandler.doAfterNodeAppear(selector,callback)
+    async doAfterNodeAppear(selector, callback, id) {
+        return this.observeHandler.doAfterNodeAppear(selector,callback, id)
     }
-    async doAfterAllNodeAppear(selector, callback) {
-        return this.observeHandler.doAfterAllNodeAppear(selector,callback)
+
+    async doAfterNodeAppearWithCondition(selector, conditionFn, callback, id) {
+        return this.observeHandler.doAfterNodeAppearWithCondition(selector,conditionFn,callback, id)
     }
-    async doAfterAllNodeAppearPack(selector, callback) {
-        return this.observeHandler.doAfterAllNodeAppearPack(selector,callback)
+
+    async doAfterAllNodeAppear(selector, callback, id) {
+        return this.observeHandler.doAfterAllNodeAppear(selector,callback, id)
+    }
+    async doAfterAllNodeAppearPack(selector, callback, id) {
+        return this.observeHandler.doAfterAllNodeAppearPack(selector,callback, id)
     }
 
     async doAfterAsync(conditionFn, callback, interval = 50) {

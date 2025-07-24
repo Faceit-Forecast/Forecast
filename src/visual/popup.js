@@ -3,7 +3,7 @@
  */
 
 const BROWSER_TYPE = typeof browser !== 'undefined' ? 'FIREFOX' : 'CHROMIUM';
-const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_anubis'];
+const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_overpass'];
 const TAB_LABELS = {
     "general": "General",
     "features": "Features",

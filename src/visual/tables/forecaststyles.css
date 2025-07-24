@@ -646,7 +646,6 @@ tr[class*="MatchHistoryTableRow"] {
 .player-background-table {
     display: flex;
     justify-content: center;
-    padding-top: 17px;
     background: transparent;
     width: 100%;
     box-sizing: border-box;
@@ -684,15 +683,16 @@ tr[class*="MatchHistoryTableRow"] {
     border: none;
     text-align: center;
     color: white;
-    padding: 8px 15px;
+    padding: 5px 10px;
     background: transparent;
     box-shadow: none;
-    height: 36px;
     box-sizing: border-box;
     line-height: 1.4;
 }
 
 .player-background-table th {
+    text-transform: uppercase;
+    color: rgb(167, 167, 167);
     background-color: rgb(37, 37, 37);
     font-weight: 600;
     font-size: 0.9rem;
@@ -713,7 +713,6 @@ tr[class*="MatchHistoryTableRow"] {
 
 .player-background-table td {
     vertical-align: middle;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     font-size: 0.9rem;
     transition: background-color 0.2s ease;
 }

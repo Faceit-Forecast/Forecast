@@ -138,7 +138,7 @@ const newLevelsModule = new Module("levels", async () => {
                 return "matchroom";
             case /^https:\/\/www\.faceit\.com\/[^\/]+\/matchmaking.*/.test(url):
                 return "matchmaking";
-            case /^https:\/\/www\.faceit\.com\/[^\/]+\/parties.*/.test(url):
+            case /^https:\/\/www\.faceit\.com\/[^\/]+\/(parties|club).*/.test(url):
                 return "parties";
             default:
                 return null;
@@ -156,6 +156,19 @@ const newLevelsModule = new Module("levels", async () => {
     if (lobbyType === "matchroom") {
         let gameType = extractGameType();
         let selector = '[class*=Subtitle__Holder]';
+        let selector2 = '[role="dialog"] > div[class*=styles__ScrollableContainer] > div[class*=SkillLevel__StatsContainer] > div > span'
+        await newLevelsModule.doAfterNodeAppear(selector2, async (cardEloNode) => {
+            let eloText = cardEloNode.innerText.replace(/[\s,._]/g, '');
+            if (!isNumber(eloText)) return;
+            let eloNodeParent = cardEloNode.parentElement;
+            if (eloNodeParent.parentElement.querySelector(`[id*="${levelIconId}"]`)) return;
+            let elo = parseInt(eloText, 10)
+            let currentLevel = getLevel(elo, gameType);
+            let newIcon = levelIcons.get(currentLevel).cloneNode(true).firstChild;
+            newIcon.id = `${levelIconId}${currentLevel}`;
+            preppendTo(newIcon, eloNodeParent);
+            newLevelsModule.removalNode(newIcon);
+        })
         await newLevelsModule.doAfterAllNodeAppear(selector, async (eloNode) => {
             if (!isNumber(eloNode.innerText)) return;
             let eloNodeParent = eloNode.parentElement.parentElement;
@@ -186,6 +199,10 @@ const newLevelsModule = new Module("levels", async () => {
                 let elo = parseInt(gameStats["faceit_elo"], 10);
                 let currentLevel = getLevel(elo, gameType);
                 let icon = levelIcons.get(currentLevel).cloneNode(true).firstChild
+                let targetPath = icon.querySelector('path[fill="#111111"]');
+                if (targetPath) {
+                    targetPath.setAttribute('fill', '#1F1F22');
+                }
                 icon.classList.add(newEloLevelIconId)
                 if (isTopIcon) {
                     let parentElement = badgeHolder.parentElement;
@@ -274,6 +291,10 @@ const newLevelsModule = new Module("levels", async () => {
             lvlTextNode.innerText = lvlText.replace(lvlTextOrigin,level);
 
             let levelIcon = levelIcons.get(level).cloneNode(true);
+            let targetPath = levelIcon.querySelector('path[fill="#111111"]');
+            if (targetPath) {
+                targetPath.setAttribute('fill', '#1F1F22');
+            }
             levelIcon.classList.add("elowidgeticon");
             let levelSpan = levelIcon.firstChild;
             levelSpan.style.width = "58px";
