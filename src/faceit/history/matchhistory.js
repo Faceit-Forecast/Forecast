@@ -252,10 +252,15 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
     const playerId = (await fetchPlayerStatsByNickName(extractPlayerNick())).player_id;
 
-    let lastIndex = -1
+    let lastIndex = 0
     let tableElement;
     let tableHeadElement;
-    let selector = `tr[class*='styles__MatchHistoryTableRow']:not([${tableRowAttribute}]):not(:has([id*='extended-stats-node']))`;
+
+    let langKey = extractLanguage();
+    let gameType = extractGameType();
+    let prefix = `/${langKey}/${gameType}/room/`;
+    let suffix = `/scoreboard`;
+    let selector = `a[href^="${prefix}"][href$="${suffix}"]:not([${tableRowAttribute}]):not(:has([id*='extended-stats-node']))`;
 
     await matchHistoryModule.doAfterAllNodeAppearPack(selector, async function callback(nodes, attempt){
         let nodesArr = [...nodes].filter((e) => !e.parentNode.parentNode.parentNode.parentNode.parentNode.parentElement.hasAttribute("marked-as-bug"));
@@ -277,8 +282,6 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         if (nodeArrays.length === 0) return
 
         let tableNodesArray = Array.from(tableElement).filter(element => element.tagName === 'TR');
-
-        let gameType = extractGameType();
         for (const nodeArray of nodeArrays) {
             let batch = [];
             let batchIndex = lastIndex === -1 ? 0 : lastIndex
@@ -305,7 +308,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 });
 
 function insertStatsIntoNode(matchNode, rating, k, d, kd, kr, adr, playerId, detailedMatchInfo) {
-    const fourthNode = matchNode.node?.children[3];
+    const fourthNode = matchNode.node?.children[0]?.children[3];
     if (!fourthNode) return;
 
     let tableTemplate = document.getElementById(matchNode.nodeId);
