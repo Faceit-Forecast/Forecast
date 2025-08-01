@@ -6,6 +6,10 @@ class MatchroomPopup {
     constructor(table) {
         this.wrapper = table.querySelector("[class~=popup-wrapper]");
         this.popup = this.wrapper.children[0];
+        this.popup.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+        });
     }
 
     attachToElement(stats, playerId) {

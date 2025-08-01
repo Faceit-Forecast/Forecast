@@ -580,7 +580,6 @@ tr[class*="MatchHistoryTableRow"] {
 }
 
 .show-popup-button-wrap:hover svg {
-    transform: scale(1.15);
     opacity: 1;
 }
 
@@ -598,6 +597,7 @@ tr[class*="MatchHistoryTableRow"] {
     z-index: 3 !important;
     pointer-events: none;
     display: none;
+    cursor: default;
 }
 
 .popup-tooltip {

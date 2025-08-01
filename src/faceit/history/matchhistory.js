@@ -3,11 +3,6 @@
  */
 
 const MATCHES_PER_LOAD = 30;
-const matchIds = [];
-const matchDetailedDatas = new Map();
-const loadingMatches = new Set();
-const loadedIdAnchors = new Set();
-const matchNodesByMatchStats = [];
 
 const weights = {
     killWeight: 1.25,
@@ -49,8 +44,9 @@ const weights = {
 };
 
 class MatchNodeByMatchStats {
-    constructor(node, index) {
+    constructor(node, matchId, index) {
         this.node = node;
+        this.matchId = matchId
         this.matchStats = null;
         this.rounds = 0;
         this.score = "";
@@ -60,9 +56,7 @@ class MatchNodeByMatchStats {
         this.setupMatchCounterArrow()
     }
 
-    loadMatchStats(playerId) {
-        this.matchId = matchIds[this.index]
-        let detailedMatchInfo = matchDetailedDatas.get(this.matchId);
+    loadMatchStats(playerId, detailedMatchInfo) {
         if (!detailedMatchInfo) {
             error(`No detailed match info found for matchId: ${this.matchId}`);
             return;
@@ -261,6 +255,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     let prefix = `/${langKey}/${gameType}/room/`;
     let suffix = `/scoreboard`;
     let selector = `a[href^="${prefix}"][href$="${suffix}"]:not([${tableRowAttribute}]):not(:has([id*='extended-stats-node']))`;
+    const matchIdRegex = /\/room\/([^\/]+)\/scoreboard/;
 
     await matchHistoryModule.doAfterAllNodeAppearPack(selector, async function callback(nodes, attempt){
         let nodesArr = [...nodes].filter((e) => !e.parentNode.parentNode.parentNode.parentNode.parentNode.parentElement.hasAttribute("marked-as-bug"));
@@ -284,31 +279,26 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         let tableNodesArray = Array.from(tableElement).filter(element => element.tagName === 'TR');
         for (const nodeArray of nodeArrays) {
             let batch = [];
-            let batchIndex = lastIndex === -1 ? 0 : lastIndex
             for (let node of nodeArray) {
                 const index = lastIndex === -1 ? (tableNodesArray.indexOf(node) - 1) : lastIndex;
                 if (index === -1) continue;
                 lastIndex = index + 1;
-                batch.push(new MatchNodeByMatchStats(node, index));
+                const match = node.href.match(matchIdRegex);
+                const matchId = match[1];
+                batch.push(new MatchNodeByMatchStats(node.children[0], matchId, index));
             }
 
-            await loadPlayerMatchHistory(playerId, gameType, batchIndex - 1, () => {
-                loadDetailedMatches(batchIndex)?.then(() => {
-                    Promise.all(batch.map(node => node.loadMatchStats(playerId)))
+            await Promise.all(batch.map(node => {
+                getFromCacheOrFetch(node.matchId, fetchMatchStatsDetailed).then(result => {
+                    node.loadMatchStats(playerId, result)
                 })
-            });
+            }))
         }
     });
-}, async () => {
-    matchNodesByMatchStats.length = 0;
-    matchIds.length = 0;
-    matchDetailedDatas.clear()
-    loadingMatches.clear()
-    loadedIdAnchors.clear()
-});
+}, async () => {});
 
 function insertStatsIntoNode(matchNode, rating, k, d, kd, kr, adr, playerId, detailedMatchInfo) {
-    const fourthNode = matchNode.node?.children[0]?.children[3];
+    const fourthNode = matchNode.node?.children[3];
     if (!fourthNode) return;
 
     let tableTemplate = document.getElementById(matchNode.nodeId);
@@ -380,52 +370,10 @@ function insertRow(node, score, rating, k, d, kd, kr, adr, isWin) {
     replaceOrInsertCell(tableRow, 4, () => createColoredDiv(adr, adr >= 75));
 }
 
-async function loadAllPlayerMatches(playerId, gameType, fromId, date) {
-    loadedIdAnchors.add(fromId);
-    const results = await loadPlayerMatches(playerId, gameType, MATCHES_PER_LOAD, date);
-    results.forEach(id => matchIds.push(id));
-}
-
-async function loadPlayerMatches(playerId, gameType, amount, date) {
-    const playerGameDatas = await fetchPlayerInGameStats(playerId, gameType, amount, date);
-    return playerGameDatas.items.map(item => item.stats["Match Id"]);
-}
-
 function findPlayerInTeamById(teams, playerId) {
     for (const team of teams) {
         const player = team.players.find(player => player.player_id === playerId);
         if (player) return {team, player};
     }
     return {};
-}
-
-async function loadPlayerMatchHistory(playerId, gameType, fromId, callback) {
-    if (matchIds.length === 0 && loadedIdAnchors.size === 0) {
-        await loadAllPlayerMatches(playerId, gameType, fromId, 0).then(callback)
-        if (loadedIdAnchors.has(fromId)) return
-    }
-
-    matchHistoryModule.doAfter(() => matchIds[fromId], (matchId) => {
-        fetchMatchStats(matchId).then(match => {
-            let from = match["finished_at"];
-            loadAllPlayerMatches(playerId, gameType, from, parseInt(from, 10) * 1000).then(callback)
-        })
-    }, 50)
-}
-
-function loadDetailedMatches(fromId) {
-    const toId = Math.min(fromId + MATCHES_PER_LOAD, matchIds.length);
-    if (fromId >= toId) return null
-    let batch = [];
-
-    for (let i = fromId; i < toId; i++) {
-        const matchId = matchIds[i];
-        if (loadingMatches.has(matchId) || matchDetailedDatas.get(matchId)) continue;
-        batch.push(getFromCacheOrFetch(matchId, fetchMatchStatsDetailed)
-            .then(result => matchDetailedDatas.set(matchId, result))
-            .finally(() => loadingMatches.delete(matchId)));
-        loadingMatches.add(matchId);
-    }
-
-    return Promise.all(batch);
 }
