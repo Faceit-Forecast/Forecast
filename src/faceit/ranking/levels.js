@@ -278,6 +278,7 @@ const newLevelsModule = new Module("levels", async () => {
     } else if (lobbyType === "matchmaking") {
         let selector = '[class*=Matchmaking__PlayHolder]';
         let selectorMidLevel = 'main[class*="Layout__Container"] > div[class*="Header__Container"] > div:nth-child(2) > div > div > div:nth-child(1) > button > div > div:nth-child(1)'
+        let selectorMidLevelLowerThanTen = 'main[class*="Layout__Container"] > div[class*="Header__Container"] > div:nth-child(2) > div > div > div:nth-child(1) > div > div:nth-child(2) > div > div'
         await newLevelsModule.doAfterNodeAppear(selectorMidLevel, async (node) => {
             if (node.querySelector("[class*=elowidgeticon]")) return
 
@@ -301,7 +302,18 @@ const newLevelsModule = new Module("levels", async () => {
             levelSpan.style.height = "58px";
             levelSpan.style.margin = "2px 0px";
             node.appendChild(levelIcon);
-        })
+        });
+
+        await newLevelsModule.doAfterNodeAppear(selectorMidLevelLowerThanTen, async (node) => {
+            if (node.querySelector("[class*=elowidgeticon]")) return
+            let eloText = node.parentElement.querySelector('h1').innerText
+            let elo = parseInt(eloText.replace(/[\s,._]/g, ''), 10);
+            let level = getLevel(elo, "cs2");
+            let levelIcon = levelIcons.get(level).cloneNode(true);
+            levelIcon.classList.add("elowidgeticon");
+            node.appendChild(levelIcon);
+        });
+
         await newLevelsModule.doAfterNodeAppear(selector, async (node) => {
             let uniqueCheck = () => node.id === matchmakingHolderId
             if (uniqueCheck()) return

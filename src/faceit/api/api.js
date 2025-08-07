@@ -93,7 +93,7 @@ async function fetchOldMatchStats(matchId) {
 }
 
 function extractPlayerNick() {
-    const nick = window.location.href.match(/players\/([a-zA-Z0-9-_]+)/);
+    const nick = window.location.href.match(/players\/([a-zA-Z0-9-_.]+)/);
     return nick ? nick[1] : null;
 }
 
