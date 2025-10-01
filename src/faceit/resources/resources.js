@@ -23,6 +23,8 @@ const htmlUrls = [
     "src/visual/tables/matchscore.html",
     "src/visual/tables/elo-progress-bar.html",
     "src/visual/tables/elo-progress-bar-master.html",
+    "src/visual/tables/skill-levels-info-table.html",
+    "src/visual/tables/levels/challenger.html",
     ...Array.from({length: 20}, (_, i) => `src/visual/tables/levels/level${i + 1}.html`)
 ];
 
@@ -111,6 +113,10 @@ function getHtmlResource(path) {
 
 function getImageResource(path) {
     return images.get(path);
+}
+
+function getLevelIcon(level) {
+    return levelIcons.get(level).cloneNode(true);
 }
 
 function setupStyles() {

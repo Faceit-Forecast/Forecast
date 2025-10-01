@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.6.11",
+  "version": "1.6.13",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",
@@ -31,7 +31,8 @@
       ],
       "js": [
         "src/utils/utils.js",
-        "src/faceit/api/api.js",
+        "src/faceit/api/faceit-api.js",
+        "src/faceit/api/forecast-api.js",
         "src/module/observer/observe-handler.js",
         "src/module/module.js",
         "src/faceit/resources/resources.js",
@@ -43,6 +44,7 @@
         "src/faceit/ranking/ranking.js",
         "src/faceit/ranking/levels.js",
         "src/faceit/features/logosidebar.js",
+        "src/faceit/service/service.js",
         "src/module/moduleManager.js"
       ]
     }
@@ -57,8 +59,10 @@
         "src/visual/tables/level-progress-table.html",
         "src/visual/tables/elo-progress-bar.html",
         "src/visual/tables/elo-progress-bar-master.html",
+        "src/visual/tables/skill-levels-info-table.html",
         "src/visual/tables/player.html",
         "src/visual/tables/match-counter-arrow.html",
+        "src/visual/tables/levels/challenger.html",
         "src/visual/tables/levels/level1.html",
         "src/visual/tables/levels/level2.html",
         "src/visual/tables/levels/level3.html",

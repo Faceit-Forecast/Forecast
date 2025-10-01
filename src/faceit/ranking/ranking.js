@@ -4,7 +4,7 @@
 
 const gameLevelRanges = {
     cs2: [
-        {min: 1, max: 500},         // Level 1
+        {min: 100, max: 500},         // Level 1
         {min: 501, max: 750},       // Level 2
         {min: 751, max: 900},       // Level 3
         {min: 901, max: 1050},      // Level 4
@@ -26,7 +26,7 @@ const gameLevelRanges = {
         {min: 4501, max: Infinity}  // Level 20
     ],
     csgo: [
-        {min: 1, max: 800},         // Level 1
+        {min: 100, max: 800},         // Level 1
         {min: 801, max: 950},       // Level 2
         {min: 951, max: 1100},      // Level 3
         {min: 1101, max: 1250},     // Level 4
@@ -86,6 +86,10 @@ const rankingModule = new Module("ranking", async () => {
         unsubscribe = subscribeGameTypeChange();
         newNode.classList.add(`forecast-statistic-table-${rankingModule.sessionId}`)
         newNode.querySelector("div.level-progress-container > .flex-between > img").src = getImageResource("src/visual/icons/logo256.png").toString();
+        let brandIconSmallElement = newNode.querySelector("[class~=brand-icon-small]");
+        if (brandIconSmallElement) {
+            brandIconSmallElement.src = getImageResource("src/visual/icons/logo256.png").toString();
+        }
         await insertAllStatisticToNewTable(newNode);
     }, () => { unsubscribe(); })
 })
@@ -103,7 +107,7 @@ async function insertAllStatisticToNewTable(table) {
 
     let currentEloNode = table.querySelector("[class*=current-elo]")
     currentEloNode.innerText = `${elo}`
-    let currentLevelIcon = levelIcons.get(currentLevel);
+    let currentLevelIcon = getLevelIcon(currentLevel);
     let levelColor = currentLevelIcon.querySelector("div > span > svg > g > path:nth-child(3)").getAttribute("fill")
     currentEloNode.style.setProperty("--glow-color", `${levelColor}B3`);
     let levelRanges = gameLevelRanges[gameType];
@@ -115,6 +119,7 @@ async function insertAllStatisticToNewTable(table) {
         const progressBar = table.querySelector(`[class*=progress-bar-${level}]`);
         let levelMinEloTextNode = levelNode.querySelector(`[class~="level-value"]`)
         const {min, max} = levelRanges[level - 1]
+        levelNode.setAttribute("range",level === levelRanges.length ? `${min}+` : `${min}-${max}`)
         levelMinEloTextNode.innerText = min
         if (currentLevel > level) {
             levelNode.setAttribute("reached", '')

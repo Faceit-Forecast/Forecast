@@ -22,7 +22,7 @@ const logoSidebarModule = new Module("logoSidebar", async () => {
         container.title = "FORECAST";
 
         if (isTopContent) {
-            container.style.margin = "10px";
+            container.style.margin = "0px 10px 10px 10px";
         }
 
         const gradientWrapper = document.createElement("div");
@@ -52,7 +52,6 @@ const logoSidebarModule = new Module("logoSidebar", async () => {
         const container = createLogoContainer(true);
         node.appendChild(container);
 
-        hideEmptyStyleContainer(node);
         addLogoStyles();
     });
 
@@ -66,13 +65,6 @@ const logoSidebarModule = new Module("logoSidebar", async () => {
     });
 }, async () => {});
 
-function hideEmptyStyleContainer(node) {
-    let friendsSectionNode = node.querySelector("[class*=stylesV2__BubbleWrapper]");
-    let childs = Array.from(node.children);
-    let index = childs.indexOf(friendsSectionNode);
-    let emptyNode = childs[index + 1];
-    emptyNode.style.display = "none";
-}
 
 function openExtensionPopup() {
     const existingPopup = document.getElementById("forecast-popup-container");

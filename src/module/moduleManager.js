@@ -5,6 +5,7 @@
 let previousUrl = "";
 
 const regexModules = [
+    {regex: /^https:\/\/www\.faceit\.com\/.*$/, module: serviceModule},
     {regex: /^https:\/\/www\.faceit\.com\/.*$/, module: newLevelsModule},
     {regex: /^https:\/\/www\.faceit\.com\/.*$/, module: logoSidebarModule},
     {regex: /^https:\/\/www\.faceit\.com\/[^\/]+\/players\/([^\/]+)\/stats\/(cs2|csgo)$/, module: rankingModule},

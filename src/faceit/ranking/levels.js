@@ -86,7 +86,7 @@ class PartySlot {
             }
             if (!oldIcon) return;
             let currentLevel = getLevel(elo, "cs2");
-            let newIcon = levelIcons.get(currentLevel).cloneNode(true).firstChild
+            let newIcon = getLevelIcon(currentLevel).firstChild
             newIcon.classList.add(`party-slot-icon-${this.id}`)
             if (this.newIcon) {
                 this.newIcon.remove()
@@ -150,32 +150,51 @@ const newLevelsModule = new Module("levels", async () => {
     let newEloLevelIconId = `${sessionId}-new-elo-level-icon`
     let levelIconId = `-${sessionId}-lvlicon-`
     let masterProgressBarId = `${sessionId}-master-progress-bar-container`
+    let levelInfoTableId = `${sessionId}-level-info-table-container`
     let matchmakingHolderId = `${sessionId}-matchmaking-holder`
     let collectionLevelIconId = `${sessionId}-collection-level-icon`
 
     if (lobbyType === "matchroom") {
         let gameType = extractGameType();
+        let matchId = extractMatchId();
         let selector = '[class*=Subtitle__Holder]';
         let selector2 = '[role="dialog"] > div[class*=styles__ScrollableContainer] > div[class*=SkillLevel__StatsContainer] > div > span'
-        await newLevelsModule.doAfterNodeAppear(selector2, async (cardEloNode) => {
+        let selector3 = 'div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpWrapper] > div > div[class*=styles__MvpCardHolder] > div > div[class*=Tag__Container] > span'
+        let selector4 = '#tooltip-portal > div > div > div > div:nth-child(3)'
+        let matchStats;
+        let preppendIconOnEloNodeFound = async (cardEloNode) => {
             let eloText = cardEloNode.innerText.replace(/[\s,._]/g, '');
             if (!isNumber(eloText)) return;
             let eloNodeParent = cardEloNode.parentElement;
             if (eloNodeParent.parentElement.querySelector(`[id*="${levelIconId}"]`)) return;
             let elo = parseInt(eloText, 10)
             let currentLevel = getLevel(elo, gameType);
-            let newIcon = levelIcons.get(currentLevel).cloneNode(true).firstChild;
+            let newIcon = getLevelIcon(currentLevel).firstChild;
             newIcon.id = `${levelIconId}${currentLevel}`;
             preppendTo(newIcon, eloNodeParent);
             newLevelsModule.removalNode(newIcon);
+        }
+        await newLevelsModule.doAfterNodeAppear(selector4, async (node) => {
+            if (!matchStats) matchStats = await fetchMatchStats(matchId);
+
+            let avgLevelHandler = (index) => {
+                const level = getLevel(matchStats.teams[`faction${index}`].stats.rating, gameType);
+                let levelIcon = getLevelIcon(level).firstChild;
+                node.querySelector(`div:nth-child(${index})`)?.appendChild(levelIcon);
+            }
+
+            avgLevelHandler(1);
+            avgLevelHandler(2);
         })
+        await newLevelsModule.doAfterNodeAppear(selector3, preppendIconOnEloNodeFound);
+        await newLevelsModule.doAfterNodeAppear(selector2, preppendIconOnEloNodeFound);
         await newLevelsModule.doAfterAllNodeAppear(selector, async (eloNode) => {
             if (!isNumber(eloNode.innerText)) return;
             let eloNodeParent = eloNode.parentElement.parentElement;
             if (eloNodeParent.parentElement.querySelector(`[id*="${levelIconId}"]`)) return;
             let elo = parseInt(eloNode.innerText, 10);
             let currentLevel = getLevel(elo, gameType);
-            let newIcon = levelIcons.get(currentLevel).cloneNode(true).firstChild;
+            let newIcon = getLevelIcon(currentLevel).firstChild;
             newIcon.id = `${levelIconId}${currentLevel}`;
             appendTo(newIcon, eloNodeParent);
             newLevelsModule.removalNode(newIcon);
@@ -198,7 +217,7 @@ const newLevelsModule = new Module("levels", async () => {
                 if (!gameStats) return
                 let elo = parseInt(gameStats["faceit_elo"], 10);
                 let currentLevel = getLevel(elo, gameType);
-                let icon = levelIcons.get(currentLevel).cloneNode(true).firstChild
+                let icon = getLevelIcon(currentLevel).firstChild
                 let targetPath = icon.querySelector('path[fill="#111111"]');
                 if (targetPath) {
                     targetPath.setAttribute('fill', '#1F1F22');
@@ -232,7 +251,7 @@ const newLevelsModule = new Module("levels", async () => {
             if (!node.parentElement?.parentElement?.parentElement?.matches || !node.parentElement?.parentElement?.parentElement?.matches(`[class*=styles__StatsGraphPanelWrapper]`)) return;
             if (node.parentElement.parentElement.querySelector(`[class*='${newEloLevelIconId}']`)) return;
 
-            let icon = levelIcons.get(currentLevel).cloneNode(true).firstChild
+            let icon = getLevelIcon(currentLevel).firstChild
             icon.classList.add(newEloLevelIconId)
             newLevelsModule.removalNode(icon);
             if (lobbyType === "stats") {
@@ -267,8 +286,8 @@ const newLevelsModule = new Module("levels", async () => {
             let {min: nextmin} = currentLevel === levelRanges.length ? {min: '∞'} : levelRanges[currentLevel]
 
             newTable.querySelector("[class~=master-progress-bar]").style.width = `${progress}%`;
-            let prevLevelIcon = levelIcons.get(currentLevel - 1)?.cloneNode(true)?.firstChild
-            let nextLevelIcon = levelIcons.get(currentLevel + 1)?.cloneNode(true)?.firstChild
+            let prevLevelIcon = getLevelIcon(currentLevel - 1)?.firstChild
+            let nextLevelIcon = getLevelIcon(currentLevel + 1)?.firstChild
             if (prevLevelIcon) newLevelsModule.appendToAndHide(prevLevelIcon, newTable.querySelector("[class~=master-min-icon]"))
             if (nextLevelIcon) newLevelsModule.appendToAndHide(nextLevelIcon, newTable.querySelector("[class~=master-max-icon]"))
 
@@ -278,8 +297,8 @@ const newLevelsModule = new Module("levels", async () => {
     } else if (lobbyType === "matchmaking") {
         let selector = '[class*=Matchmaking__PlayHolder]';
         let selectorMidLevel = 'main[class*="Layout__Container"] > div[class*="Header__Container"] > div:nth-child(2) > div > div > div:nth-child(1) > button > div > div:nth-child(1)'
-        let selectorMidLevelLowerThanTen = 'main[class*="Layout__Container"] > div[class*="Header__Container"] > div:nth-child(2) > div > div > div:nth-child(1) > div > div:nth-child(2) > div > div'
-        await newLevelsModule.doAfterNodeAppear(selectorMidLevel, async (node) => {
+        let selectorMidLevelLowerThanTen = 'main[class*="Layout__Container"] > div[class*="Header__Container"] > div:nth-child(2) > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div[class*=LevelWidget__IconWrapper]'
+        await newLevelsModule.doAfterNodeAppear(selectorMidLevel, (node) => {
             if (node.querySelector("[class*=elowidgeticon]")) return
 
             let eloText = node.parentElement.querySelector('div:nth-child(2) > div:nth-child(2) > h5').innerText
@@ -289,9 +308,9 @@ const newLevelsModule = new Module("levels", async () => {
             let lvlTextNode = node.parentElement.querySelector('div:nth-child(2) > div:nth-child(1) > span');
             let lvlText = lvlTextNode.innerText;
             let lvlTextOrigin = lvlText.match(/.+ (\d+)/)[1];
-            lvlTextNode.innerText = lvlText.replace(lvlTextOrigin,level);
+            lvlTextNode.innerText = lvlText.replace(lvlTextOrigin, level);
 
-            let levelIcon = levelIcons.get(level).cloneNode(true);
+            let levelIcon = getLevelIcon(level);
             let targetPath = levelIcon.querySelector('path[fill="#111111"]');
             if (targetPath) {
                 targetPath.setAttribute('fill', '#1F1F22');
@@ -304,12 +323,12 @@ const newLevelsModule = new Module("levels", async () => {
             node.appendChild(levelIcon);
         });
 
-        await newLevelsModule.doAfterNodeAppear(selectorMidLevelLowerThanTen, async (node) => {
+        await newLevelsModule.doAfterNodeAppear(selectorMidLevelLowerThanTen, (node) => {
             if (node.querySelector("[class*=elowidgeticon]")) return
             let eloText = node.parentElement.querySelector('h1').innerText
             let elo = parseInt(eloText.replace(/[\s,._]/g, ''), 10);
             let level = getLevel(elo, "cs2");
-            let levelIcon = levelIcons.get(level).cloneNode(true);
+            let levelIcon = getLevelIcon(level);
             levelIcon.classList.add("elowidgeticon");
             node.appendChild(levelIcon);
         });
@@ -364,7 +383,7 @@ const newLevelsModule = new Module("levels", async () => {
             await newLevelsModule.doAfterAsync(() => node.parentElement.querySelector('svg'), (oldIcon) => {
                 if (uniqueCheck()) return
                 let currentLevel = getLevel(elo, "cs2");
-                let newIcon = levelIcons.get(currentLevel).cloneNode(true)
+                let newIcon = getLevelIcon(currentLevel);
                 let innerNewIcon = newIcon.firstElementChild;
                 newLevelsModule.appendToAndHide(innerNewIcon, oldIcon)
                 newLevelsModule.removalNode(innerNewIcon)
@@ -372,6 +391,33 @@ const newLevelsModule = new Module("levels", async () => {
             })
         })
     }
+
+    let skillLevelsTableNodeSelector = "body > div.FuseModalPortal > div > div > div[class*=SkillLevelsInfo__ModalContent]"
+    await newLevelsModule.doAfterNodeAppear(skillLevelsTableNodeSelector, (node) => {
+        let uniqueCheck = () => node?.parentElement?.querySelector('[id*="level-info-table-container"]')
+        if (!uniqueCheck()) {
+            node.parentElement.style.width = "560px";
+            let newTable = getHtmlResource("src/visual/tables/skill-levels-info-table.html").cloneNode(true)
+            newTable.id = levelInfoTableId;
+            let challengerNode = newTable.querySelector("[class*=challengerinfos-icon]");
+            let challengerIcon = getHtmlResource("src/visual/tables/levels/challenger.html").cloneNode(true).firstChild;
+            challengerIcon.style.scale = "1.3"
+            challengerNode.appendChild(challengerIcon)
+            let levelRanges = gameLevelRanges["cs2"];
+            for (let level = 1; level <= levelRanges.length; level++) {
+                let levelNode = newTable.querySelector(`[class="levelinfos-item lvl-${level}"]`);
+                let levelOldIconNode = levelNode.querySelector("[class=levelinfos-icon]");
+                let levelIcon = getLevelIcon(level).firstChild;
+                levelIcon.style.scale = "1.15";
+                const {min, max} = levelRanges[level - 1];
+                levelNode.querySelector("[class='levelinfos-name']").innerText = `Level ${level}`;
+                levelNode.querySelector("[class=levelinfos-range]").innerText = level === 20 ? `(${min}+)` : `(${min} - ${max})`;
+                levelOldIconNode.appendChild(levelIcon);
+            }
+            newLevelsModule.appendToAndHide(newTable, node);
+            newLevelsModule.removalNode(newTable);
+        }
+    })
 
     doAfterSearchPlayerNodeAppear(async (node) => {
         await newLevelsModule.doAfterAsync(() => !node || node.childNodes && node.childNodes.length > 2, async () => {
@@ -388,9 +434,9 @@ const newLevelsModule = new Module("levels", async () => {
                 if (!gameStats) return
                 let elo = parseInt(gameStats["faceit_elo"], 10);
                 let currentLevel = getLevel(elo, gameType);
-                let icon = levelIcons.get(currentLevel).cloneNode(true).firstChild
-                newLevelsModule.appendToAndHide(icon, oldIcon)
-                newLevelsModule.removalNode(icon)
+                let icon = getLevelIcon(currentLevel).firstChild;
+                newLevelsModule.appendToAndHide(icon, oldIcon);
+                newLevelsModule.removalNode(icon);
             })
         })
     })
@@ -422,12 +468,12 @@ async function insertStatsToEloBar(nick, table) {
     let currentLevel = getLevel(elo, gameType)
     let progressBarPercentage = getBarProgress(elo, gameType);
     let node = table.querySelector("[class~=skill-current-level]")
-    
+
     while (node.firstChild) {
         node.removeChild(node.firstChild);
     }
-    
-    const levelIcon = levelIcons.get(currentLevel);
+
+    const levelIcon = getLevelIcon(currentLevel);
     if (levelIcon) {
         Array.from(levelIcon.childNodes).forEach(child => {
             node.appendChild(child.cloneNode(true));
