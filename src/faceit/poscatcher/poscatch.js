@@ -18,10 +18,10 @@ const posCatcherModule = new Module("poscatcher", async () => {
     const matchId = extractMatchId();
     const cookieKey = `${matchId}_poscatched`
     if (getCookie(cookieKey)) return
-
-    let mapselector = "[name=info] > div[class*=Overview__Stack] > div > div > div > div:nth-child(4) > div > div[class*=middleSlot] > div > div > span > span"
-    let chatSelector = "div[class*=MatchRoom__ChatSidebarContainer] > div > div:nth-child(2) > div[class*=ChatSection__ChatContainer] > div > div > div > div > div[class*=MessageInputContainer] > div > div > div[class*=StyledTextArea__TextAreaWrapper] > textarea"
     let anchorSelector = "[name=info] > div[class*=Overview__Stack] > div[class*=Ready__Container]"
+    let mapselector = "[name=info] > div[class*=Overview__Stack] > div > div > div > div:nth-child(4) > div > div[class*=middleSlot] > div > div > span > span"
+    let chatSelector = "div[class*=styles__ChatSidebarContainer] > div > div:nth-child(2) > div[class*=ChatSection__ChatContainer] > div > div > div > div > div[class*=styles__MessageInputContainer] > div[class*=styles__InputWrapper] > div > div[class*=StyledTextArea__TextAreaWrapper] > textarea"
+
     posCatcherModule.doAfterNodeAppear(anchorSelector, () => {
         posCatcherModule.doAfterNodeAppear(mapselector, async (node) => {
             if (getCookie(cookieKey)) return

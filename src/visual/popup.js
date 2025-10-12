@@ -44,13 +44,14 @@ const SettingsManager = {
         matchroom: true,
         eloranking: true,
         matchhistory: true,
-        poscatcher: false
+        poscatcher: false,
+        integrations: true
     },
 
     async load() {
         try {
             const keys = ['isEnabled', 'sliderValue', 'matchroom', 'eloranking', 'matchhistory', 'poscatcher',
-                ...CS2_MAPS.flatMap(map => [`${map}Enabled`, `${map}Message`])];
+                ...CS2_MAPS.flatMap(map => [`${map}Enabled`, `${map}Message`]), 'integrations'];
 
             const settings = await StorageUtils.get(keys);
 
@@ -69,7 +70,8 @@ const SettingsManager = {
             rangeSlider: 'sliderValue',
             matchroom: 'matchroom',
             eloranking: 'eloranking',
-            matchhistory: 'matchhistory'
+            matchhistory: 'matchhistory',
+            integrations: 'integrations'
         };
 
         Object.entries(elements).forEach(([elementId, settingKey]) => {
@@ -271,7 +273,7 @@ const UIUtils = {
 
 const EventHandlers = {
     setupMainEventListeners() {
-        const toggles = ['toggleExtension', 'matchroom', 'eloranking', 'matchhistory'];
+        const toggles = ['toggleExtension', 'matchroom', 'eloranking', 'matchhistory', 'integrations'];
 
         toggles.forEach(toggleId => {
             const element = document.getElementById(toggleId);

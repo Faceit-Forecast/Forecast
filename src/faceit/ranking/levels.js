@@ -128,23 +128,6 @@ const newLevelsModule = new Module("levels", async () => {
         }
     })
 
-    const defineUrlType = (url) => {
-        switch (true) {
-            case /^https:\/\/www\.faceit\.com\/[^\/]+\/players\/([^\/]+)\/stats\/([^\/]+)$/.test(url):
-                return "stats";
-            case /^https:\/\/www\.faceit\.com\/[^\/]+\/players\/([^\/]+)(\/.*)?$/.test(url):
-                return "profile";
-            case /^https:\/\/www\.faceit\.com\/[^\/]+\/[\w\-]+\/room\/[\w\-]+(\/.*)?$/.test(url):
-                return "matchroom";
-            case /^https:\/\/www\.faceit\.com\/[^\/]+\/matchmaking.*/.test(url):
-                return "matchmaking";
-            case /^https:\/\/www\.faceit\.com\/[^\/]+\/(parties|club).*/.test(url):
-                return "parties";
-            default:
-                return null;
-        }
-    };
-
     let lobbyType = defineUrlType(window.location.href)
     let sessionId = newLevelsModule.sessionId
     let newEloLevelIconId = `${sessionId}-new-elo-level-icon`

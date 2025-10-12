@@ -31,6 +31,7 @@
       ],
       "js": [
         "src/utils/utils.js",
+        "src/utils/pagetype.js",
         "src/faceit/api/faceit-api.js",
         "src/faceit/api/forecast-api.js",
         "src/module/observer/observe-handler.js",
@@ -45,6 +46,7 @@
         "src/faceit/ranking/levels.js",
         "src/faceit/features/logosidebar.js",
         "src/faceit/service/service.js",
+        "src/faceit/service/integrations.js",
         "src/module/moduleManager.js"
       ]
     }

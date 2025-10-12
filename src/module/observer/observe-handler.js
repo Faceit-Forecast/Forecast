@@ -15,12 +15,20 @@ class ObserveHandler {
                 if (mutation.type === 'childList') {
                     for (const node of mutation.addedNodes) {
                         this.observerAppearTasks.forEach(async (task, _) => {
-                            await task(node)
+                            try {
+                                await task(node)
+                            } catch (e) {
+                                error(e.message)
+                            }
                         })
                     }
                     for (const node of mutation.removedNodes) {
                         this.observerDisappearTasks.forEach(async (task, _) => {
-                            await task(node)
+                            try {
+                                await task(node)
+                            } catch (e) {
+                                error(e.message)
+                            }
                         })
                     }
                 }
@@ -49,7 +57,7 @@ class ObserveHandler {
         this.observerDisappearTasks.delete(id)
     }
 
-    async doAfterNodeDisappear(selector, callback, id){
+    async doAfterNodeDisappear(selector, callback, id) {
         this.observeDisappear(id ? id : selector, async (node) => {
             if (node.matches && node.matches(selector)) {
                 callback(node)
@@ -60,7 +68,13 @@ class ObserveHandler {
 
     async doAfterNodeAppear(selector, callback, id) {
         let element = document.querySelector(selector);
-        if (element) await callback(element);
+        if (element) {
+            try {
+                await callback(element);
+            } catch (e) {
+                error(e.message)
+            }
+        }
 
         this.observeAppear(id ? id : selector, async (node) => {
             if (node.matches && node.matches(selector)) {
@@ -73,9 +87,16 @@ class ObserveHandler {
             }
         });
     }
+
     async doAfterNodeAppearWithCondition(selector, conditionFn, callback, id) {
         let element = document.querySelector(selector);
-        if (element && conditionFn(element)) await callback(element);
+        if (element && conditionFn(element)) {
+            try {
+                await callback(element);
+            } catch (e) {
+                error(e.message)
+            }
+        }
 
         this.observeAppear(id ? id : selector, async (node) => {
             if (node.matches && node.matches(selector) && conditionFn(node)) {
@@ -84,7 +105,7 @@ class ObserveHandler {
                 const matchingChildren = node.querySelectorAll(selector);
                 for (const child of matchingChildren) {
                     if (conditionFn(child))
-                    await callback(child);
+                        await callback(child);
                 }
             }
         });
@@ -95,7 +116,11 @@ class ObserveHandler {
         let elements = document.querySelectorAll(selector);
         if (elements.length !== 0) {
             for (const element of elements) {
-                await callback(element);
+                try {
+                    await callback(element);
+                } catch (e) {
+                    error(e.message)
+                }
             }
         }
 
@@ -115,7 +140,13 @@ class ObserveHandler {
 
     async doAfterAllNodeAppearPack(selector, callback, id) {
         let elements = document.querySelectorAll(selector);
-        if (elements.length !== 0) await callback(elements);
+        if (elements.length !== 0) {
+            try {
+                await callback(elements);
+            } catch (e) {
+                error(e.message)
+            }
+        }
 
         this.observeAppear(id ? id : selector, async () => {
             let elements = document.querySelectorAll(selector);
