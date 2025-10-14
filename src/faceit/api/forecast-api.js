@@ -20,7 +20,8 @@ async function fetchBannerHtml() {
         if (res.status === 204) return null;
 
         if (!res.ok) {
-            throw new Error(`Failed to fetch banner: ${res.statusText}`);
+            console.error(`Failed to fetch banner: ${res.statusText}`);
+            return null;
         }
 
         return await res.text();
