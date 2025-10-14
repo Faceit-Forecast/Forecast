@@ -7,7 +7,6 @@ const integrationsModule = new Module("integrations", async () => {
 
     try {
         bannerData = await fetchBannerData();
-        console.log(bannerData);
     } catch (e) {
         error(e.message);
     }
