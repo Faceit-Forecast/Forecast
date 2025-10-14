@@ -100,10 +100,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "forecast-extension@terraminer.com",
-      "strict_min_version": "109.0",
-      "data_collection_permissions": {
-        "builtin": false
-      }
+      "strict_min_version": "109.0"
     }
   }
 }
