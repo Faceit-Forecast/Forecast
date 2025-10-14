@@ -106,7 +106,7 @@ const newLevelsModule = new Module("levels", async () => {
     const enabled = await isExtensionEnabled() && await isSettingEnabled("eloranking", true);
     if (!enabled) return;
     newLevelsModule.temporaryFaceitBugFix();
-    hideWithCSS(`[class*="SkillIcon__StyledSvg"]`);
+    hideWithCSS(`[class*="SkillIcon__StyledSvg"]:not([origin-levels]):not([origin-levels] *)`);
 
     const styleElement = document.createElement("style");
     styleElement.textContent = `span[id*="lvlicon"]:has(+ [class*="SkillIcon__StyledSvg"]) {margin-inline-end: 0 !important;}`;
@@ -373,6 +373,15 @@ const newLevelsModule = new Module("levels", async () => {
                 node.classList.add(collectionLevelIconId);
             })
         })
+
+        if (lobbyType === "parties") {
+            let safeSelectors = ["[class*=styles__RequirementsHolder]","[class*=styles__BadgesHolder]"]
+            safeSelectors.forEach((selector) => {
+                newLevelsModule.doAfterNodeAppear(selector,  (node) => {
+                    if (!node.hasAttribute("origin-levels")) node.setAttribute("origin-levels",'')
+                })
+            })
+        }
     }
 
     let skillLevelsTableNodeSelector = "body > div.FuseModalPortal > div > div > div[class*=SkillLevelsInfo__ModalContent]"

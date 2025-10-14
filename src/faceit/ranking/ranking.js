@@ -86,10 +86,6 @@ const rankingModule = new Module("ranking", async () => {
         unsubscribe = subscribeGameTypeChange();
         newNode.classList.add(`forecast-statistic-table-${rankingModule.sessionId}`)
         newNode.querySelector("div.level-progress-container > .flex-between > img").src = getImageResource("src/visual/icons/logo256.png").toString();
-        let brandIconSmallElement = newNode.querySelector("[class~=brand-icon-small]");
-        if (brandIconSmallElement) {
-            brandIconSmallElement.src = getImageResource("src/visual/icons/logo256.png").toString();
-        }
         await insertAllStatisticToNewTable(newNode);
     }, () => { unsubscribe(); })
 })

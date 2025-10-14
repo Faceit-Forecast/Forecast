@@ -15,7 +15,6 @@ const imageUrls = [
 
 const htmlUrls = [
     "src/visual/tables/forecaststyles.css",
-    "src/visual/profiles/forecastcardsstyles.css",
     "src/visual/tables/level-progress-table.html",
     "src/visual/tables/team.html",
     "src/visual/tables/player.html",
@@ -121,7 +120,6 @@ function getLevelIcon(level) {
 
 function setupStyles() {
     let css = getHtmlResource("src/visual/tables/forecaststyles.css");
-    let cardcss = getHtmlResource("src/visual/profiles/forecastcardsstyles.css");
     let style = document.getElementById("forecast-styles");
 
     if (!style) {
@@ -133,9 +131,7 @@ function setupStyles() {
     style.textContent = '';
 
     const cssText = document.createTextNode(css.textContent);
-    const cssText2 = document.createTextNode(cardcss.textContent);
     style.appendChild(cssText);
-    style.appendChild(cssText2);
 }
 
 async function getHTMLCodeFromFile(filePath) {
