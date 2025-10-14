@@ -3,32 +3,54 @@ const integrationsModule = new Module("integrations", async () => {
     if (!enabled) return;
 
     let lobbyType = defineUrlType(window.location.href);
+    let bannerData;
 
-    let bannerHtml
     try {
-        bannerHtml = await fetchBannerHtml();
+        bannerData = await fetchBannerData();
+        console.log(bannerData);
     } catch (e) {
-        error(e.message)
+        error(e.message);
     }
 
-    if (!bannerHtml) {
+    if (!bannerData) {
         println("No banners available");
         return;
     }
 
-    let tempHtml = document.createElement('div');
-    tempHtml.innerHTML = bannerHtml;
+    const sanitizedHtml = sanitizeHtml(bannerData.html);
+
+    const createBanner = () => {
+        let bannerContainer = document.createElement('div');
+        bannerContainer.innerHTML = sanitizedHtml;
+
+        if (bannerContainer && bannerData.targetUrl) {
+            bannerContainer.style.cursor = 'pointer';
+
+            bannerContainer.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (isValidUrl(bannerData.targetUrl)) {
+                    window.open(bannerData.targetUrl, '_blank', 'noopener,noreferrer');
+                }
+            });
+        }
+
+        return bannerContainer;
+    };
 
     if (lobbyType === "stats") {
         await integrationsModule.doAfterNodeAppear('[class*=forecast-statistic-table]', async (node) => {
             let lvlpc = node.querySelector("[class*=level-progress-container]");
             if (lvlpc) {
-                appendTo(tempHtml, lvlpc);
+                const banner = createBanner();
+                console.log(banner)
+                appendTo(banner, lvlpc);
             }
         });
     } else if (lobbyType === "matchroom") {
         await integrationsModule.doAfterNodeAppear('[class*=team-table]', async (node) => {
-            preppendTo(tempHtml, node);
+            const banner = createBanner();
+            preppendTo(banner, node);
         });
     }
 }, async () => {});

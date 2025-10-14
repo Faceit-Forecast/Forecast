@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.6.14",
+  "version": "1.7.0",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",
@@ -54,7 +54,6 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/visual/profiles/forecastcardsstyles.css",
         "src/visual/tables/forecaststyles.css",
         "src/visual/tables/team.html",
         "src/visual/tables/matchscore.html",
@@ -101,7 +100,10 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "forecast-extension@terraminer.com",
-      "strict_min_version": "109.0"
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "builtin": false
+      }
     }
   }
 }
