@@ -13,24 +13,6 @@ async function fetchFC(url, errorMsg) {
     }
 }
 
-async function fetchBannerHtml() {
-    try {
-        const res = await fetch(`${baseUrlFC}/integrations/banner`);
-
-        if (res.status === 204) return null;
-
-        if (!res.ok) {
-            console.error(`Failed to fetch banner: ${res.statusText}`);
-            return null;
-        }
-
-        return await res.text();
-    } catch (err) {
-        console.error("Error fetching banner:", err);
-        return null;
-    }
-}
-
 async function fetchPing() {
     await fetchFC(`${baseUrlFC}/session/ping`, "Error on pinging");
 }
@@ -61,19 +43,46 @@ function isValidUrl(url) {
     }
 }
 
-async function fetchBannerData() {
+async function fetchBannerData(language, slot) {
+    const cachedData = getCookie(`forecast-banner-cache-${language}-${slot}`);
+    if (cachedData) {
+        try {
+            const parsed = JSON.parse(cachedData);
+
+            sendBannerMetric(parsed.bannerId, language,slot);
+
+            return parsed;
+        } catch (e) {
+            error("Failed to parse cached banner data:", e);
+        }
+    }
+
     try {
-        const res = await fetch(`${baseUrlFC}/integrations/banner`);
+        const res = await fetch(`${baseUrlFC}/integrations/banner?lang=${language}&slot=${slot}`);
 
         if (res.status === 204) return null;
 
         if (!res.ok) {
-            console.error(`Failed to fetch banner: ${res.statusText}`);
+            error(`Failed to fetch banner: ${res.statusText}`);
             return null;
         }
-        return await res.json();
+
+        const bannerData = await res.json();
+
+        setCookie("forecast-banner-cache", JSON.stringify(bannerData), 5);
+
+        return bannerData;
     } catch (err) {
-        console.error("Error fetching banner:", err);
+        error("Error fetching banner:", err);
         return null;
+    }
+}
+
+async function sendBannerMetric(bannerId, language, slot) {
+    try {
+        await fetch(`${baseUrlFC}/integrations/banner?metricOnly=true&bannerId=${bannerId}&lang=${language}&slot=${slot}`, {
+            method: 'GET'
+        });
+    } catch (err) {
     }
 }

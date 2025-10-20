@@ -6,15 +6,13 @@ const integrationsModule = new Module("integrations", async () => {
     let bannerData;
 
     try {
-        bannerData = await fetchBannerData();
+        const language = extractLanguage();
+        bannerData = await fetchBannerData(language, lobbyType);
     } catch (e) {
         error(e.message);
     }
 
-    if (!bannerData) {
-        println("No banners available");
-        return;
-    }
+    if (!bannerData) return;
 
     const sanitizedHtml = sanitizeHtml(bannerData.html);
 
@@ -42,7 +40,6 @@ const integrationsModule = new Module("integrations", async () => {
             let lvlpc = node.querySelector("[class*=level-progress-container]");
             if (lvlpc) {
                 const banner = createBanner();
-                console.log(banner)
                 appendTo(banner, lvlpc);
             }
         });
