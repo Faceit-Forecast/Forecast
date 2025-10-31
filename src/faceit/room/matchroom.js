@@ -87,9 +87,9 @@ async function getMatchWinRates(matchId) {
 }
 
 async function findUserCard(nickname, callback) {
-    let nickNodeSelector = 'div[class*="styles__PopoverStyled"] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > h5'
+    let nickNodeSelector = 'div[class*="styles__PopoverStyled"] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5'
     await matchRoomModule.doAfterNodeAppearWithCondition(nickNodeSelector, (node) => node.innerText === nickname, (node) => {
-        let parentNode = node.parentElement.parentElement.parentElement.querySelector('div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]')
+        let parentNode = node.parentElement.parentElement.parentElement.parentElement.querySelector('div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]')
         if (!matchRoomModule.isProcessedNode(parentNode)) {
             matchRoomModule.processedNode(parentNode);
             callback(parentNode);

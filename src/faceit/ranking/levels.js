@@ -412,15 +412,19 @@ const newLevelsModule = new Module("levels", async () => {
     })
 
     doAfterSearchPlayerNodeAppear(async (node) => {
-        await newLevelsModule.doAfterAsync(() => !node || node.childNodes && node.childNodes.length > 2, async () => {
-            if (!node) return
-            let currentNode = node.childNodes[1];
+        await newLevelsModule.doAfterAsync(() => {
+            let nodeEntry =  node?.firstChild?.firstChild
+            return !node || nodeEntry && nodeEntry.childNodes.length > 2
+        }, async () => {
+            let nodeEntry =  node?.firstChild?.firstChild
+            if (!nodeEntry) return
+            let currentNode = nodeEntry.childNodes[1];
             for (let i = 0; i < 7; i++) {
                 currentNode = currentNode.firstElementChild;
                 if (currentNode.tagName === "SPAN" && i === 0) break
             }
             let nick = currentNode?.innerText;
-            await newLevelsModule.doAfterAsync(() => Array.from(node?.childNodes[2]?.firstElementChild?.childNodes).find(node => node.tagName === "svg"), async (oldIcon) => {
+            await newLevelsModule.doAfterAsync(() => Array.from(nodeEntry?.childNodes[2]?.firstElementChild?.childNodes).find(node => node.tagName === "svg"), async (oldIcon) => {
                 let playerStatistic = await fetchPlayerStatsByNickName(nick);
                 let {gameStats, gameType} = getStatistic(playerStatistic)
                 if (!gameStats) return
@@ -493,11 +497,13 @@ async function insertStatsToEloBar(nick, table) {
 function doAfterSearchPlayerNodeAppear(callback) {
     let language = extractLanguage()
     const targetHrefPattern = new RegExp(`^/${language}/players\/([a-zA-Z0-9-_]+)$`);
-    newLevelsModule.doAfterNodeAppear(`[class*="styles__HolderButton"][href*="/${language}/players/"]:not([${newLevelsModule.dataProcessedAttribute}])`, (node) => {
+    newLevelsModule.doAfterNodeAppear(`[href*="/${language}/players/"]:not([${newLevelsModule.dataProcessedAttribute}])`, (node) => {
         if (node.nodeType === Node.ELEMENT_NODE) {
-            let doubleParent = node?.parentElement?.parentElement
+            let parent = node?.parentElement
+            if (!parent) return;
+            if (!parent.matches("[class*=styles__PlayersListContainer")) return;
+            let doubleParent = parent.parentElement
             if (!doubleParent) return;
-
             const href = node.getAttribute('href');
             if (href && targetHrefPattern.test(href)) {
                 newLevelsModule.processedNode(node);

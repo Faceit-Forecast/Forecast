@@ -32,6 +32,8 @@ const integrationsModule = new Module("integrations", async () => {
             });
         }
 
+        bannerContainer.classList.add(`forecast-banner`)
+
         return bannerContainer;
     };
 
@@ -40,12 +42,20 @@ const integrationsModule = new Module("integrations", async () => {
             let lvlpc = node.querySelector("[class*=level-progress-container]");
             if (lvlpc) {
                 const banner = createBanner();
+                let oldBanner = lvlpc.querySelector("[class*='forecast-banner']")
+                if (oldBanner) {
+                    oldBanner.remove()
+                }
                 appendTo(banner, lvlpc);
             }
         });
     } else if (lobbyType === "matchroom") {
         await integrationsModule.doAfterNodeAppear('[class*=team-table]', async (node) => {
             const banner = createBanner();
+            let oldBanner = node.querySelector("[class*='forecast-banner']")
+            if (oldBanner) {
+                oldBanner.remove()
+            }
             preppendTo(banner, node);
         });
     }
