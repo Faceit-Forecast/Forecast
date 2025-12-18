@@ -13,7 +13,7 @@ function println(...args) {
 }
 
 function error(message, err) {
-    console.error(prefix, 'color: white; background-color: black;', 'color: orange; font-weight: bold; background-color: black;', 'color: white; font-weight: bold; background-color: black;', 'color: white; background-color: black;',message || err.message, err.stack)
+    console.error(prefix, 'color: white; background-color: black;', 'color: orange; font-weight: bold; background-color: black;', 'color: white; font-weight: bold; background-color: black;', 'color: white; background-color: black;',message || err?.message, err?.stack)
 }
 
 function setupBrandIcon(htmlResource, width = 28, height = 28) {

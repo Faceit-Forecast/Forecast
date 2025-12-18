@@ -11,7 +11,7 @@ const matchRoomModule = new Module("matchroom", async () => {
         if (!matchId) return;
         await getMatchWinRates(matchId);
     } catch (err) {
-        error("Error when retrieving match statistics: " + err.message);
+        error("Error when retrieving match statistics", err);
     }
 }, async () => {
     teamCache.clear()
