@@ -171,11 +171,9 @@ const newLevelsModule = new Module("eloranking", async () => {
                 let newTable = getHtmlResource("src/visual/tables/elo-progress-bar.html").cloneNode(true)
                 setupBrandIcon(newTable, 24, 24)
                 newTable.id = "statistic-progress-bar"
+                await insertStatsToEloBar(nick, newTable);
                 preppendTo(newTable, target, 'progress-bar')
                 newLevelsModule.removalNode(newTable);
-
-                let stats = await fetchPlayerStatsByNickName(nick);
-                insertStatsToEloBar(stats, nick, newTable);
             })
         }
     })
@@ -685,8 +683,9 @@ function getStatistic(playerStatistic) {
     return {gameStats, gameType}
 }
 
-function insertStatsToEloBar(stats, nick, table) {
+async function insertStatsToEloBar(nick, table) {
     let gameType = "cs2"
+    let stats = await fetchPlayerStatsByNickName(nick)
     let gameStats = stats["games"][gameType];
     table.querySelector("a").setAttribute("href", `/${extractLanguage()}/players/${nick}/stats/${gameType}`);
 
@@ -718,7 +717,6 @@ function insertStatsToEloBar(stats, nick, table) {
     table.querySelector("[class~=elo-to-de-or-up-grade]").innerText = `${min - elo - 1}/+${isLastLevel ? "∞" : max - elo + 1}`
 
     const progressBar = table.querySelector("a > div > div.details > div:nth-child(2) > div.progress-container.elo-progress-bar-container > div");
-    const progressContainer = table.querySelector("a > div > div.details > div:nth-child(2) > div.progress-container.elo-progress-bar-container");
 
     let nextLevelIcon = levelIcons.get(currentLevel + 1)
     if (!nextLevelIcon) nextLevelIcon = levelIcon
@@ -735,9 +733,7 @@ function insertStatsToEloBar(stats, nick, table) {
         progressBar.style.width = "100%";
     } else {
         progressBar.style.width = `${progressBarPercentage}%`;
-
-        const containerWidth = progressContainer.offsetWidth;
-        progressBar.style.backgroundSize = `${containerWidth}px 100%`;
+        progressBar.style.backgroundSize = `184px 100%`;
         progressBar.style.backgroundPosition = 'left center';
         progressBar.style.backgroundRepeat = 'no-repeat';
     }
