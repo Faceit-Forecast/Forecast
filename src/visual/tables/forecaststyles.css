@@ -516,19 +516,31 @@ tr[class*=MatchHistoryTableRow] {
     margin: 6px;
 }
 
-.popup-scoreboard-table {
-    flex: 1 !important;
-    width: 100% !important;
-    border-collapse: separate !important;
-    border-spacing: 0 !important;
-    border-radius: 8px !important;
-    font-size: 14px !important;
-    backdrop-filter: blur(7px);
-    background: rgba(0, 0, 0, 0.4);
+.popup-scoreboard-wrapper {
+    position: relative;
+    flex: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .7), 0 2px 8px #000;
+    background: rgba(0, 0, 0, .65);
     border: 1px solid #242424;
-    min-width: 0 !important;
-    overflow: hidden !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, .7), 0 2px 8px #000 !important;
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+}
+
+@-moz-document url-prefix() {
+    .popup-scoreboard-wrapper {
+        backdrop-filter: none !important;
+        background: rgba(0, 0, 0, .9);
+    }
+}
+
+.popup-scoreboard-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    background: transparent;
 }
 
 .popup-table-header {

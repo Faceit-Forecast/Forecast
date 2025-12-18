@@ -8,7 +8,6 @@ This project is a browser extension that retrieves and displays statistics for F
 - Display win rates for teams in a match.
 - Calculate player stats and display them on user cards.
 - Introduced new Faceit Skill Levels with a more detailed breakdown by elo.
-- Display specific statistics in match history (Score, HLTV 2.1 rating, K/D, K/R, ADR)
 - Allows you to see the tab information of the match, without having to follow the link
 - Allows sending a specific message on a particular map when it's selected or picked
 
