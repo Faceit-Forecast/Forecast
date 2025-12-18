@@ -9,6 +9,7 @@ This project is a browser extension that retrieves and displays statistics for F
 - Calculate player stats and display them on user cards.
 - Introduced new Faceit Skill Levels with a more detailed breakdown by elo.
 - Allows you to see the tab information of the match, without having to follow the link
+- Displays match numbers for every 30th match to help you track your progress.
 - Allows sending a specific message on a particular map when it's selected or picked
 
 ## Download
