@@ -1,15 +1,18 @@
-const integrationsModule = new Module("integrations", async () => {
-    const enabled = await isExtensionEnabled() && await isSettingEnabled("integrations", true);
-    if (!enabled) return;
+/*
+ * Copyright (c) 2025 TerraMiner. All Rights Reserved.
+ */
 
-    let lobbyType = defineUrlType(window.location.href);
+const integrationsModule = new Module("integrations", async () => {
+    let lobbyType = defineLobby(window.location.href)?.pageType;
     let bannerData;
+
+    if (lobbyType !== "stats" && lobbyType !== "matchroom") return
 
     try {
         const language = extractLanguage();
         bannerData = await fetchBannerData(language, lobbyType);
     } catch (e) {
-        error(e.message);
+        error(e);
     }
 
     if (!bannerData) return;

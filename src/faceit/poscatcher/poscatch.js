@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
-
 const maps = {
     Dust2: "de_dust2",
     Mirage: "de_mirage",
@@ -13,8 +12,6 @@ const maps = {
 };
 
 const posCatcherModule = new Module("poscatcher", async () => {
-    const enabled = await isExtensionEnabled() && await isSettingEnabled("poscatcher", false);
-    if (!enabled) return;
     const matchId = extractMatchId();
     const cookieKey = `${matchId}_poscatched`
     if (getCookie(cookieKey)) return

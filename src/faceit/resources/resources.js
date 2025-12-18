@@ -4,13 +4,11 @@
 
 const levelIcons = new Map();
 const htmls = new Map();
-const images = new Map();
+const svgDataURIs = new Map();
 
-const imageUrls = [
-    "src/visual/icons/logo512.png",
-    "src/visual/icons/logo256.png",
-    "src/visual/icons/logo128.png",
-    "src/visual/icons/logo64.png",
+const logoSVGUrls = [
+    "src/visual/icons/logo.svg",
+    "src/visual/icons/rawlogo.svg",
 ];
 
 const htmlUrls = [
@@ -19,23 +17,22 @@ const htmlUrls = [
     "src/visual/tables/team.html",
     "src/visual/tables/player.html",
     "src/visual/tables/match-counter-arrow.html",
-    "src/visual/tables/matchscore.html",
+    "src/visual/tables/match-history-popup.html",
     "src/visual/tables/elo-progress-bar.html",
     "src/visual/tables/elo-progress-bar-master.html",
     "src/visual/tables/skill-levels-info-table.html",
     "src/visual/tables/levels/challenger.html",
+    ...logoSVGUrls,
     ...Array.from({length: 20}, (_, i) => `src/visual/tables/levels/level${i + 1}.html`)
 ];
 
 let isResourcesLoaded = false;
 
 const resourcesModule = new Module("resources", async () => {
-    const enabled = await isExtensionEnabled();
-    if (!enabled) return;
     if (isResourcesLoaded) return;
     await loadAllHTMLs();
-    await loadAllImages();
     await loadLevelIcons();
+    await loadSVGDataURIs();
     setupStyles();
     isResourcesLoaded = true;
 });
@@ -53,21 +50,16 @@ async function loadAllHTMLs() {
     await Promise.all(promises);
 }
 
-async function loadAllImages() {
-    const promises = [];
-
-    imageUrls.forEach(url => {
-        promises.push(
-            loadImageAsDataURL(url).then(dataUrl => {
-                images.set(url, dataUrl);
-            })
-        );
+async function loadSVGDataURIs() {
+    const promises = logoSVGUrls.map(async url => {
+        const svgText = await getSVGText(url);
+        const dataURI = `data:image/svg+xml,${encodeURIComponent(svgText)}`;
+        svgDataURIs.set(url, dataURI);
     });
-
     await Promise.all(promises);
 }
 
-async function loadImageAsDataURL(filePath) {
+async function getSVGText(filePath) {
     let url;
 
     if (browserType === FIREFOX) {
@@ -79,23 +71,17 @@ async function loadImageAsDataURL(filePath) {
         return null;
     }
 
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            error(`HTTP error loading image! Status: ${response.status}`);
-            return null;
-        }
-
-        const blob = await response.blob();
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-        });
-    } catch (e) {
-        error(`Error loading image ${filePath}: ${e.message}`);
+    const response = await fetch(url);
+    if (!response.ok) {
+        error(`HTTP error! Status: ${response.status}`);
         return null;
     }
+
+    return await response.text();
+}
+
+function getSVGDataURI(path) {
+    return svgDataURIs.get(path);
 }
 
 async function loadLevelIcons() {
@@ -108,10 +94,6 @@ async function loadLevelIcons() {
 
 function getHtmlResource(path) {
     return htmls.get(path);
-}
-
-function getImageResource(path) {
-    return images.get(path);
 }
 
 function getLevelIcon(level) {

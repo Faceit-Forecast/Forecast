@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2025 TerraMiner. All Rights Reserved.
+ */
 const baseUrlFC = "https://forecast.dargen.dev"
 
 async function fetchFC(url, errorMsg) {
@@ -9,7 +12,8 @@ async function fetchFC(url, errorMsg) {
     try {
         return text ? JSON.parse(text) : null;
     } catch (err) {
-        throw new Error(`${errorMsg}: invalid JSON`);
+        error(err)
+        error(`${errorMsg}: invalid JSON`);
     }
 }
 
@@ -84,5 +88,6 @@ async function sendBannerMetric(bannerId, language, slot) {
             method: 'GET'
         });
     } catch (err) {
+        error(err)
     }
 }

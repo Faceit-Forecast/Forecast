@@ -45,7 +45,7 @@ async function fetchMatchStatsDetailed(matchId) {
 }
 
 async function fetchPlayerInGameStats(playerId, game, matchAmount = 30, latestMatchTime = 0) {
-    let param = latestMatchTime !== 0 ? `&to=${latestMatchTime}` : "";
+    let param = latestMatchTime === 0 ? "" : `&to=${latestMatchTime}`;
     return await fetchV4Cached(
         playerGamesDataCache,
         `${baseUrlV4}/players/${playerId}/games/${game}/stats?limit=${matchAmount}${param}`,
@@ -69,49 +69,34 @@ async function fetchPlayerStatsByNickName(nickname) {
     );
 }
 
-async function fetchOldMatchStats(matchId) {
-    let cachedData = oldMatchDataCache.get(matchId)
-    if (cachedData) return cachedData
-
-    const apiKey = getApiKey();
-    const url = `https://api.faceit.com/match/v2/match/${matchId}`;
-    const options = {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-    };
-
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        error(`Error: ${response.statusText}`);
-    }
-
-    return (await response.json())["payload"];
-}
-
 function extractPlayerNick() {
-    const nick = window.location.href.match(/players\/([a-zA-Z0-9-_.]+)/);
+    const nick = /players\/([a-zA-Z0-9-_.]+)/.exec(window.location.href);
     return nick ? nick[1] : null;
 }
 
-function extractGameType() {
-    const match = window.location.href.match(/stats\/([a-zA-Z0-9-_]+)/);
-    if (match) return match[1];
-    const fallbackMatch = window.location.href.match(/\/([a-zA-Z0-9-_]+)\/room/);
-    return fallbackMatch ? fallbackMatch[1] : null;
+function extractGameType(def = null) {
+    const patterns = [
+        /stats\/([a-zA-Z0-9-_]+)/,
+        /\/([a-zA-Z0-9-_]+)\/room/,
+        /\/players\/[^/]+\/([a-zA-Z0-9-_]+)/
+    ];
+
+    for (const pattern of patterns) {
+        const match = pattern.exec(window.location.href);
+        if (match) return match[1];
+    }
+
+    return def;
 }
 
 function extractMatchId() {
-    const match = window.location.href.match(/room\/([a-z0-9-]+)/i);
+    const match = /room\/([a-z0-9-]+)/i.exec(window.location.href);
     return match ? match[1] : null;
 }
 
 function extractLanguage() {
     const url = window.location.href;
-    const match = url.match(/https:\/\/www\.faceit\.com\/([^/]+)\/?/);
+    const match = /https:\/\/www\.faceit\.com\/([^/]+)\/?/.exec(url);
     return match ? match[1] : null;
 }
 
@@ -135,9 +120,9 @@ function setCookie(name, value, minutes) {
 function getCookie(name) {
     const nameEQ = name + "=";
     const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-        let cookie = cookies[i].trim();
-        if (cookie.indexOf(nameEQ) === 0) {
+    for (const element of cookies) {
+        let cookie = element.trim();
+        if (cookie.startsWith(nameEQ)) {
             return decodeURIComponent(cookie.substring(nameEQ.length));
         }
     }

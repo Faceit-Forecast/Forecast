@@ -1,12 +1,9 @@
 /*
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
-
 let teamCache = new Map()
 
 const matchRoomModule = new Module("matchroom", async () => {
-    const enabled = await isExtensionEnabled() && await isSettingEnabled("matchroom", true);
-    if (!enabled) return;
     matchRoomModule.temporaryFaceitBugFix();
     const matchId = extractMatchId();
 
@@ -20,11 +17,12 @@ const matchRoomModule = new Module("matchroom", async () => {
     teamCache.clear()
 })
 
-
-async function setupPlayerCardMatchData(playerId, targetNode) {
-    let tableId = `${matchRoomModule.sessionId}-player-table-${playerId}`
+async function setupPlayerCardMatchData(playerId, nickname, targetNode) {
+    let tableId = `session-${matchRoomModule.sessionId}-player-table-${playerId}`
     if (targetNode.querySelector("[class~=tableId]")) return null
     let htmlResource = getHtmlResource('src/visual/tables/player.html').cloneNode(true);
+    htmlResource.querySelector('[class=player-name]').textContent = `Player Stats`
+    setupBrandIcon(htmlResource)
     appendTo(htmlResource, targetNode)
     let table = htmlResource.querySelector("[class~=player-table]")
     table.classList.add(tableId)
@@ -87,7 +85,7 @@ async function getMatchWinRates(matchId) {
 }
 
 async function findUserCard(nickname, callback) {
-    let nickNodeSelector = 'div[class*="styles__PopoverStyled"] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5'
+    let nickNodeSelector = 'div[class*=styles__PopoverStyled] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5'
     await matchRoomModule.doAfterNodeAppearWithCondition(nickNodeSelector, (node) => node.innerText === nickname, (node) => {
         let parentNode = node.parentElement.parentElement.parentElement.parentElement.querySelector('div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]')
         if (!matchRoomModule.isProcessedNode(parentNode)) {
@@ -99,7 +97,7 @@ async function findUserCard(nickname, callback) {
 
 
 async function calculateStats(team, playerId, nickname, matchAmount) {
-    let gameType = extractGameType()
+    let gameType = extractGameType("cs2")
     let data = await fetchPlayerInGameStats(playerId, gameType, matchAmount);
 
     if (!data.items || data.items.length === 0) {
@@ -115,7 +113,7 @@ async function calculateStats(team, playerId, nickname, matchAmount) {
         if (stats["Game Mode"] !== "5v5") return;
 
         const mapName = stats["Map"];
-        const result = parseInt(stats["Result"]);
+        const result = Number.parseInt(stats["Result"]);
 
         if (!teamMap.has(playerId)) {
             teamMap.set(playerId, {nickname: stats["Nickname"], maps: new Map()});
@@ -132,7 +130,7 @@ async function calculateStats(team, playerId, nickname, matchAmount) {
         mapData.totalGames += 1;
     });
     await findUserCard(nickname, async userCardElement => {
-        let table = await setupPlayerCardMatchData(playerId, userCardElement)
+        let table = await setupPlayerCardMatchData(playerId, nickname, userCardElement)
         if (!table) return;
 
         const playerStats = teamMap.get(playerId);
@@ -155,23 +153,26 @@ async function displayWinRates(matchDetails) {
     );
 
     await Promise.all([...team1Promises, ...team2Promises]);
-    let teamTableNodeId = `${matchRoomModule.sessionId}-team-table`
-    await matchRoomModule.doAfterNodeAppear('[name="info"][class*="Overview__Column"]', async (node) => {
-        let existingTeamTableNode = node.querySelector(`[class*="team-table"]`);
+    let teamTableNodeId = `team-table-${matchRoomModule.sessionId}`
+    await matchRoomModule.doAfterNodeAppear('[name="info"][class*=Overview__Column]', async (node) => {
+        let existingTeamTableNode = node.querySelector(`[class*=team-table]`);
         if (existingTeamTableNode) {
             if (existingTeamTableNode.classList.contains(teamTableNodeId)) return
             else existingTeamTableNode.remove()
         }
-        const targetNode = node.matches('[name="info"]') ? node : node.querySelector('[name="info"][class*="Overview__Column"]');
+        const targetNode = node.matches('[name="info"]') ? node : node.querySelector('[name="info"][class*=Overview__Column]');
         if (!targetNode) return false;
         if (matchRoomModule.isProcessedNode(targetNode)) return false;
         matchRoomModule.processedNode(targetNode);
 
-        let innerNode = targetNode.querySelector('[class*="Overview__Stack"]')
+        let innerNode = targetNode.querySelector('[class*=Overview__Stack]')
+
         let htmlResource = getHtmlResource('src/visual/tables/team.html').cloneNode(true)
+        setupBrandIcon(htmlResource)
+
         node.style.overflowBlock = 'unset';
         htmlResource.classList.add(teamTableNodeId)
-        innerNode.insertAdjacentElement('afterend', htmlResource);
+        innerNode.after(htmlResource);
 
         teamCache.forEach((teamMap, teamName) => {
             const teamMatches = calculateTeamMatches(teamMap);
@@ -181,7 +182,7 @@ async function displayWinRates(matchDetails) {
 }
 
 function addTableTeamTitle(htmlResource,roster, title) {
-    const titleElement = htmlResource.querySelector(`[class*="${roster}-name"]`)
+    const titleElement = htmlResource.querySelector(`[class*=${roster}-name]`)
     titleElement.textContent = title
 }
 

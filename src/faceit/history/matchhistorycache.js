@@ -16,7 +16,7 @@ const cacheMap = new Map();
 let db = null;
 
 function tryCleanCache() {
-    let nextCleanUpTime = parseInt(getCookie(cookieCacheId), 10);
+    let nextCleanUpTime = Number.parseInt(getCookie(cookieCacheId), 10);
     let currentTime = Date.now();
     if (!nextCleanUpTime || nextCleanUpTime > currentTime) {
         setCookie(cookieCacheId, currentTime + cleanUpPeriod, 1440);
@@ -79,7 +79,7 @@ async function getFromCacheOrFetch(key, fetch) {
         if (cachedData.version === CACHE_VERSION) {
             cachedData.lastUsed = Date.now();
             await updateLastUsed(key, cachedData.lastUsed);
-            return Promise.resolve(cachedData.data);
+            return cachedData.data;
         } else {
             cacheMap.delete(cacheKey);
         }
@@ -87,7 +87,7 @@ async function getFromCacheOrFetch(key, fetch) {
 
     try {
         const cached = await getFromDB(key);
-        if (cached && cached.version === CACHE_VERSION) {
+        if (cached?.version === CACHE_VERSION) {
             cached.lastUsed = Date.now();
             cacheMap.set(cacheKey, cached);
             await updateLastUsed(key, cached.lastUsed);
@@ -234,7 +234,6 @@ async function cleanCache() {
         const currentTime = Date.now();
         const unusedTimeout = maxUnusedHours * 60 * 60 * 1000;
         let deleteCount = 0;
-        let updatedCount = 0;
 
         request.onsuccess = (event) => {
             const cursor = event.target.result;
@@ -263,7 +262,10 @@ async function cleanCache() {
     });
 }
 
-initDB().then(() => {
-    tryCleanCache();
+async function initializeMatchHistoryCache() {
+    await initDB().then(() => {
+        tryCleanCache();
         loadMatchHistoryCache();
-}).catch(error);
+    }).catch(error);
+}
+

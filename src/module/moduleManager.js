@@ -3,32 +3,51 @@
  */
 
 let previousUrl = "";
+let previousLobby = null;
 
-const regexModules = [
-    {regex: /^https:\/\/www\.faceit\.com\/.*$/, module: serviceModule},
-    {regex: /^https:\/\/www\.faceit\.com\/.*$/, module: integrationsModule},
-    {regex: /^https:\/\/www\.faceit\.com\/.*$/, module: newLevelsModule},
-    {regex: /^https:\/\/www\.faceit\.com\/.*$/, module: logoSidebarModule},
-    {regex: /^https:\/\/www\.faceit\.com\/[^\/]+\/players\/([^\/]+)\/stats\/(cs2|csgo)$/, module: rankingModule},
-    {regex: /^https:\/\/www\.faceit\.com\/[^\/]+\/[\w\-]+\/room\/[0-9a-zA-Z\-]+(\/.*)?$/, module: matchRoomModule},
-    {regex: /^https:\/\/www\.faceit\.com\/[^\/]+\/[\w\-]+\/room\/[0-9a-zA-Z\-]+(\/.*)?$/, module: posCatcherModule},
-    {regex: /^https:\/\/www\.faceit\.com\/[^\/]+\/players\/([^\/]+)\/stats\/(cs2|csgo)$/, module: matchHistoryModule}
-]
+const lobbyModules = [
+    { pages: ['*'], module: serviceModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['*'], module: integrationsModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['*'], module: newLevelsModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['*'], module: logoSidebarModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['stats'], module: rankingModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['matchroom'], module: matchRoomModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['matchroom'], module: posCatcherModule, isEnabled: null, isEnabledByDefault: false },
+    { pages: ['history', 'profile'], module: matchHistoryModule, isEnabled: null, isEnabledByDefault: true },
+];
 
-resourcesModule.produceOf("load").then(() => {
+async function initExtension() {
+    if (!(await isExtensionEnabled())) return
+    await initializeMatchHistoryCache();
+    await loadMatchHistoryCache();
+    await resourcesModule.produceOf("load");
+
+    for (let lobbyModule of lobbyModules) {
+        lobbyModule.isEnabled = await isSettingEnabled(lobbyModule.module.id, lobbyModule.isEnabledByDefault);
+    }
+
     setInterval(async function () {
-        let currentUrl = window.location.href;
-        if (currentUrl !== previousUrl) {
-            let prevUrl = previousUrl
-            previousUrl = currentUrl;
-            await handleModules(currentUrl, prevUrl)
+        try {
+            let currentUrl = window.location.href;
+            if (currentUrl !== previousUrl) {
+                previousUrl = currentUrl;
+                const currentLobby = defineLobby(currentUrl);
+                await handleModules(currentLobby, previousLobby);
+                previousLobby = currentLobby;
+            }
+        } catch (err) {
+            error("Error in URL change handler:", err);
         }
     }, 50);
-})
+}
 
-function determineAction(regex, currentUrl, previousUrl) {
-    const currentMatch = currentUrl.match(regex);
-    const previousMatch = previousUrl.match(regex);
+initExtension().catch(error => {
+    error("Failed to initialize extension:", error);
+});
+
+function determineAction(pages, currentLobby, previousLobby) {
+    const currentMatch = currentLobby && (pages.includes('*') || pages.includes(currentLobby.pageType));
+    const previousMatch = previousLobby && (pages.includes('*') || pages.includes(previousLobby.pageType));
 
     if (currentMatch && previousMatch) return "reload";
     if (currentMatch) return "load";
@@ -36,11 +55,10 @@ function determineAction(regex, currentUrl, previousUrl) {
     return null;
 }
 
-async function handleModules(currentUrl, previousUrl) {
-    let batch = [];
-    for (let regexModule of regexModules) {
-        const action = determineAction(regexModule.regex, currentUrl, previousUrl);
-        if (action) batch.push(regexModule.module.produceOf(action))
+async function handleModules(currentLobby, previousLobby) {
+    for (let lobbyModule of lobbyModules) {
+        if (!lobbyModule.isEnabled) continue
+        const action = determineAction(lobbyModule.pages, currentLobby, previousLobby);
+        await lobbyModule.module.produceOf(action)
     }
-    await Promise.all(batch)
 }

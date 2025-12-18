@@ -6,10 +6,13 @@ class ObserveHandler {
     constructor() {
         this.observerAppearTasks = new Map();
         this.observerDisappearTasks = new Map();
-        this.observer = null
+        this.observer = null;
+        this.isRegistered = false;
     }
 
     register() {
+        if (this.isRegistered) return
+        this.isRegistered = true
         this.observer = new MutationObserver(mutationsList => {
             for (const mutation of mutationsList) {
                 if (mutation.type === 'childList') {
@@ -18,7 +21,7 @@ class ObserveHandler {
                             try {
                                 await task(node)
                             } catch (e) {
-                                error(e.message)
+                                error(e)
                             }
                         })
                     }
@@ -27,7 +30,7 @@ class ObserveHandler {
                             try {
                                 await task(node)
                             } catch (e) {
-                                error(e.message)
+                                error(e)
                             }
                         })
                     }
@@ -58,26 +61,17 @@ class ObserveHandler {
     }
 
     async doAfterNodeDisappear(selector, callback, id) {
-        this.observeDisappear(id ? id : selector, async (node) => {
-            if (node.matches && node.matches(selector)) {
+        this.observeDisappear(id || selector, async (node) => {
+            if (node.matches?.(selector)) {
                 callback(node)
-                this.releaseAppearTask(id ? id : selector)
+                this.releaseAppearTask(id || selector)
             }
         })
     }
 
     async doAfterNodeAppear(selector, callback, id) {
-        let element = document.querySelector(selector);
-        if (element) {
-            try {
-                await callback(element);
-            } catch (e) {
-                error(e.message)
-            }
-        }
-
-        this.observeAppear(id ? id : selector, async (node) => {
-            if (node.matches && node.matches(selector)) {
+        this.observeAppear(id || selector, async (node) => {
+            if (node.matches?.(selector)) {
                 await callback(node);
             } else if (node.nodeType === 1) {
                 const matchingChildren = node.querySelectorAll(selector);
@@ -86,20 +80,16 @@ class ObserveHandler {
                 }
             }
         });
+
+        let element = document.querySelector(selector);
+        if (element) {
+            await callback(element);
+        }
     }
 
     async doAfterNodeAppearWithCondition(selector, conditionFn, callback, id) {
-        let element = document.querySelector(selector);
-        if (element && conditionFn(element)) {
-            try {
-                await callback(element);
-            } catch (e) {
-                error(e.message)
-            }
-        }
-
-        this.observeAppear(id ? id : selector, async (node) => {
-            if (node.matches && node.matches(selector) && conditionFn(node)) {
+        this.observeAppear(id || selector, async (node) => {
+            if (node.matches?.(selector) && conditionFn(node)) {
                 await callback(node);
             } else if (node.nodeType === 1) {
                 const matchingChildren = node.querySelectorAll(selector);
@@ -109,52 +99,51 @@ class ObserveHandler {
                 }
             }
         });
+
+        let element = document.querySelector(selector);
+        if (element && conditionFn(element)) {
+            await callback(element);
+        }
     }
 
 
     async doAfterAllNodeAppear(selector, callback, id) {
-        let elements = document.querySelectorAll(selector);
-        if (elements.length !== 0) {
-            for (const element of elements) {
-                try {
-                    await callback(element);
-                } catch (e) {
-                    error(e.message)
-                }
-            }
-        }
-
-        this.observeAppear(id ? id : selector, async (node) => {
-            if (node.matches && node.matches(selector)) {
+        this.observeAppear(id || selector, async (node) => {
+            if (node.matches?.(selector)) {
                 await callback(node);
             }
 
             if (node.nodeType === 1) {
-                const matchingChildren = node.querySelectorAll(selector);
-                for (const child of matchingChildren) {
-                    await callback(child);
+                for (const element of node.querySelectorAll(selector)) {
+                    await callback(element);
                 }
             }
         });
+
+        let elements = document.querySelectorAll(selector);
+        if (elements.length !== 0) {
+            for (const element of elements) {
+                await callback(element);
+            }
+        }
     }
 
     async doAfterAllNodeAppearPack(selector, callback, id) {
-        let elements = document.querySelectorAll(selector);
-        if (elements.length !== 0) {
-            try {
-                await callback(elements);
-            } catch (e) {
-                error(e.message)
-            }
-        }
-
-        this.observeAppear(id ? id : selector, async () => {
+        this.observeAppear(id || selector, async () => {
             let elements = document.querySelectorAll(selector);
             if (elements.length !== 0) await callback(elements);
         });
+
+        let elements = document.querySelectorAll(selector);
+
+        if (elements.length !== 0) {
+            await callback(elements);
+        }
     }
 
     release() {
+        if (!this.isRegistered) return
+        this.isRegistered = false
         this.observerAppearTasks.clear();
         this.observerDisappearTasks.clear();
         this.observer?.disconnect()

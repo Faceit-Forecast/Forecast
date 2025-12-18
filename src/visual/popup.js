@@ -2,7 +2,7 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const BROWSER_TYPE = typeof browser !== 'undefined' ? 'FIREFOX' : 'CHROMIUM';
+const BROWSER_TYPE = typeof browser === 'undefined' ? 'CHROMIUM' : 'FIREFOX';
 const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_overpass'];
 const TAB_LABELS = {
     "general": "General",
@@ -21,7 +21,7 @@ const StorageUtils = {
             if (this.api) {
                 this.api.get(keys, resolve);
             } else {
-                reject("Storage API not available.");
+                reject(new Error("Storage API not available."));
             }
         });
     },
@@ -31,7 +31,7 @@ const StorageUtils = {
             if (this.api) {
                 this.api.set(items, resolve);
             } else {
-                reject("Storage API not available.");
+                reject(new Error("Storage API not available."));
             }
         });
     }
@@ -111,7 +111,7 @@ const SettingsManager = {
             if (messageInput) {
                 messageInput.value = settings[`${map}Message`] || '';
                 if (counter) {
-                    counter.textContent = messageInput.value.length;
+                    counter.textContent = `${messageInput.value.length}`;
                     UIUtils.updateCharCounter(counter, messageInput.value.length, 100);
                 }
             }
@@ -171,7 +171,7 @@ const UIUtils = {
         const categories = document.querySelectorAll('.settings-category');
 
         tabButtons.forEach(button => {
-            const tabName = button.getAttribute('data-tab');
+            const tabName = button.dataset.tab;
             button.innerHTML = `<span>${TAB_LABELS[tabName] || tabName}</span>`;
         });
 
@@ -181,7 +181,7 @@ const UIUtils = {
                 categories.forEach(category => category.classList.remove('active-category'));
 
                 button.classList.add('active');
-                document.getElementById(button.getAttribute('data-tab')).classList.add('active-category');
+                document.getElementById(button.dataset.tab).classList.add('active-category');
             });
         });
     },
@@ -200,54 +200,6 @@ const UIUtils = {
     },
 
     async startOnlineUpdater() {
-        function animateValue(element, start, end, duration = 600) {
-            if (element.animationTimer) {
-                cancelAnimationFrame(element.animationTimer);
-            }
-
-            const range = end - start;
-            const startTime = Date.now();
-
-            function updateCounter() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-
-                const easeProgress = 1 - Math.pow(1 - progress, 3);
-                const current = start + (range * easeProgress);
-
-                element.textContent = Math.round(current);
-
-                if (progress < 1) {
-                    element.animationTimer = requestAnimationFrame(updateCounter);
-                } else {
-                    element.textContent = end;
-                    delete element.animationTimer;
-                }
-            }
-
-            updateCounter();
-        }
-
-        async function updateOnline() {
-            let onlineElement = document.getElementById("online");
-            if (onlineElement) {
-                try {
-                    const res = await fetch(`https://forecast.dargen.dev/session/online`);
-                    if (!res.ok) throw new Error(`Error on fetching online: ${res.statusText}`);
-                    let online = await res.json();
-
-                    const currentValue = parseInt(onlineElement.textContent) || 0;
-                    const newValue = online.online;
-
-                    if (currentValue !== newValue) {
-                        animateValue(onlineElement, currentValue, newValue);
-                    }
-                } catch (error) {
-                    console.error('Failed to update online count:', error);
-                }
-            }
-        }
-
         await updateOnline();
 
         setInterval(async () => {
@@ -270,6 +222,54 @@ const UIUtils = {
         });
     }
 };
+
+async function updateOnline() {
+    let onlineElement = document.getElementById("online");
+    if (onlineElement) {
+        try {
+            const res = await fetch(`https://forecast.dargen.dev/session/online`);
+            if (!res.ok) throw new Error(`Error on fetching online: ${res.statusText}`);
+            let online = await res.json();
+
+            const currentValue = Number.parseInt(onlineElement.textContent) || 0;
+            const newValue = online.online;
+
+            if (currentValue !== newValue) {
+                animateValue(onlineElement, currentValue, newValue);
+            }
+        } catch (error) {
+            console.error('Failed to update online count:', error);
+        }
+    }
+}
+
+function animateValue(element, start, end, duration = 600) {
+    if (element.animationTimer) {
+        cancelAnimationFrame(element.animationTimer);
+    }
+
+    const range = end - start;
+    const startTime = Date.now();
+
+    function updateCounter() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        const current = start + (range * easeProgress);
+
+        element.textContent = Math.round(current);
+
+        if (progress < 1) {
+            element.animationTimer = requestAnimationFrame(updateCounter);
+        } else {
+            element.textContent = end;
+            delete element.animationTimer;
+        }
+    }
+
+    updateCounter();
+}
 
 const EventHandlers = {
     setupMainEventListeners() {
@@ -295,7 +295,7 @@ const EventHandlers = {
         if (rangeSlider && sliderValueDisplay) {
             rangeSlider.addEventListener('input', async function () {
                 sliderValueDisplay.textContent = this.value;
-                await SettingsManager.save({sliderValue: parseInt(this.value, 10)});
+                await SettingsManager.save({sliderValue: Number.parseInt(this.value, 10)});
             });
         }
 

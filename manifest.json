@@ -1,24 +1,18 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.7.3",
+  "version": "1.7.4",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",
   "permissions": ["storage"],
   "icons": {
-    "64": "src/visual/icons/logo64.png",
-    "128": "src/visual/icons/logo128.png",
-    "256": "src/visual/icons/logo256.png",
-    "512": "src/visual/icons/logo512.png"
+    "128": "src/visual/icons/logo128.png"
   },
   "action": {
     "default_popup": "src/visual/popup.html",
     "default_icon": {
-      "64": "src/visual/icons/logo64.png",
-      "128": "src/visual/icons/logo128.png",
-      "256": "src/visual/icons/logo256.png",
-      "512": "src/visual/icons/logo512.png"
+      "128": "src/visual/icons/logo128.png"
     }
   },
   "content_security_policy": {
@@ -56,7 +50,7 @@
       "resources": [
         "src/visual/tables/forecaststyles.css",
         "src/visual/tables/team.html",
-        "src/visual/tables/matchscore.html",
+        "src/visual/tables/match-history-popup.html",
         "src/visual/tables/level-progress-table.html",
         "src/visual/tables/elo-progress-bar.html",
         "src/visual/tables/elo-progress-bar-master.html",
@@ -84,10 +78,9 @@
         "src/visual/tables/levels/level18.html",
         "src/visual/tables/levels/level19.html",
         "src/visual/tables/levels/level20.html",
-        "src/visual/icons/logo512.png",
-        "src/visual/icons/logo256.png",
         "src/visual/icons/logo128.png",
-        "src/visual/icons/logo64.png",
+        "src/visual/icons/logo.svg",
+        "src/visual/icons/rawlogo.svg",
         "src/visual/popup.html",
         "src/visual/popup.js",
         "src/visual/popup.styles"

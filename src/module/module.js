@@ -3,9 +3,9 @@
  */
 
 class Module {
-    constructor(name, loadAction, unloadAction = () => {
+    constructor(id, loadAction, unloadAction = () => {
     }) {
-        this.name = name
+        this.id = id
         this.loadAction = loadAction;
         this.unloadAction = unloadAction;
         this.isLoaded = false;
@@ -18,65 +18,63 @@ class Module {
 
     async #load() {
         if (this.isLoaded) return
-        println(`Module ${this.name} is loading`);
+        println(`Module ${this.id} is loading`);
         this.#generateSessionId();
         this.observeHandler.register();
-        await this.loadAction();
+        await Promise.resolve(this.loadAction());
         this.isLoaded = true
-        println(`Module ${this.name} is successfully loaded`);
+        println(`Module ${this.id} is successfully loaded`);
     }
 
     async #reload() {
-        println(`Module ${this.name} is reloading`);
-        await this.unloadAction();
+        println(`Module ${this.id} is reloading`);
+        await Promise.resolve(this.unloadAction());
         this.#releaseCaches();
         this.isLoaded = false
         this.#generateSessionId();
         this.observeHandler.register();
-        await this.loadAction();
+        await Promise.resolve(this.loadAction());
         this.isLoaded = true
-        println(`Module ${this.name} is successfully reloaded`);
+        println(`Module ${this.id} is successfully reloaded`);
     }
 
     async #unload() {
         if (!this.isLoaded) return
-        println(`Module ${this.name} is disabling`);
-        await this.unloadAction();
+        println(`Module ${this.id} is disabling`);
+        await Promise.resolve(this.unloadAction());
         this.#releaseCaches();
         this.isLoaded = false
-        println(`Module ${this.name} is successfully disabled`);
+        println(`Module ${this.id} is successfully disabled`);
+    }
+
+    #releaseCaches() {
+        this.observeHandler.release();
+
+        this.processedNodes.forEach((node) => {
+            node?.removeAttribute(this.dataProcessedAttribute)
+        });
+        this.processedNodes.length = 0;
+
+        for (let node of this.nodesToRemove) {
+            node?.remove();
+        }
+
+        this.nodesToRemove.length = 0;
+
+        this.hidedNodes.forEach((node) => {
+            node?.style?.removeProperty('display')
+        });
+        this.hidedNodes.length = 0
+
+        this.tasks.forEach((task) => {
+            clearInterval(task)
+        })
+        this.tasks.length = 0
     }
 
     #generateSessionId() {
         this.sessionId = Math.random().toString(36).substring(2, 10);
         this.dataProcessedAttribute = `data-processed-${this.sessionId}`
-    }
-
-    #releaseCaches() {
-        requestAnimationFrame(() => {
-            this.observeHandler.release();
-
-            this.processedNodes.forEach((node) => {
-                node?.removeAttribute(this.dataProcessedAttribute)
-            });
-            this.processedNodes.length = 0;
-
-            for (let i = 0; i < this.nodesToRemove.length; i++) {
-                let node = this.nodesToRemove[i];
-                node?.remove();
-            }
-            this.nodesToRemove.length = 0;
-
-            this.hidedNodes.forEach((node) => {
-                node?.style?.removeProperty('display')
-            });
-            this.hidedNodes.length = 0
-
-            this.tasks.forEach((task) => {
-                clearInterval(task)
-            })
-            this.tasks.length = 0
-        });
     }
 
     processedNode(node) {
@@ -103,21 +101,23 @@ class Module {
     }
 
     async doAfterNodeDisappear(selector, callback, id) {
-        return this.observeHandler.doAfterNodeDisappear(selector,callback, id)
+        return this.observeHandler.doAfterNodeDisappear(selector, callback, id)
     }
+
     async doAfterNodeAppear(selector, callback, id) {
-        return this.observeHandler.doAfterNodeAppear(selector,callback, id)
+        return this.observeHandler.doAfterNodeAppear(selector, callback, id)
     }
 
     async doAfterNodeAppearWithCondition(selector, conditionFn, callback, id) {
-        return this.observeHandler.doAfterNodeAppearWithCondition(selector,conditionFn,callback, id)
+        return this.observeHandler.doAfterNodeAppearWithCondition(selector, conditionFn, callback, id)
     }
 
     async doAfterAllNodeAppear(selector, callback, id) {
-        return this.observeHandler.doAfterAllNodeAppear(selector,callback, id)
+        return this.observeHandler.doAfterAllNodeAppear(selector, callback, id)
     }
+
     async doAfterAllNodeAppearPack(selector, callback, id) {
-        return this.observeHandler.doAfterAllNodeAppearPack(selector,callback, id)
+        return this.observeHandler.doAfterAllNodeAppearPack(selector, callback, id)
     }
 
     async doAfterAsync(conditionFn, callback, interval = 50) {
@@ -187,27 +187,26 @@ class Module {
             case "unload":
                 await this.#unload();
                 break;
-            default:
-                println("Unknown action:", action);
         }
     }
 
     temporaryFaceitBugFix() {
         let existDialog = document.querySelector('[marked-as-bug]');
         if (existDialog) {
-            if (!document.querySelector('[role="dialog"][data-dialog-type="LEAF"]')) {
-                existDialog.removeAttribute("marked-as-bug")
-            } else {
+            if (document.querySelector('[role="dialog"][data-dialog-type="LEAF"]')) {
                 this.doAfterNodeDisappear('[role="dialog"][data-dialog-type="LEAF"]', (node) => {
                     existDialog.removeAttribute("marked-as-bug")
                 })
+            } else {
+                existDialog.removeAttribute("marked-as-bug")
             }
             return
         }
         this.doAfterNodeAppear('[role="dialog"][data-dialog-type="LEAF"]', () => {
             let toMark = document.getElementById("canvas-body");
             if (toMark.hasAttribute("marked-as-bug")) return
-            toMark.setAttribute("marked-as-bug",'');
+            toMark.setAttribute("marked-as-bug", '');
+            println("!!! FOUND BUG ELEMENT !!!")
         });
     }
 }
