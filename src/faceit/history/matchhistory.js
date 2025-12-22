@@ -4,6 +4,51 @@
 
 const MATCHES_PER_LOAD = 30;
 
+class MatchNodeChain {
+    constructor() {
+        this.nodes = new Map();
+        this.head = null;
+        this.tail = null;
+    }
+
+    has(matchId) {
+        return this.nodes.has(matchId);
+    }
+
+    get(matchId) {
+        return this.nodes.get(matchId);
+    }
+
+    append(matchNode) {
+        if (this.nodes.has(matchNode.matchId)) {
+            return this.nodes.get(matchNode.matchId);
+        }
+
+        this.nodes.set(matchNode.matchId, matchNode);
+
+        if (!this.head) {
+            this.head = matchNode;
+            this.tail = matchNode;
+        } else {
+            this.tail.next = matchNode;
+            matchNode.prev = this.tail;
+            this.tail = matchNode;
+        }
+
+        return matchNode;
+    }
+
+    clear() {
+        this.nodes.clear();
+        this.head = null;
+        this.tail = null;
+    }
+
+    get size() {
+        return this.nodes.size;
+    }
+}
+
 class MatchNodeByMatchStats {
     constructor(node, matchId, index) {
         this.node = node;
@@ -12,7 +57,52 @@ class MatchNodeByMatchStats {
         this.rounds = 0;
         this.index = index
         this.nodeId = `extended-stats-node-${index}`
+
+        this.prev = null;
+        this.next = null;
+
+        this.elo = null;
+        this.eloDiff = null;
+        this.eloCalculated = false;
+
         this.setupMatchCounterArrow()
+    }
+
+    isLast() {
+        return this.next === null;
+    }
+
+    isFirst() {
+        return this.prev === null;
+    }
+
+    async calculateEloDiff(playerId) {
+        if (this.eloCalculated) return this.eloDiff;
+        if (this.elo === null) return null;
+
+        if (this.isLast()) {
+            try {
+                const eloBeforeMatch = await fetchEloByMatchId(this.matchId, playerId);
+                if (eloBeforeMatch !== null) {
+                    this.eloDiff = this.elo - eloBeforeMatch;
+                    this.eloCalculated = true;
+                }
+            } catch (e) {
+                console.error(`Failed to fetch elo for last match ${this.matchId}:`, e);
+            }
+        } else {
+            const nextElo = this.next?.elo;
+            if (nextElo !== null && nextElo !== undefined) {
+                this.eloDiff = this.elo - nextElo;
+                this.eloCalculated = true;
+            }
+        }
+
+        return this.eloDiff;
+    }
+
+    setElo(eloValue) {
+        this.elo = eloValue;
     }
 
     loadMatchStats(playerId, detailedMatchInfo) {
@@ -21,7 +111,7 @@ class MatchNodeByMatchStats {
             return;
         }
 
-        let player = findPlayerInTeamById(detailedMatchInfo.rounds[0].teams, playerId);
+        let player = findPlayerInTeamsById(detailedMatchInfo.rounds[0].teams, playerId);
         if (!player) {
             error(`No stats found for playerId: ${playerId} in matchId: ${this.matchId}`);
             return;
@@ -34,28 +124,56 @@ class MatchNodeByMatchStats {
 
     setupStatsToNode(playerId, detailedMatchInfo) {
         if (!this.matchStats) return;
-        const fourthNode = this.node?.querySelector("div")?.lastChild?.children[1]?.lastChild
-        if (!fourthNode) return;
+        const innerNode = this.node?.querySelector("div")?.lastChild
+        const scoreNode = innerNode?.children[1]?.lastChild
+        if (scoreNode) {
 
-        fourthNode.parentElement.parentElement.style.overflow = "visible"
+            scoreNode.parentElement.parentElement.style.overflow = "visible"
 
-        let popup = document.getElementById(this.nodeId);
-        let tableNotExist = !popup;
+            let popup = this.node.querySelector("[id*=extended-stats-node-]");
+            let tableNotExist = !popup;
 
-        if (tableNotExist) {
-            popup = getHtmlResource("src/visual/tables/match-history-popup.html").cloneNode(true)
-            popup.id = this.nodeId
+            if (tableNotExist) {
+                popup = getHtmlResource("src/visual/tables/match-history-popup.html").cloneNode(true)
+                popup.id = this.nodeId
+            }
+
+            if (!this.popup) {
+                this.popup = new MatchroomPopup(popup)
+                this.popup.attachToElement(detailedMatchInfo, playerId)
+            }
+
+            if (tableNotExist) {
+                scoreNode.lastChild.style.justifyContent = "center";
+                scoreNode.appendChild(popup)
+                matchHistoryModule.removalNode(popup)
+            }
         }
+        const eloNode = innerNode?.children[2]?.lastChild?.lastChild?.lastChild
+        if (!eloNode) return;
 
-        if (!this.popup) {
-            this.popup = new MatchroomPopup(popup)
-            this.popup.attachToElement(detailedMatchInfo, playerId)
-        }
+        let eloValue = Number.parseInt(eloNode.innerText?.replace(/[\s,._]/g, ''), 10);
+        if (isNaN(eloValue)) return;
 
-        if (tableNotExist) {
-            fourthNode.lastChild.style.justifyContent = "center";
-            fourthNode.appendChild(popup)
-            matchHistoryModule.removalNode(popup)
+        this.setElo(eloValue);
+        this.eloNode = eloNode;
+    }
+
+    async applyEloDiff(playerId) {
+        const eloDiff = await this.calculateEloDiff(playerId);
+        if (eloDiff !== null && this.eloNode) {
+            let eloSummaryNode = document.createElement('span');
+            eloSummaryNode.innerText = `${eloDiff > 0 ? '+' : ''}${eloDiff}`;
+            let parentElement = this.eloNode.parentElement;
+            parentElement.style.flexDirection = 'row'
+            parentElement.style.alignItems = 'baseline'
+            parentElement.style.gap = '3px'
+            let green = 'rgb(61,255,108)'
+            let red = 'rgb(255, 0, 43)'
+            let white = 'rgb(255, 255, 255)'
+            eloSummaryNode.style.color = `${eloDiff > 0 ? green : eloDiff < 0 ? red : white}`
+            eloSummaryNode.style.fontSize = 'smaller'
+            parentElement.appendChild(eloSummaryNode);
         }
     }
 
@@ -100,6 +218,8 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     let lastIndex = 0
     let tableElement;
     let tableHeadElement;
+
+    const matchChain = new MatchNodeChain();
 
     let tableRowAttribute = `forecast-matchhistory-row-${matchHistoryModule.sessionId}`;
     let langKey = extractLanguage();
@@ -164,7 +284,12 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
             lastIndex = index + 1;
             const matchId = extractMatchId(node);
-            batch.push(new MatchNodeByMatchStats(node.children[0], matchId, index));
+
+
+            const matchNode = new MatchNodeByMatchStats(node.children[0], matchId, index);
+
+            matchChain.append(matchNode);
+            batch.push(matchNode);
         }
 
         return batch;
@@ -182,10 +307,15 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
     async function loadMatchStatsForBatch(batch) {
         let id = await playerId()
+
         await Promise.all(batch.map(node =>
             getFromCacheOrFetch(node.matchId, fetchMatchStatsDetailed)
                 .then(result => node.loadMatchStats(id, result))
         ));
+
+        for (const node of batch) {
+            await node.applyEloDiff(id);
+        }
     }
 }, async () => {
 
@@ -207,10 +337,31 @@ function shouldContinue(nodesArr, attempts, nodes, callback) {
     return true;
 }
 
-function findPlayerInTeamById(teams, playerId) {
+function findPlayerInTeamsById(teams, playerId) {
     for (const team of teams) {
         const player = team.players.find(player => player.player_id === playerId);
         if (player) return player;
     }
+    return null;
+}
+
+async function fetchEloByMatchId(matchId, playerId) {
+    let matchStats = await fetchOldMatchStats(matchId)
+    let player = findPlayerInFactionsById(matchStats, playerId)
+    return player?.elo ?? null
+}
+
+function findPlayerInFactionsById(matchData, playerId) {
+    const teams = matchData.teams;
+    if (!teams) return null;
+
+    for (const factionKey of ['faction1', 'faction2']) {
+        const roster = teams[factionKey]?.roster;
+        if (roster) {
+            const player = roster.find(p => p.id === playerId);
+            if (player) return player;
+        }
+    }
+
     return null;
 }

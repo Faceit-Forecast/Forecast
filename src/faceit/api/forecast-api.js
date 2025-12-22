@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
-const baseUrlFC = "https://forecast.dargen.dev"
+const baseUrlFC = "https://api.fforecast.net"
 
 async function fetchFC(url, errorMsg) {
     const res = await fetch(url);

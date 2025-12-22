@@ -227,7 +227,7 @@ async function updateOnline() {
     let onlineElement = document.getElementById("online");
     if (onlineElement) {
         try {
-            const res = await fetch(`https://forecast.dargen.dev/session/online`);
+            const res = await fetch(`https://api.fforecast.net/session/online`);
             if (!res.ok) throw new Error(`Error on fetching online: ${res.statusText}`);
             let online = await res.json();
 

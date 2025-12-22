@@ -69,6 +69,29 @@ async function fetchPlayerStatsByNickName(nickname) {
     );
 }
 
+async function fetchOldMatchStats(matchId) {
+    let cachedData = oldMatchDataCache.get(matchId)
+    if (cachedData) return cachedData
+
+    const apiKey = getApiKey();
+    const url = `https://api.faceit.com/match/v2/match/${matchId}`;
+    const options = {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+    };
+
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        error(`Error: ${response.statusText}`);
+    }
+
+    return (await response.json())["payload"];
+}
+
 function extractPlayerNick() {
     const nick = /players\/([a-zA-Z0-9-_.]+)/.exec(window.location.href);
     return nick ? nick[1] : null;
