@@ -4,6 +4,10 @@
 
 const MATCHES_PER_LOAD = 30;
 
+const green = 'rgb(61,255,108)';
+const red = 'rgb(255, 0, 43)';
+const white = 'rgb(255, 255, 255)';
+
 class MatchNodeChain {
     constructor() {
         this.nodes = new Map();
@@ -31,34 +35,23 @@ class MatchNodeChain {
             this.tail = matchNode;
         } else {
             this.tail.next = matchNode;
-            matchNode.prev = this.tail;
             this.tail = matchNode;
         }
 
         return matchNode;
     }
-
-    clear() {
-        this.nodes.clear();
-        this.head = null;
-        this.tail = null;
-    }
-
-    get size() {
-        return this.nodes.size;
-    }
 }
 
 class MatchNodeByMatchStats {
-    constructor(node, matchId, index) {
+    constructor(node, matchId, index, settings, tableHeader) {
         this.node = node;
         this.matchId = matchId
         this.matchStats = null;
         this.rounds = 0;
         this.index = index
         this.nodeId = `extended-stats-node-${index}`
-
-        this.prev = null;
+        this.settings = settings;
+        this.tableHeader = tableHeader;
         this.next = null;
 
         this.elo = null;
@@ -69,26 +62,19 @@ class MatchNodeByMatchStats {
     }
 
     isLast() {
-        return this.next === null;
+        return !this.next;
     }
 
-    isFirst() {
-        return this.prev === null;
-    }
-
-    async calculateEloDiff(playerId) {
+    async calculateEloDiff(playerId, detailedMatchInfo = null) {
         if (this.eloCalculated) return this.eloDiff;
         if (this.elo === null) return null;
-
         if (this.isLast()) {
-            try {
-                const eloBeforeMatch = await fetchEloByMatchId(this.matchId, playerId);
-                if (eloBeforeMatch !== null) {
-                    this.eloDiff = this.elo - eloBeforeMatch;
+            if (detailedMatchInfo) {
+                const eloDelta = getEloDeltaFromStats(detailedMatchInfo, playerId);
+                if (eloDelta !== null) {
+                    this.eloDiff = eloDelta;
                     this.eloCalculated = true;
                 }
-            } catch (e) {
-                console.error(`Failed to fetch elo for last match ${this.matchId}:`, e);
             }
         } else {
             const nextElo = this.next?.elo;
@@ -117,6 +103,7 @@ class MatchNodeByMatchStats {
             return;
         }
 
+        this.detailedMatchInfo = detailedMatchInfo;
         this.matchStats = player["player_stats"];
         this.rounds = Number.parseInt(detailedMatchInfo.rounds[0].round_stats["Rounds"], 10);
         this.setupStatsToNode(playerId, detailedMatchInfo);
@@ -145,32 +132,132 @@ class MatchNodeByMatchStats {
 
             if (tableNotExist) {
                 scoreNode.lastChild.style.justifyContent = "center";
-                scoreNode.appendChild(popup)
+                scoreNode.appendChild(popup);
+                scoreNode.style.width = '100px';
+                innerNode.children[0].lastChild.style.width = '82px';
                 matchHistoryModule.removalNode(popup)
             }
         }
         const eloNode = innerNode?.children[2]?.lastChild?.lastChild?.lastChild
-        if (!eloNode) return;
-
-        let eloValue = Number.parseInt(eloNode.innerText?.replace(/[\s,._]/g, ''), 10);
-        if (isNaN(eloValue)) return;
-
+        let eloValue = Number.parseInt(eloNode?.innerText?.replace(/[\s,._]/g, '') ?? '0', 10);
         this.setElo(eloValue);
         this.eloNode = eloNode;
+        if (this.settings?.showRWS) {
+            if (innerNode.querySelector('[class*="rws-fc"]')) return;
+            const rws = getRWSFromStats(detailedMatchInfo, playerId);
+            let rwsText = rws?.toFixed(2) ?? '-'
+            let rwsCond = rws ? (rws > 5) : false
+            let isSlash = !rws
+            let rwsNode
+            if (this.settings?.coloredStatsRWS) {
+                rwsNode = createColoredSpan(rwsText, rwsCond, isSlash)
+            } else {
+                document.createElement('span').innerText = rwsText
+            }
+            let krNode = innerNode?.children[6];
+            rwsNode.className = krNode.className
+            rwsNode.classList.add('rws-fc')
+            krNode?.after(rwsNode)
+        }
+
+        this.setupStats(innerNode);
+    }
+
+    fixHeaderMax(innerNode) {
+        if (!this.tableHeader || !innerNode) return;
+
+        const headerInner = this.tableHeader.lastElementChild.lastElementChild.lastElementChild
+        if (!headerInner) return;
+
+        const headerChildren = Array.from(headerInner.children);
+        const rowChildren = Array.from(innerNode.children);
+
+        const tableWidths = [
+            '82px',
+            '100px',
+            '100px',
+            '84.5px',
+            '84.5px',
+            '84.5px',
+            '84.5px',
+        ];
+
+        if (this.settings?.showRWS) {
+            tableWidths.push('84.5px');
+        }
+
+        for (let i = 0; i < tableWidths.length; i++) {
+            const width = tableWidths[i];
+            const headerChild = headerChildren[i];
+            const rowChild = rowChildren[i];
+
+            if (headerChild) {
+                headerChild.style.width = width;
+                headerChild.style.minWidth = width;
+            }
+            if (rowChild) {
+                rowChild.style.width = width;
+                rowChild.style.minWidth = width;
+            }
+        }
+    }
+
+    setupStats(innerNode) {
+        const kdaNode = innerNode?.children[3];
+        const adrNode = innerNode?.children[4];
+        const kdNode = innerNode?.children[5];
+        const krNode = innerNode?.children[6];
+
+        if (!kdaNode) return;
+
+        const kdaValues = kdaNode.innerText?.split('/').map(v => parseNumber(v)) || [];
+        const [k, d, a] = kdaValues;
+        const kd = d ? k / d : 0;
+
+        if (this.settings?.coloredStatsKDA !== false) {
+            const newKdaNode = createCompositeCell([
+                {text: k, condition: kd >= 1.0},
+                {text: "/", condition: null, isSlash: true},
+                {text: d, condition: kd >= 1.0},
+                {text: "/", condition: null, isSlash: true},
+                {text: a, condition: null},
+            ]);
+            newKdaNode.className = kdaNode.className;
+            kdaNode.replaceWith(newKdaNode);
+        }
+
+        if (this.settings?.coloredStatsADR !== false) {
+            const adr = parseNumber(adrNode?.innerText, true);
+            replaceNodeWithColored(adrNode, adr, adr >= 75);
+        }
+
+        if (this.settings?.coloredStatsKD !== false) {
+            replaceNodeWithColored(kdNode, kd.toFixed(2), kd >= 1);
+        }
+
+        if (this.settings?.coloredStatsKR !== false) {
+            const kr = parseNumber(krNode?.innerText, true);
+            replaceNodeWithColored(krNode, kr, kr >= 0.7);
+        }
+
+        this.fixHeaderMax(innerNode);
     }
 
     async applyEloDiff(playerId) {
-        const eloDiff = await this.calculateEloDiff(playerId);
+        if (this.settings?.eloHistoryCalculation === false) return;
+
+        const eloDiff = await this.calculateEloDiff(playerId, this.detailedMatchInfo);
         if (eloDiff !== null && this.eloNode) {
-            let eloSummaryNode = document.createElement('span');
-            eloSummaryNode.innerText = `${eloDiff > 0 ? '+' : ''}${eloDiff}`;
             let parentElement = this.eloNode.parentElement;
+            let eloDidId = `elodif`
+            if (parentElement.querySelector(`[class=${eloDidId}]`)) return
+            let eloSummaryNode = document.createElement('span');
+            eloSummaryNode.classList.add(eloDidId)
+            eloSummaryNode.innerText = `${eloDiff > 0 ? '+' : ''}${eloDiff}`;
             parentElement.style.flexDirection = 'row'
             parentElement.style.alignItems = 'baseline'
             parentElement.style.gap = '3px'
-            let green = 'rgb(61,255,108)'
-            let red = 'rgb(255, 0, 43)'
-            let white = 'rgb(255, 255, 255)'
+            parentElement.style.width = '60px'
             eloSummaryNode.style.color = `${eloDiff > 0 ? green : eloDiff < 0 ? red : white}`
             eloSummaryNode.style.fontSize = 'smaller'
             parentElement.appendChild(eloSummaryNode);
@@ -178,6 +265,8 @@ class MatchNodeByMatchStats {
     }
 
     setupMatchCounterArrow() {
+        if (this.settings?.matchCounter === false) return;
+
         let matchNumber = (this.index + 1)
         if (matchNumber % 30 !== 0) return
         let arrowId = `arrow-${matchNumber / 30}`
@@ -215,7 +304,25 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         return _playerId;
     }
 
-    let lastIndex = 0
+    let _settings = null
+
+    async function settings() {
+        if (_settings) return _settings
+
+        _settings = await getSettings({
+            eloHistoryCalculation: true,
+            matchCounter: true,
+            coloredStatsKDA: true,
+            coloredStatsADR: true,
+            coloredStatsKD: true,
+            coloredStatsKR: true,
+            showRWS: false,
+            coloredStatsRWS: true
+        });
+
+        return _settings
+    }
+
     let tableElement;
     let tableHeadElement;
 
@@ -230,12 +337,17 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     const matchIdRegex = /\/room\/([^/]+)\/scoreboard/;
 
     await matchHistoryModule.doAfterAllNodeAppearPack(selector, async function callback(nodes, attempt) {
+        if (tableHeadElement && !tableHeadElement.isConnected) {
+            tableHeadElement = null
+            tableElement = null
+        }
+
         const nodesArr = filterUnmarkedNodes(nodes);
         const attempts = attempt || 0;
 
         if (!shouldContinue(nodesArr, attempts, nodes, callback)) return;
 
-        initializeTableElements(nodesArr);
+        await initializeTableElements(nodesArr);
 
         const nodeArrays = prepareNodeArrays(nodesArr);
 
@@ -244,12 +356,21 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         await processNodeBatches(nodeArrays);
     });
 
-    function initializeTableElements(nodesArr) {
+    async function initializeTableElements(nodesArr) {
         if (!tableElement) {
             tableElement = nodesArr[0].parentNode.children;
         }
         if (!tableHeadElement) {
             tableHeadElement = tableElement[0];
+            if ((await settings()).showRWS) {
+                if (tableHeadElement.querySelector('[class*="rws-fc-header"]')) return
+                let headerKR = tableHeadElement.querySelector('div > div > div:nth-child(7)')
+                let headerRWS = document.createElement('div')
+                headerRWS.className = headerKR.className
+                headerRWS.classList.add('rws-fc-header')
+                headerRWS.innerText = 'RWS'
+                headerKR.after(headerRWS)
+            }
         }
     }
 
@@ -267,26 +388,24 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     }
 
     async function processNodeBatches(nodeArrays) {
-        const tableNodesArray = Array.from(tableElement).filter(element => element.tagName === 'TR');
-
+        const tableNodesArray = Array.from(tableElement).filter(element => element.tagName === 'A');
         for (const nodeArray of nodeArrays) {
-            const batch = createBatchFromNodes(nodeArray, tableNodesArray);
+            const batch = await createBatchFromNodes(nodeArray, tableNodesArray);
             await loadMatchStatsForBatch(batch);
         }
     }
 
-    function createBatchFromNodes(nodeArray, tableNodesArray) {
+    async function createBatchFromNodes(nodeArray, tableNodesArray) {
         const batch = [];
+        let _settings = await settings();
 
         for (let node of nodeArray) {
-            const index = calculateNodeIndex(tableNodesArray, node);
+            const index = tableNodesArray.indexOf(node);
             if (index === -1) continue;
 
-            lastIndex = index + 1;
             const matchId = extractMatchId(node);
 
-
-            const matchNode = new MatchNodeByMatchStats(node.children[0], matchId, index);
+            const matchNode = new MatchNodeByMatchStats(node.children[0], matchId, index, _settings, tableHeadElement);
 
             matchChain.append(matchNode);
             batch.push(matchNode);
@@ -295,10 +414,6 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         return batch;
     }
 
-    function calculateNodeIndex(tableNodesArray, node) {
-        if (lastIndex !== -1) return lastIndex;
-        return tableNodesArray.indexOf(node) - 1;
-    }
 
     function extractMatchId(node) {
         const match = node.href.match(matchIdRegex);
@@ -309,8 +424,11 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         let id = await playerId()
 
         await Promise.all(batch.map(node =>
-            getFromCacheOrFetch(node.matchId, fetchMatchStatsDetailed)
-                .then(result => node.loadMatchStats(id, result))
+            getFromCacheOrFetch(
+                node.matchId,
+                fetchMatchStatsDetailed,
+                (matchId) => fetchV1MatchRoundStats(gameType, matchId, 1, 2)
+            ).then(result => node.loadMatchStats(id, result))
         ));
 
         for (const node of batch) {
@@ -345,23 +463,17 @@ function findPlayerInTeamsById(teams, playerId) {
     return null;
 }
 
-async function fetchEloByMatchId(matchId, playerId) {
-    let matchStats = await fetchOldMatchStats(matchId)
-    let player = findPlayerInFactionsById(matchStats, playerId)
-    return player?.elo ?? null
+function getRWSFromStats(detailedMatchInfo, playerId) {
+    const player = findPlayerInTeamsById(detailedMatchInfo?.rounds?.[0]?.teams, playerId);
+    return player?.player_stats?.["RWS"] ?? null;
 }
 
-function findPlayerInFactionsById(matchData, playerId) {
-    const teams = matchData.teams;
-    if (!teams) return null;
+function getEloFromStats(detailedMatchInfo, playerId) {
+    const player = findPlayerInTeamsById(detailedMatchInfo?.rounds?.[0]?.teams, playerId);
+    return player?.elo ?? null;
+}
 
-    for (const factionKey of ['faction1', 'faction2']) {
-        const roster = teams[factionKey]?.roster;
-        if (roster) {
-            const player = roster.find(p => p.id === playerId);
-            if (player) return player;
-        }
-    }
-
-    return null;
+function getEloDeltaFromStats(detailedMatchInfo, playerId) {
+    const player = findPlayerInTeamsById(detailedMatchInfo?.rounds?.[0]?.teams, playerId);
+    return player?.eloDelta ?? null;
 }

@@ -13,21 +13,30 @@ class MatchroomPopup {
     }
 
     attachToElement(stats, playerId) {
-        const sortByKills = (players) => players.sort((a, b) => b.player_stats["Kills"] - a.player_stats["Kills"]);
-        const teams = [
-            sortByKills(stats.rounds[0].teams[0].players),
-            sortByKills(stats.rounds[0].teams[1].players),
-        ];
-
         const tables = [
             this.popup.querySelector(`#team-table-body-popup-1`),
             this.popup.querySelector(`#team-table-body-popup-2`),
         ];
 
+        if (tables[0]?.children.length > 0 || tables[1]?.children.length > 0) {
+            return;
+        }
+
+        const sortByRWS = (players) => players.sort((a, b) =>
+            (b.player_stats["RWS"] ?? 0) - (a.player_stats["RWS"] ?? 0)
+        );
+        const teams = [
+            sortByRWS(stats.rounds[0].teams[0].players),
+            sortByRWS(stats.rounds[0].teams[1].players),
+        ];
+
+
         const createRow = (playerStats) => {
             const row = document.createElement("tr");
             row.className = "popup-table-row"
             const stats = playerStats["player_stats"];
+            const rws = stats["RWS"];
+            const elo = playerStats.elo;
             const data = [
                 playerStats.nickname,
                 stats["Kills"],
@@ -36,9 +45,9 @@ class MatchroomPopup {
                 stats["K/R Ratio"],
                 stats["K/D Ratio"],
                 stats["Headshots"],
-                stats["Headshots %"],
-                stats["MVPs"],
                 stats["ADR"],
+                rws !== null ? rws.toFixed(2) : "-",
+                elo !== null ? elo : "-",
             ];
 
             data.forEach((value, index) => {

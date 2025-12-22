@@ -206,7 +206,6 @@ class Module {
             let toMark = document.getElementById("canvas-body");
             if (toMark.hasAttribute("marked-as-bug")) return
             toMark.setAttribute("marked-as-bug", '');
-            println("!!! FOUND BUG ELEMENT !!!")
         });
     }
 }

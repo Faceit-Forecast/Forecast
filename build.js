@@ -14,7 +14,7 @@ const config = {
     bundleJS: true,
     bundledFileName: 'forecast.js',
     excludeFromBundle: ['src/visual/popup.js'],
-    additionalIncludes: ['_locales', 'LICENSE'],
+    additionalIncludes: ['_locales', 'LICENSE', 'patch-notes.md'],
     minifyOptions: {
         js: {
             compress: {

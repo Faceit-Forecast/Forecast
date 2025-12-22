@@ -2,6 +2,8 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
+const isTest = false;
+
 const BROWSER_TYPE = typeof browser === 'undefined' ? 'CHROMIUM' : 'FIREFOX';
 const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_overpass'];
 const TAB_LABELS = {
@@ -9,6 +11,161 @@ const TAB_LABELS = {
     "features": "Features",
     "about": "About",
     "donate": "Donate"
+};
+
+const PATCH_NOTES_URL = 'https://raw.githubusercontent.com/TerraMiner/Forecast/master/patch-notes.md';
+const PATCH_NOTES_CACHE_KEY = 'patch-notes-cache';
+const PATCH_NOTES_CACHE_TTL = 1000 * 60 * 30;
+
+const PatchNotesManager = {
+    currentVersion: null,
+
+    async init() {
+        const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
+        this.currentVersion = runtime.getManifest().version;
+        await this.loadAndDisplay();
+    },
+
+    async loadAndDisplay() {
+        const container = document.getElementById('patch-notes-container');
+        if (!container) return;
+
+        try {
+            const content = await this.fetchWithCache();
+            const patchNotes = this.parse(content);
+            this.render(container, patchNotes);
+        } catch (error) {
+            console.error('Failed to load patch notes:', error);
+            container.innerHTML = '<div class="patch-notes-error">Failed to load patch notes</div>';
+        }
+    },
+
+    async fetchWithCache() {
+        if (isTest) {
+            const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
+            const url = runtime.getURL('patch-notes.md');
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load local file: ${response.status}`);
+            return await response.text();
+        }
+
+        try {
+            const cached = await StorageUtils.get([PATCH_NOTES_CACHE_KEY, `${PATCH_NOTES_CACHE_KEY}-time`]);
+            const cachedData = cached[PATCH_NOTES_CACHE_KEY];
+            const cachedTime = cached[`${PATCH_NOTES_CACHE_KEY}-time`];
+
+            if (cachedData && cachedTime && (Date.now() - cachedTime < PATCH_NOTES_CACHE_TTL)) {
+                return cachedData;
+            }
+        } catch (e) {
+        }
+
+        const response = await fetch(PATCH_NOTES_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const content = await response.text();
+
+        try {
+            await StorageUtils.set({
+                [PATCH_NOTES_CACHE_KEY]: content,
+                [`${PATCH_NOTES_CACHE_KEY}-time`]: Date.now()
+            });
+        } catch (e) {
+        }
+
+        return content;
+    },
+
+    parse(content) {
+        const patchNotes = [];
+        const lines = content.split(/\r?\n/);
+        let currentNote = null;
+
+        for (const rawLine of lines) {
+            const line = rawLine.trim();
+            const headerMatch = line.match(/^\[([^\]]+)\]\s*(.+)$/);
+
+            if (headerMatch) {
+                if (currentNote) {
+                    patchNotes.push(currentNote);
+                }
+                currentNote = {
+                    version: headerMatch[1],
+                    title: headerMatch[2],
+                    description: [],
+                    images: []
+                };
+            } else if (currentNote) {
+                const imgMatch = line.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+                if (imgMatch) {
+                    const altMatch = line.match(/alt=["']([^"']+)["']/i);
+                    currentNote.images.push({
+                        src: imgMatch[1],
+                        alt: altMatch ? altMatch[1] : 'Patch note image'
+                    });
+                } else if (line.trim()) {
+                    currentNote.description.push(line.trim());
+                }
+            }
+        }
+
+        if (currentNote) {
+            patchNotes.push(currentNote);
+        }
+
+        return patchNotes;
+    },
+
+    compareVersions(v1, v2) {
+        const parts1 = v1.split('.').map(Number);
+        const parts2 = v2.split('.').map(Number);
+
+        for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+            const p1 = parts1[i] || 0;
+            const p2 = parts2[i] || 0;
+            if (p1 > p2) return 1;
+            if (p1 < p2) return -1;
+        }
+        return 0;
+    },
+
+    render(container, patchNotes) {
+        if (patchNotes.length === 0) {
+            container.innerHTML = '<div class="patch-notes-error">No patch notes available</div>';
+            return;
+        }
+
+        const titleHtml = '<div class="patch-notes-title">Release Notes</div>';
+
+        const notesHtml = patchNotes.map(note => {
+            const isReleased = this.compareVersions(this.currentVersion, note.version) >= 0;
+            const badgeClass = isReleased ? 'released' : 'upcoming';
+            const badgeText = isReleased ? 'Released' : 'Upcoming';
+
+            const imagesHtml = note.images.length > 0
+                ? `<div class="patch-note-images">${note.images.map(img =>
+                    `<img class="patch-note-image" src="${img.src}" alt="${img.alt}" loading="lazy">`
+                ).join('')}</div>`
+                : '';
+
+            const descriptionHtml = note.description.length > 0
+                ? `<ul class="patch-note-description">${note.description.map(item => `<li>${item}</li>`).join('')}</ul>`
+                : '';
+
+            return `
+                <div class="patch-note">
+                    <div class="patch-note-header">
+                        <span class="patch-note-version">${note.version}</span>
+                        <span class="patch-note-title">${note.title}</span>
+                        <span class="patch-note-badge ${badgeClass}">${badgeText}</span>
+                    </div>
+                    ${descriptionHtml}
+                    ${imagesHtml}
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = titleHtml + notesHtml;
+    }
 };
 
 const StorageUtils = {
@@ -45,12 +202,22 @@ const SettingsManager = {
         eloranking: true,
         matchhistory: true,
         poscatcher: false,
-        integrations: true
+        integrations: true,
+        eloHistoryCalculation: true,
+        matchCounter: true,
+        coloredStatsKDA: true,
+        coloredStatsADR: true,
+        coloredStatsKD: true,
+        coloredStatsKR: true,
+        showRWS: false,
+        coloredStatsRWS: true
     },
 
     async load() {
         try {
             const keys = ['isEnabled', 'sliderValue', 'matchroom', 'eloranking', 'matchhistory', 'poscatcher',
+                'eloHistoryCalculation', 'matchCounter', 'coloredStatsKDA', 'coloredStatsADR', 'coloredStatsKD',
+                'coloredStatsKR', 'showRWS', 'coloredStatsRWS',
                 ...CS2_MAPS.flatMap(map => [`${map}Enabled`, `${map}Message`]), 'integrations'];
 
             const settings = await StorageUtils.get(keys);
@@ -58,6 +225,8 @@ const SettingsManager = {
             this.applySettings(settings);
 
             this.loadQuickPositionSettings(settings);
+
+            this.loadMatchHistorySettings(settings);
 
         } catch (error) {
             console.error("Error loading settings:", error);
@@ -118,6 +287,48 @@ const SettingsManager = {
         });
 
         this.updateMapSettingsVisibility(quickPositionToggle?.checked ?? this.defaults.poscatcher);
+    },
+
+    loadMatchHistorySettings(settings) {
+        const matchHistoryToggle = document.getElementById('matchhistory');
+        if (matchHistoryToggle) {
+            matchHistoryToggle.checked = settings.matchhistory ?? this.defaults.matchhistory;
+        }
+
+        const settingsElements = {
+            eloHistoryCalculation: 'eloHistoryCalculation',
+            matchCounter: 'matchCounter',
+            coloredStatsKDA: 'coloredStatsKDA',
+            coloredStatsADR: 'coloredStatsADR',
+            coloredStatsKD: 'coloredStatsKD',
+            coloredStatsKR: 'coloredStatsKR',
+            showRWS: 'showRWS',
+            coloredStatsRWS: 'coloredStatsRWS'
+        };
+
+        Object.entries(settingsElements).forEach(([elementId, settingKey]) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.checked = settings[settingKey] ?? this.defaults[settingKey];
+            }
+        });
+
+        const showRWS = settings.showRWS ?? this.defaults.showRWS;
+        this.updateRWSColoredStatsVisibility(showRWS);
+
+        const matchHistoryEnabled = settings.matchhistory ?? this.defaults.matchhistory;
+        this.updateDependentSettings('matchhistory', ['#matchHistorySettings'], matchHistoryEnabled);
+    },
+
+    updateRWSColoredStatsVisibility(isEnabled) {
+        const rwsColoredStatsContainer = document.getElementById('rwsColoredStatsContainer');
+        if (!rwsColoredStatsContainer) return;
+
+        if (isEnabled) {
+            rwsColoredStatsContainer.classList.add('visible');
+        } else {
+            rwsColoredStatsContainer.classList.remove('visible');
+        }
     },
 
     async save(data) {
@@ -186,18 +397,6 @@ const UIUtils = {
         });
     },
 
-    setupInfoButtons() {
-        const infoButtons = document.querySelectorAll('.info-button:not(.nested-info-button)');
-
-        infoButtons.forEach(button => {
-            button.addEventListener('click', function (e) {
-                e.preventDefault();
-                const settingGroup = this.closest('.setting-group');
-                const description = settingGroup.querySelector('.setting-description');
-                description.classList.toggle('active');
-            });
-        });
-    },
 
     async startOnlineUpdater() {
         await updateOnline();
@@ -286,6 +485,10 @@ const EventHandlers = {
                 if (toggleId === 'matchroom') {
                     SettingsManager.updateDependentSettings('matchroom', ['#analyzeLimit'], this.checked);
                 }
+
+                if (toggleId === 'matchhistory') {
+                    SettingsManager.updateDependentSettings('matchhistory', ['#matchHistorySettings'], this.checked);
+                }
             });
         });
 
@@ -353,6 +556,32 @@ const EventHandlers = {
                 });
             }
         });
+    },
+
+    setupMatchHistoryEventListeners() {
+        const settingsToggles = [
+            'eloHistoryCalculation',
+            'matchCounter',
+            'coloredStatsKDA',
+            'coloredStatsADR',
+            'coloredStatsKD',
+            'coloredStatsKR',
+            'showRWS',
+            'coloredStatsRWS'
+        ];
+
+        settingsToggles.forEach(toggleId => {
+            const element = document.getElementById(toggleId);
+            if (!element) return;
+
+            element.addEventListener('change', async function () {
+                await SettingsManager.save({[toggleId]: this.checked});
+
+                if (toggleId === 'showRWS') {
+                    SettingsManager.updateRWSColoredStatsVisibility(this.checked);
+                }
+            });
+        });
     }
 };
 
@@ -367,15 +596,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
         await Promise.all([
             SettingsManager.load(),
-            UIUtils.loadManifestInfo()
+            UIUtils.loadManifestInfo(),
+            PatchNotesManager.init()
         ]);
 
         UIUtils.setupTabs();
-        UIUtils.setupInfoButtons();
         UIUtils.startOnlineUpdater();
 
         EventHandlers.setupMainEventListeners();
         EventHandlers.setupQuickPositionEventListeners();
+        EventHandlers.setupMatchHistoryEventListeners();
 
     } catch (error) {
         console.error("Error during DOMContentLoaded:", error);

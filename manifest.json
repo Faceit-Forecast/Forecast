@@ -48,6 +48,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "patch-notes.md",
         "src/visual/tables/forecaststyles.css",
         "src/visual/tables/team.html",
         "src/visual/tables/match-history-popup.html",

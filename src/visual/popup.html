@@ -34,18 +34,8 @@
                         <span class="slider"></span>
                     </label>
                 </div>
-                <div class="description-box description-box-bold">
-                    <p>A convenient extension for detailed Faceit statistics.</p>
-                    <p>This project is a browser extension that collects and displays detailed statistics for Faceit
-                        matches and players.</p>
-                    <p>Key features include:</p>
-                    <ul>
-                        <li>Adds new levels</li>
-                        <li>Shows player statistics in match history</li>
-                        <li>Provides access to match tabs from history</li>
-                        <li>Calculates win rates for teams and players in the match room</li>
-                        <li>Allows you to specify a message sent when a map is selected in the game lobby</li>
-                    </ul>
+                <div class="description-box" id="patch-notes-container">
+                    <div class="patch-notes-loading">Loading patch notes...</div>
                 </div>
             </div>
 
@@ -54,23 +44,229 @@
                     <div class="setting-item">
                         <div class="setting-header">
                             <label for="matchhistory">Advanced Match History</label>
-                            <button class="info-button" aria-label="Show more information">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                     stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <path d="M12 16v-4"></path>
-                                    <path d="M12 8h.01"></path>
-                                </svg>
-                            </button>
+                            <div class="info-tooltip-wrapper">
+                                <div class="info-button" aria-label="Show more information">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                         stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16v-4"></path>
+                                        <path d="M12 8h.01"></path>
+                                    </svg>
+                                </div>
+                                <div class="info-tooltip">
+                                    <p>Quick access to view the match scoreboard directly from the history.</p>
+                                </div>
+                            </div>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="matchhistory" checked>
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <div class="setting-description">
-                        <p>Quick access to view the match scoreboard directly from the history. Also displays match numbers for every 30th match to help you track your progress.</p>
+
+                    <div class="nested-setting visible" id="matchHistorySettings">
+                        <div class="setting-item">
+                                <div class="setting-header">
+                                    <label for="eloHistoryCalculation">Elo History Calculation</label>
+                                    <div class="info-tooltip-wrapper">
+                                        <div class="info-button" aria-label="Show more information">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                 stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="info-tooltip">
+                                            <p>This feature displays elo delta between 2 related matches.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <span class="visually-hidden">Enable Elo History Calculation</span>
+                                    <input type="checkbox" id="eloHistoryCalculation" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                        <div class="setting-item">
+                                <div class="setting-header">
+                                    <label for="matchCounter">Match Counter</label>
+                                    <div class="info-tooltip-wrapper">
+                                        <div class="info-button" aria-label="Show more information">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                 stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="info-tooltip">
+                                            <p>Displays match numbers for every 30th match to help you track your progress.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <span class="visually-hidden">Enable match counter arrows</span>
+                                    <input type="checkbox" id="matchCounter" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                        <div class="setting-item">
+                                <div class="setting-header">
+                                    <label for="coloredStatsKDA">Colored Stats for KDA</label>
+                                    <div class="info-tooltip-wrapper">
+                                        <div class="info-button" aria-label="Show more information">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                 stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="info-tooltip">
+                                            <p>This feature will colour your KDA statistic by k/d. (kd ≥ 1 = green) </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <span class="visually-hidden">Enable colored stats for KDA</span>
+                                    <input type="checkbox" id="coloredStatsKDA" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                        <div class="setting-item">
+                                <div class="setting-header">
+                                    <label for="coloredStatsADR">Colored Stats for ADR</label>
+                                    <div class="info-tooltip-wrapper">
+                                        <div class="info-button" aria-label="Show more information">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                 stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="info-tooltip">
+                                            <p>This feature will colour your ADR statistic. (adr ≥ 75 = green)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <span class="visually-hidden">Enable colored stats for ADR</span>
+                                    <input type="checkbox" id="coloredStatsADR" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                        <div class="setting-item">
+                                <div class="setting-header">
+                                    <label for="coloredStatsKD">Colored Stats for K/D</label>
+                                    <div class="info-tooltip-wrapper">
+                                        <div class="info-button" aria-label="Show more information">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                 stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="info-tooltip">
+                                            <p>This feature will colour your K/D statistic. (kd ≥ 1 = green)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <span class="visually-hidden">Enable colored stats for K/D</span>
+                                    <input type="checkbox" id="coloredStatsKD" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                        <div class="setting-item">
+                                <div class="setting-header">
+                                    <label for="coloredStatsKR">Colored Stats for KR</label>
+                                    <div class="info-tooltip-wrapper">
+                                        <div class="info-button" aria-label="Show more information">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                 stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="info-tooltip">
+                                            <p>This feature will colour your K/R statistic. (kr ≥ 0.7 = green)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <span class="visually-hidden">Enable colored stats for KR</span>
+                                    <input type="checkbox" id="coloredStatsKR" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                        <div class="setting-item">
+                                <div class="setting-header">
+                                    <label for="showRWS">RWS</label>
+                                    <div class="info-tooltip-wrapper">
+                                        <div class="info-button" aria-label="Show more information">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                 stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="info-tooltip">
+                                            <p>This feature will add another column to match history with RWS</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <span class="visually-hidden">Enable RWS display</span>
+                                    <input type="checkbox" id="showRWS">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                        <div class="nested-setting" id="rwsColoredStatsContainer">
+                            <div class="setting-item">
+                                <div class="setting-header">
+                                    <label for="coloredStatsRWS">Colored Stats for RWS</label>
+                                    <div class="info-tooltip-wrapper">
+                                        <div class="info-button" aria-label="Show more information">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                 stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="info-tooltip">
+                                            <p>This feature will colour your RWS statistic. (RWS > 5 = green)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <span class="visually-hidden">Enable colored stats for RWS</span>
+                                    <input type="checkbox" id="coloredStatsRWS" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -78,25 +274,26 @@
                     <div class="setting-item">
                         <div class="setting-header">
                             <label for="eloranking">New Elo Rankings</label>
-                            <button class="info-button" aria-label="Show more information">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                     stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <path d="M12 16v-4"></path>
-                                    <path d="M12 8h.01"></path>
-                                </svg>
-                            </button>
+                            <div class="info-tooltip-wrapper">
+                                <div class="info-button" aria-label="Show more information">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                         stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16v-4"></path>
+                                        <path d="M12 8h.01"></path>
+                                    </svg>
+                                </div>
+                                <div class="info-tooltip">
+                                    <p>It adds extra rating levels for a more accurate reflection of player skill at higher ranks.</p>
+                                    <p>It expands the standard 10-level Faceit system, making the ranking more detailed.</p>
+                                </div>
+                            </div>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="eloranking" checked>
                             <span class="slider"></span>
                         </label>
-                    </div>
-                    <div class="setting-description">
-                        <p>It adds extra rating levels for a more accurate reflection of player skill at higher
-                            ranks.</p>
-                        <p>It expands the standard 10-level Faceit system, making the ranking more detailed.</p>
                     </div>
                 </div>
 
@@ -104,26 +301,26 @@
                     <div class="setting-item">
                         <div class="setting-header">
                             <label for="matchroom">Extended in-match info</label>
-                            <button class="info-button" aria-label="Show more information">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                     stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <path d="M12 16v-4"></path>
-                                    <path d="M12 8h.01"></path>
-                                </svg>
-                            </button>
+                            <div class="info-tooltip-wrapper">
+                                <div class="info-button" aria-label="Show more information">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                         stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16v-4"></path>
+                                        <path d="M12 8h.01"></path>
+                                    </svg>
+                                </div>
+                                <div class="info-tooltip">
+                                    <p>It shows extended info about teams and individual players in the match room, calculating the number of games and win percentage on each map.</p>
+                                    <p>This helps better assess team strengths on specific maps before the game starts.</p>
+                                </div>
+                            </div>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="matchroom" checked>
                             <span class="slider"></span>
                         </label>
-                    </div>
-                    <div class="setting-description">
-                        <p>It shows extended info about teams and individual players in the match room, calculating
-                            the number of games and win percentage on each map.
-                        </p>
-                        <p>This helps better assess team strengths on specific maps before the game starts.</p>
                     </div>
 
                     <div class="nested-setting visible" id="analyzeLimit">
@@ -146,24 +343,26 @@
                                 <label for="poscatcher">Quick Position Setup</label>
                                 <span class="beta-badge">Beta</span>
                             </div>
-                            <button class="info-button" aria-label="Show more information">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                     stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <path d="M12 16v-4"></path>
-                                    <path d="M12 8h.01"></path>
-                                </svg>
-                            </button>
+                            <div class="info-tooltip-wrapper">
+                                <div class="info-button" aria-label="Show more information">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                         stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16v-4"></path>
+                                        <path d="M12 8h.01"></path>
+                                    </svg>
+                                </div>
+                                <div class="info-tooltip">
+                                    <p>Allows sending a specific message on a particular map when it's selected or picked.</p>
+                                    <p>You can configure custom messages for each CS2 map that will be automatically sent when the map is chosen during match selection.</p>
+                                </div>
+                            </div>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="poscatcher" checked>
                             <span class="slider"></span>
                         </label>
-                    </div>
-                    <div class="setting-description">
-                        <p>Allows sending a specific message on a particular map when it's selected or picked.</p>
-                        <p>You can configure custom messages for each CS2 map that will be automatically sent when the map is chosen during match selection.</p>
                     </div>
 
                     <div class="nested-setting visible" id="mapSettings">
@@ -278,24 +477,26 @@
                     <div class="setting-item">
                         <div class="setting-header">
                             <label for="integrations">Integrations</label>
-                            <button class="info-button" aria-label="Show more information">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                     stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <path d="M12 16v-4"></path>
-                                    <path d="M12 8h.01"></path>
-                                </svg>
-                            </button>
+                            <div class="info-tooltip-wrapper">
+                                <div class="info-button" aria-label="Show more information">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                         stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16v-4"></path>
+                                        <path d="M12 8h.01"></path>
+                                    </svg>
+                                </div>
+                                <div class="info-tooltip">
+                                    <p>It adds partner integrations that may include promotional content.</p>
+                                    <p>These integrations help the project grow and stay free for everyone.</p>
+                                </div>
+                            </div>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="integrations" checked>
                             <span class="slider"></span>
                         </label>
-                    </div>
-                    <div class="setting-description">
-                        <p>It adds partner integrations that may include promotional content.</p>
-                        <p>These integrations help the project grow and stay free for everyone.</p>
                     </div>
                 </div>
             </div>

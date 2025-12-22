@@ -6,7 +6,7 @@ const forecastCacheKeyPrefix = "forecast-matchhistory"
 const cookieCacheId = "last-matchhistorycache-cleanup";
 const cleanUpPeriod = 86400000;
 const maxUnusedHours = 48;
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 3;
 
 const DB_NAME = 'faceit_matches';
 const STORE_NAME = 'matches';
@@ -14,6 +14,18 @@ const DB_VERSION = 1;
 
 const cacheMap = new Map();
 let db = null;
+
+function findPlayerInV1Teams(matchStats, playerId) {
+    const teams = matchStats?.cs2?.teams;
+    if (!teams) return null;
+
+    for (const team of teams) {
+        const player = team.players?.find(p => p.playerId === playerId);
+        if (player) return player;
+    }
+
+    return null;
+}
 
 function tryCleanCache() {
     let nextCleanUpTime = Number.parseInt(getCookie(cookieCacheId), 10);
@@ -68,7 +80,7 @@ async function loadMatchHistoryCache() {
     });
 }
 
-async function getFromCacheOrFetch(key, fetch) {
+async function getFromCacheOrFetch(key, fetchV4, fetchV1 = null) {
     if (!db) await initDB();
 
     const cacheKey = `${forecastCacheKeyPrefix}::${key}`;
@@ -77,9 +89,16 @@ async function getFromCacheOrFetch(key, fetch) {
         const cachedData = cacheMap.get(cacheKey);
 
         if (cachedData.version === CACHE_VERSION) {
-            cachedData.lastUsed = Date.now();
-            await updateLastUsed(key, cachedData.lastUsed);
-            return cachedData.data;
+            const hasNullData = cachedData.data.rounds[0].teams.some(team =>
+                team.players.some(p => p.player_stats["RWS"] === null || p.elo === null)
+            );
+
+            if (!hasNullData) {
+                cachedData.lastUsed = Date.now();
+                await updateLastUsed(key, cachedData.lastUsed);
+                return cachedData.data;
+            }
+            cacheMap.delete(cacheKey);
         } else {
             cacheMap.delete(cacheKey);
         }
@@ -88,26 +107,36 @@ async function getFromCacheOrFetch(key, fetch) {
     try {
         const cached = await getFromDB(key);
         if (cached?.version === CACHE_VERSION) {
-            cached.lastUsed = Date.now();
-            cacheMap.set(cacheKey, cached);
-            await updateLastUsed(key, cached.lastUsed);
-            return cached.data;
+            const hasNullData = cached.data.rounds[0].teams.some(team =>
+                team.players.some(p => p.player_stats["RWS"] === null || p.elo === null)
+            );
+
+            if (!hasNullData) {
+                cached.lastUsed = Date.now();
+                cacheMap.set(cacheKey, cached);
+                await updateLastUsed(key, cached.lastUsed);
+                return cached.data;
+            }
         }
     } catch (err) {
         error('Error reading from IndexedDB:', err);
     }
 
-    const value = await fetch(key);
+    const v4Stats = await fetchV4(key);
+    const v1Stats = fetchV1 ? await fetchV1(key).catch(() => null) : null;
 
     const cachedValue = {
         matchId: key,
         data: {
             rounds: [{
-                teams: value.rounds[0].teams.map(team => ({
+                teams: v4Stats.rounds[0].teams.map(team => ({
                     players: team.players.map(player => {
-                        return ({
+                        const v1Player = v1Stats ? findPlayerInV1Teams(v1Stats, player.player_id) : null;
+                        return {
                             nickname: player.nickname,
                             player_id: player.player_id,
+                            elo: v1Player?.elo ?? null,
+                            eloDelta: v1Player?.eloDelta ?? null,
                             player_stats: {
                                 "Kills": player.player_stats.Kills,
                                 "Assists": player.player_stats.Assists,
@@ -115,47 +144,12 @@ async function getFromCacheOrFetch(key, fetch) {
                                 "ADR": player.player_stats.ADR,
                                 "K/D Ratio": player.player_stats["K/D Ratio"],
                                 "K/R Ratio": player.player_stats["K/R Ratio"],
-                                "Entry Count": player.player_stats["Entry Count"],
-                                "First Kills": player.player_stats["First Kills"],
                                 "Headshots": player.player_stats["Headshots"],
                                 "Headshots %": player.player_stats["Headshots %"],
                                 "MVPs": player.player_stats["MVPs"],
-                                "Double Kills": player.player_stats["Double Kills"],
-                                "Triple Kills": player.player_stats["Triple Kills"],
-                                "Quadro Kills": player.player_stats["Quadro Kills"],
-                                "Penta Kills": player.player_stats["Penta Kills"],
-                                "Clutch Kills": player.player_stats["Clutch Kills"],
-                                "Entry Wins": player.player_stats["Entry Wins"],
-                                "1v1Wins": player.player_stats["1v1Wins"],
-                                "1v2Wins": player.player_stats["1v2Wins"],
-                                "1v1Count": player.player_stats["1v1Count"],
-                                "1v2Count": player.player_stats["1v2Count"],
-                                "Utility Damage": player.player_stats["Utility Damage"],
-                                "Flash Successes": player.player_stats["Flash Successes"],
-                                "Flash Success Rate per Match": player.player_stats["Flash Success Rate per Match"],
-                                "Flashes per Round in a Match": player.player_stats["Flashes per Round in a Match"],
-                                "Knife Kills": player.player_stats["Knife Kills"],
-                                "Utility Successes": player.player_stats["Utility Successes"],
-                                "Zeus Kills": player.player_stats["Zeus Kills"],
-                                "Flash Count": player.player_stats["Flash Count"],
-                                "Result": player.player_stats["Result"],
-                                "Utility Damage Success Rate per Match": player.player_stats["Utility Damage Success Rate per Match"],
-                                "Utility Usage per Round": player.player_stats["Utility Usage per Round"],
-                                "Sniper Kill Rate per Match": player.player_stats["Sniper Kill Rate per Match"],
-                                "Utility Count": player.player_stats["Utility Count"],
-                                "Sniper Kill Rate per Round": player.player_stats["Sniper Kill Rate per Round"],
-                                "Match Entry Rate": player.player_stats["Match Entry Rate"],
-                                "Enemies Flashed per Round in a Match": player.player_stats["Enemies Flashed per Round in a Match"],
-                                "Utility Success Rate per Match": player.player_stats["Utility Success Rate per Match"],
-                                "Damage": player.player_stats["Damage"],
-                                "Enemies Flashed": player.player_stats["Enemies Flashed"],
-                                "Utility Damage per Round in a Match": player.player_stats["Utility Damage per Round in a Match"],
-                                "Match Entry Success Rate": player.player_stats["Match Entry Success Rate"],
-                                "Sniper Kills": player.player_stats["Sniper Kills"],
-                                "Utility Enemies": player.player_stats["Utility Enemies"],
-                                "Pistol Kills": player.player_stats["Pistol Kills"]
+                                "RWS": v1Player?.total?.rws ?? null
                             }
-                        })
+                        };
                     }),
                     team_stats: {
                         "Team Win": team.team_stats["Team Win"],
@@ -163,9 +157,9 @@ async function getFromCacheOrFetch(key, fetch) {
                     }
                 })),
                 round_stats: {
-                    "Rounds": value.rounds[0].round_stats.Rounds,
-                    "Score": value.rounds[0].round_stats.Score,
-                    "Map": value.rounds[0].round_stats.Map
+                    "Rounds": v4Stats.rounds[0].round_stats.Rounds,
+                    "Score": v4Stats.rounds[0].round_stats.Score,
+                    "Map": v4Stats.rounds[0].round_stats.Map
                 }
             }]
         },

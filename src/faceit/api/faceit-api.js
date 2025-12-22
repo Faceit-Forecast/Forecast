@@ -3,11 +3,12 @@
  */
 
 const baseUrlV4 = "https://open.faceit.com/data/v4";
+const baseUrlV1 = "https://www.faceit.com/api/statistics/v1";
 
 const playerDataCache = new Map();
 const playerGamesDataCache = new Map();
 const matchDataCache = new Map();
-const oldMatchDataCache = new Map();
+const matchDataV1Cache = new Map();
 const matchDataStatsCache = new Map();
 
 async function fetchV4(url, errorMsg) {
@@ -26,6 +27,32 @@ async function fetchV4(url, errorMsg) {
 
 async function fetchV4Cached(cache, url, errorMsg) {
     return cache.get(url) || cache.set(url, await fetchV4(url, errorMsg)).get(url);
+}
+
+
+async function fetchV1(url, errorMsg) {
+    const res = await fetch(url, {
+        headers: {
+            'accept': 'application/json+camelcase',
+            'accept-language': 'ru,en;q=0.9',
+            'faceit-referer': 'web-next',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin'
+        },
+        credentials: 'include'
+    });
+
+    if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`${errorMsg}: ${res.status} ${res.statusText}. Response: ${errorText}`);
+    }
+
+    return res.json();
+}
+
+async function fetchV1Cached(cache, url, errorMsg) {
+    return cache.get(url) || cache.set(url, await fetchV1(url, errorMsg)).get(url);
 }
 
 async function fetchMatchStats(matchId) {
@@ -69,27 +96,13 @@ async function fetchPlayerStatsByNickName(nickname) {
     );
 }
 
-async function fetchOldMatchStats(matchId) {
-    let cachedData = oldMatchDataCache.get(matchId)
-    if (cachedData) return cachedData
 
-    const apiKey = getApiKey();
-    const url = `https://api.faceit.com/match/v2/match/${matchId}`;
-    const options = {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-    };
-
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        error(`Error: ${response.statusText}`);
-    }
-
-    return (await response.json())["payload"];
+async function fetchV1MatchRoundStats(game, matchId, round = 1, statsType = 2) {
+    return (await fetchV1Cached(
+        matchDataV1Cache,
+        `${baseUrlV1}/${game}/matches/${matchId}/match-rounds/${round}/scoreboard?statsType=${statsType}`,
+        "Error when retrieving V1 match round statistics"
+    )).payload;
 }
 
 function extractPlayerNick() {

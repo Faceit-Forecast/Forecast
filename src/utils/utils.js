@@ -99,6 +99,42 @@ async function getSettingValue(name, def) {
     });
 }
 
+function parseNumber(text, isFloat = false) {
+    if (!text) return NaN;
+    const cleaned = text.replace(/[^\d.,-]/g, '').replace(',', '.');
+    return isFloat ? Number.parseFloat(cleaned) : Number.parseInt(cleaned, 10);
+}
+
+function createColoredSpan(text, condition, isSlash = false) {
+    const span = document.createElement("span");
+    span.style.color = isSlash || text == null ? white : condition == null ? white : (condition ? green : red);
+    span.textContent = text ?? "-";
+    return span;
+}
+
+function createCompositeCell(items) {
+    const container = document.createElement("div");
+    Object.assign(container.style, {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2px',
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        flex: '1 1 0%'
+    });
+    items.forEach(({text, condition, isSlash}) =>
+        container.appendChild(createColoredSpan(text, condition, isSlash))
+    );
+    return container;
+}
+
+function replaceNodeWithColored(node, text, condition) {
+    if (!node) return;
+    const newNode = createColoredSpan(text, condition);
+    newNode.className = node.className;
+    node.replaceWith(newNode);
+}
+
 async function isSettingEnabled(name, def) {
     const storageAPI = browserType === FIREFOX ? browser.storage.sync : chrome.storage.sync;
     const settings = await storageAPI.get([name]);
@@ -108,6 +144,30 @@ async function isSettingEnabled(name, def) {
         return def;
     }
     return settings[name];
+}
+
+async function getSettings(settingsMap) {
+    const storageAPI = browserType === FIREFOX ? browser.storage.sync : chrome.storage.sync;
+    const keys = Object.keys(settingsMap);
+    const storedSettings = await storageAPI.get(keys);
+
+    const result = {};
+    const toSet = {};
+
+    keys.forEach(key => {
+        if (storedSettings[key] === undefined) {
+            result[key] = settingsMap[key];
+            toSet[key] = settingsMap[key];
+        } else {
+            result[key] = storedSettings[key];
+        }
+    });
+
+    if (Object.keys(toSet).length > 0) {
+        await storageAPI.set(toSet);
+    }
+
+    return result;
 }
 
 async function isExtensionEnabled() {

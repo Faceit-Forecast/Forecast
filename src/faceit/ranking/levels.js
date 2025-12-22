@@ -390,8 +390,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             let currentLevel = getLevel(elo, lobby.gameType);
             let icon = getLevelIcon(currentLevel);
             icon.classList.add(newEloLevelIconId);
-            let oldIcon = levelContainer.querySelector(`[class*='${newEloLevelIconId}'`)
-            oldIcon?.remove()
+            levelContainer.querySelector(`[class*='-new-elo-level-icon']`)?.remove()
             levelContainer.prepend(icon)
         });
     } else if (lobby.pageType === "matchmaking") {
