@@ -63,12 +63,12 @@ const config = {
         html: {
             collapseWhitespace: true,
             removeComments: true,
-            removeRedundantAttributes: true,
+            removeRedundantAttributes: false,
             removeScriptTypeAttributes: true,
             removeStyleLinkTypeAttributes: true,
-            removeEmptyAttributes: true,
+            removeEmptyAttributes: false,
             removeOptionalTags: false,
-            minifyCSS: true,
+            minifyCSS: false,
             minifyJS: true,
             collapseBooleanAttributes: true,
             decodeEntities: true,
@@ -76,7 +76,7 @@ const config = {
             sortClassName: true
         },
         css: {
-            level: 1
+            level: 0
         },
         svg: {
             plugins: [
@@ -250,9 +250,17 @@ async function minifyHTMLFile(filePath) {
 function minifyCSSFile(filePath) {
     try {
         const css = fs.readFileSync(filePath, 'utf8');
-        const result = new CleanCSS(config.minifyOptions.css).minify(css);
-        if (result.errors.length > 0) return false;
-        fs.writeFileSync(filePath, result.styles);
+        const minified = css
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .replace(/\s+/g, ' ')
+            .replace(/\s*{\s*/g, '{')
+            .replace(/\s*}\s*/g, '}')
+            .replace(/\s*;\s*/g, ';')
+            .replace(/\s*:\s*/g, ':')
+            .replace(/\s*,\s*/g, ',')
+            .replace(/;}/g, '}')
+            .trim();
+        fs.writeFileSync(filePath, minified);
         return true;
     } catch (error) {
         log(`Error: ${filePath} - ${error.message}`, 'error');

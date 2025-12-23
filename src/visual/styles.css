@@ -262,7 +262,7 @@ body {
 .main-content {
     flex: 1;
     padding: 20px;
-    overflow-y: auto;
+    overflow-y: scroll;
     margin-left: 60px;
     box-sizing: border-box;
     position: relative;
@@ -277,7 +277,6 @@ body {
 
 .settings-category.active-category {
     display: block;
-    animation: fadeIn 0.3s ease;
 }
 
 .setting-item,
@@ -298,6 +297,7 @@ body {
 
 .setting-item > span {
     font-size: 14px;
+    flex-shrink: 0;
 }
 
 .setting-group .setting-item {
@@ -556,6 +556,8 @@ input:checked + .slider:after {
     -webkit-appearance: none;
     appearance: none;
     flex: 1;
+    min-width: 0;
+    max-width: 120px;
     height: 6px;
     background: #0a0a0a;
     border: 1px solid #242424;
@@ -572,12 +574,11 @@ input:checked + .slider:after {
     left: -2px;
     right: -2px;
     bottom: -7px;
-    background: conic-gradient(from var(--angle), #f50, #ff7300, #f90, #f50);
+    background: #f50;
     border-radius: 4px;
     z-index: -1;
     opacity: 0;
     transition: opacity 0.3s;
-    animation: 3s spin linear infinite;
     filter: blur(4px);
 }
 
@@ -642,7 +643,9 @@ input:checked + .slider:after {
     border: 1px solid #242424;
     border-radius: 6px;
     width: calc(25% - 6px);
+    min-width: 0;
     box-sizing: border-box;
+    overflow: hidden;
     transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
@@ -678,13 +681,19 @@ input:checked + .slider:after {
     color: #fff;
 }
 
-.map-cell input[type="text"] {
+.map-cell input:not([type="checkbox"]) {
     width: 100%;
+    min-width: 0;
     padding: 4px 6px;
     font-size: 10px;
     text-align: center;
     margin: 0;
     box-sizing: border-box;
+    line-height: 1.2;
+    background-color: #0a0a0a;
+    border: 1px solid #242424;
+    border-radius: 4px;
+    color: #fff;
 }
 
 .map-cell .switch {
