@@ -43,7 +43,7 @@
   "match_amount_desc": "Nombre de matchs récents à analyser pour les statistiques.",
   "quick_position_setup": "Config. rapide de position",
   "quick_position_setup_desc": "Permet d'envoyer un message sur une carte spécifique lors de sa sélection.",
-  "map_message_placeholder": "message...",
+  "map_message_placeholder": "message",
   "integrations": "Intégrations",
   "integrations_desc": "Ajoute des intégrations partenaires avec du contenu promotionnel.",
 

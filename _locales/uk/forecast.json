@@ -43,7 +43,7 @@
   "match_amount_desc": "Кількість останніх матчів для аналізу статистики.",
   "quick_position_setup": "Швидке налаштування позиції",
   "quick_position_setup_desc": "Дозволяє надсилати повідомлення на певній карті при її виборі.",
-  "map_message_placeholder": "повідомлення...",
+  "map_message_placeholder": "повідомлення",
   "integrations": "Інтеграції",
   "integrations_desc": "Додає партнерські інтеграції з рекламним контентом.",
 

@@ -43,7 +43,7 @@
   "match_amount_desc": "Liczba ostatnich meczów do analizy statystyk.",
   "quick_position_setup": "Szybka konfiguracja pozycji",
   "quick_position_setup_desc": "Pozwala wysłać wiadomość na określonej mapie po jej wybraniu.",
-  "map_message_placeholder": "wiadomość...",
+  "map_message_placeholder": "wiadomość",
   "integrations": "Integracje",
   "integrations_desc": "Dodaje integracje partnerskie z treściami promocyjnymi.",
 

@@ -43,7 +43,7 @@
   "match_amount_desc": "Number of recent matches to analyze for statistics.",
   "quick_position_setup": "Quick Position Setup",
   "quick_position_setup_desc": "Allows sending a specific message on a particular map when it's selected or picked. You can configure custom messages for each CS2 map.",
-  "map_message_placeholder": "message...",
+  "map_message_placeholder": "message",
   "integrations": "Integrations",
   "integrations_desc": "Adds partner integrations that may include promotional content. These integrations help the project grow and stay free for everyone.",
 

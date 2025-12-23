@@ -43,7 +43,7 @@
   "match_amount_desc": "Anzahl der letzten Spiele für die Statistikanalyse.",
   "quick_position_setup": "Schnelle Positionseinrichtung",
   "quick_position_setup_desc": "Ermöglicht das Senden einer Nachricht auf einer bestimmten Karte bei deren Auswahl.",
-  "map_message_placeholder": "Nachricht...",
+  "map_message_placeholder": "nachricht",
   "integrations": "Integrationen",
   "integrations_desc": "Fügt Partner-Integrationen mit Werbeinhalten hinzu. Diese helfen dem Projekt zu wachsen.",
 
