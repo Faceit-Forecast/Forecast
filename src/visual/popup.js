@@ -2,7 +2,7 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const isTest = false;
+const isTest = true;
 
 const BROWSER_TYPE = typeof browser === 'undefined' ? 'CHROMIUM' : 'FIREFOX';
 const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_overpass'];
@@ -75,6 +75,30 @@ const PatchNotesManager = {
         return content;
     },
 
+    sanitizeText(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
+    sanitizeHtml(html) {
+        const div = document.createElement('div');
+        div.innerHTML = html;
+
+        div.querySelectorAll('script').forEach(el => el.remove());
+
+        div.querySelectorAll('*').forEach(el => {
+            Array.from(el.attributes).forEach(attr => {
+                if (attr.name.startsWith('on') ||
+                    (attr.name === 'href' && attr.value.toLowerCase().startsWith('javascript:'))) {
+                    el.removeAttribute(attr.name);
+                }
+            });
+        });
+
+        return div.innerHTML;
+    },
+
     parse(content) {
         const patchNotes = [];
         const lines = content.split(/\r?\n/);
@@ -141,21 +165,27 @@ const PatchNotesManager = {
             const badgeClass = isReleased ? 'released' : 'upcoming';
             const badgeText = isReleased ? 'Released' : 'Upcoming';
 
+            const safeVersion = this.sanitizeText(note.version);
+            const safeTitle = this.sanitizeText(note.title);
+
             const imagesHtml = note.images.length > 0
-                ? `<div class="patch-note-images">${note.images.map(img =>
-                    `<img class="patch-note-image" src="${img.src}" alt="${img.alt}" loading="lazy">`
-                ).join('')}</div>`
+                ? `<div class="patch-note-images${note.images.length === 1 ? ' single' : ''}">${note.images
+                    .map(img => {
+                        const imgTag = `<img class="patch-note-image" src="${img.src}" alt="${this.sanitizeText(img.alt)}" loading="lazy">`;
+                        return this.sanitizeHtml(imgTag);
+                    })
+                    .join('')}</div>`
                 : '';
 
             const descriptionHtml = note.description.length > 0
-                ? `<ul class="patch-note-description">${note.description.map(item => `<li>${item}</li>`).join('')}</ul>`
+                ? `<ul class="patch-note-description">${note.description.map(item => `<li>${this.sanitizeText(item)}</li>`).join('')}</ul>`
                 : '';
 
             return `
                 <div class="patch-note">
                     <div class="patch-note-header">
-                        <span class="patch-note-version">${note.version}</span>
-                        <span class="patch-note-title">${note.title}</span>
+                        <span class="patch-note-version">${safeVersion}</span>
+                        <span class="patch-note-title">${safeTitle}</span>
                         <span class="patch-note-badge ${badgeClass}">${badgeText}</span>
                     </div>
                     ${descriptionHtml}
@@ -165,6 +195,73 @@ const PatchNotesManager = {
         }).join('');
 
         container.innerHTML = titleHtml + notesHtml;
+
+        container.querySelectorAll('.patch-note-image').forEach(img => {
+            img.addEventListener('click', () => this.openImageOverlay(img.src, img.alt));
+
+            img.addEventListener('error', function() {
+                if (!this.dataset.retried) {
+                    this.dataset.retried = 'true';
+                    const originalSrc = this.src;
+                    this.src = '';
+                    setTimeout(() => {
+                        this.src = originalSrc;
+                    }, 1000);
+                }
+            });
+        });
+    },
+
+    openImageOverlay(src, alt) {
+        const overlay = document.createElement('div');
+        overlay.className = 'patch-note-image-overlay';
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = alt;
+
+        overlay.appendChild(img);
+        document.body.appendChild(overlay);
+
+        let isZoomed = false;
+        let zoomLevel = 1;
+
+        img.onload = () => {
+            const displayedWidth = img.offsetWidth;
+            const displayedHeight = img.offsetHeight;
+            const naturalWidth = img.naturalWidth;
+            const naturalHeight = img.naturalHeight;
+
+            const scaleX = naturalWidth / displayedWidth;
+            const scaleY = naturalHeight / displayedHeight;
+            zoomLevel = Math.min(Math.max(scaleX, scaleY), 2.5);
+
+            img.style.setProperty('--zoom-level', zoomLevel);
+        };
+
+        img.addEventListener('mouseenter', () => {
+            if (isZoomed) return;
+            isZoomed = true;
+            img.classList.add('zoomed');
+        });
+
+        img.addEventListener('mousemove', (e) => {
+            if (!isZoomed) return;
+            const rect = img.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            img.style.transformOrigin = `${x}% ${y}%`;
+        });
+
+        overlay.addEventListener('mouseleave', () => {
+            isZoomed = false;
+            img.classList.remove('zoomed');
+            img.style.transformOrigin = 'center center';
+        });
+
+        overlay.addEventListener('click', () => {
+            overlay.remove();
+        });
     }
 };
 
@@ -325,9 +422,9 @@ const SettingsManager = {
         if (!rwsColoredStatsContainer) return;
 
         if (isEnabled) {
-            rwsColoredStatsContainer.classList.add('visible');
+            rwsColoredStatsContainer.classList.remove('hidden-cell');
         } else {
-            rwsColoredStatsContainer.classList.remove('visible');
+            rwsColoredStatsContainer.classList.add('hidden-cell');
         }
     },
 
@@ -538,9 +635,19 @@ const EventHandlers = {
         CS2_MAPS.forEach(map => {
             const enabledToggle = document.getElementById(`${map}Enabled`);
             if (enabledToggle) {
+                const mapCell = enabledToggle.closest('.map-cell');
+
+                if (mapCell && enabledToggle.checked) {
+                    mapCell.classList.add('enabled');
+                }
+
                 enabledToggle.addEventListener('change', async function () {
                     await SettingsManager.save({[`${map}Enabled`]: this.checked});
                     SettingsManager.updateMapSpecificVisibility(map, this.checked);
+
+                    if (mapCell) {
+                        mapCell.classList.toggle('enabled', this.checked);
+                    }
                 });
             }
 
@@ -582,6 +689,57 @@ const EventHandlers = {
                 }
             });
         });
+    },
+
+    setupTooltips() {
+        const infoButtons = document.querySelectorAll('.info-button');
+
+        infoButtons.forEach(button => {
+            const tooltip = button.parentElement?.querySelector('.info-tooltip')
+                         || button.nextElementSibling;
+            if (!tooltip) return;
+
+            const showTooltip = () => {
+                tooltip.style.visibility = 'hidden';
+                tooltip.style.opacity = '0';
+                tooltip.style.display = 'block';
+
+                const buttonRect = button.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const tooltipWidth = tooltipRect.width || 200;
+                const tooltipHeight = tooltipRect.height || 100;
+                const padding = 8;
+                const gap = 6;
+
+                let left = buttonRect.left + (buttonRect.width / 2) - (tooltipWidth / 2);
+                let top = buttonRect.bottom + gap;
+
+                if (top + tooltipHeight > window.innerHeight - padding) {
+                    top = buttonRect.top - tooltipHeight - gap;
+                }
+
+                if (left < padding) {
+                    left = padding;
+                }
+
+                if (left + tooltipWidth > window.innerWidth - padding) {
+                    left = window.innerWidth - tooltipWidth - padding;
+                }
+
+                if (top < padding) {
+                    top = padding;
+                }
+
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+                tooltip.style.display = '';
+                tooltip.style.visibility = '';
+                tooltip.style.opacity = '';
+            };
+
+            button.addEventListener('mouseenter', showTooltip);
+            button.parentElement?.addEventListener('mouseenter', showTooltip);
+        });
     }
 };
 
@@ -606,6 +764,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         EventHandlers.setupMainEventListeners();
         EventHandlers.setupQuickPositionEventListeners();
         EventHandlers.setupMatchHistoryEventListeners();
+        EventHandlers.setupTooltips();
 
     } catch (error) {
         console.error("Error during DOMContentLoaded:", error);

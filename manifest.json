@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",
@@ -82,6 +82,13 @@
         "src/visual/icons/logo128.png",
         "src/visual/icons/logo.svg",
         "src/visual/icons/rawlogo.svg",
+        "src/visual/icons/map_icon_de_dust2.svg",
+        "src/visual/icons/map_icon_de_mirage.svg",
+        "src/visual/icons/map_icon_de_nuke.svg",
+        "src/visual/icons/map_icon_de_ancient.svg",
+        "src/visual/icons/map_icon_de_train.svg",
+        "src/visual/icons/map_icon_de_inferno.svg",
+        "src/visual/icons/map_icon_de_overpass.svg",
         "src/visual/popup.html",
         "src/visual/popup.js",
         "src/visual/popup.styles"

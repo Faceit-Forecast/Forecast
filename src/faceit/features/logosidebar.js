@@ -33,9 +33,11 @@ const logoSidebarModule = new Module("logoSidebar", async () => {
 
         const img = document.createElement("img");
 
-        img.src = getSVGDataURI("src/visual/icons/logo.svg");
+        img.src = getSVGDataURI("src/visual/icons/rawlogo.svg");
         img.alt = "Forecast Logo";
         img.className = "fc-logo-image";
+        img.style.background = '#1c1c1c';
+        img.style.border = '1px solid rgb(255 106 0 / 42%)';
 
         gradientWrapper.appendChild(img);
         container.appendChild(gradientWrapper);

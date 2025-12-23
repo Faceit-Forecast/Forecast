@@ -22,7 +22,7 @@ async function setupPlayerCardMatchData(playerId, nickname, targetNode) {
     if (targetNode.querySelector("[class~=tableId]")) return null
     let htmlResource = getHtmlResource('src/visual/tables/player.html').cloneNode(true);
     htmlResource.querySelector('[class=player-name]').textContent = `Player Stats`
-    setupBrandIcon(htmlResource)
+    setupBrandIcon(htmlResource, 24, 24)
     appendTo(htmlResource, targetNode)
     let table = htmlResource.querySelector("[class~=player-table]")
     table.classList.add(tableId)
@@ -168,7 +168,7 @@ async function displayWinRates(matchDetails) {
         let innerNode = targetNode.querySelector('[class*=Overview__Stack]')
 
         let htmlResource = getHtmlResource('src/visual/tables/team.html').cloneNode(true)
-        setupBrandIcon(htmlResource)
+        setupBrandIcon(htmlResource, 24, 24)
 
         node.style.overflowBlock = 'unset';
         htmlResource.classList.add(teamTableNodeId)

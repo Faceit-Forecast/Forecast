@@ -77,8 +77,7 @@ const rankingModule = new Module("eloranking", async () => {
         appendTo(newNode, node);
         node.remove();
         newNode.classList.add(`forecast-statistic-table-${rankingModule.sessionId}`)
-        newNode.querySelector("div.level-progress-container > .flex-between > .brand-icon")
-            .appendChild(getHtmlResource("src/visual/icons/rawlogo.svg").cloneNode(true));
+        setupBrandIcon(newNode, 32, 32);
         await insertAllStatisticToNewTable(newNode);
     })
 })

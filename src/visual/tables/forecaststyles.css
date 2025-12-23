@@ -593,7 +593,7 @@ tr[class*=MatchHistoryTableRow] {
     align-items: center;
     position: relative;
     border-radius: 12px;
-    background: rgb(3, 3, 3);
+    background: #030303;
     border: 1px solid rgb(36, 36, 36);
     max-width: 600px;
     width: 100%;
@@ -696,7 +696,7 @@ tr[class*=MatchHistoryTableRow] {
     margin: 0;
     z-index: 2;
     position: relative;
-    font-size: 1rem;
+    font-size: 14px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
