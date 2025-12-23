@@ -311,22 +311,18 @@ const PatchNotesManager = {
                 let left = wrapperRect.left + (wrapperRect.width / 2) - (tooltipWidth / 2);
                 let top = wrapperRect.bottom + gap;
 
-                // Проверка выхода за нижнюю границу
                 if (top + tooltipHeight > window.innerHeight - padding) {
                     top = wrapperRect.top - tooltipHeight - gap;
                 }
 
-                // Проверка выхода за верхнюю границу
                 if (top < padding) {
                     top = padding;
                 }
 
-                // Проверка выхода за правую границу
                 if (left + tooltipWidth > window.innerWidth - padding) {
                     left = window.innerWidth - tooltipWidth - padding;
                 }
 
-                // Проверка выхода за левую границу
                 if (left < padding) {
                     left = padding;
                 }
