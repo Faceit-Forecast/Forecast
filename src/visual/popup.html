@@ -20,24 +20,54 @@
                 <div class="extension-title">FORECAST</div>
             </div>
             <div class="nav-tabs">
-                <button class="tab-button active" data-tab="general"><span>GENERAL</span></button>
-                <button class="tab-button" data-tab="features"><span>FEATURES</span></button>
-                <button class="tab-button" data-tab="about"><span>ABOUT</span></button>
-                <button class="tab-button" data-tab="donate"><span>DONATE</span></button>
+                <button class="tab-button active" data-tab="general"><span data-i18n="tab_general">GENERAL</span></button>
+                <button class="tab-button" data-tab="features"><span data-i18n="tab_features">FEATURES</span></button>
+                <button class="tab-button" data-tab="about"><span data-i18n="tab_about">ABOUT</span></button>
+                <button class="tab-button" data-tab="donate"><span data-i18n="tab_donate">DONATE</span></button>
             </div>
         </div>
 
         <div class="main-content">
             <div id="general" class="settings-category active-category">
                 <div class="setting-item">
-                    <label for="toggleExtension">Extension Status</label>
+                    <label for="toggleExtension" data-i18n="extension_status">Extension Status</label>
                     <label class="switch">
                         <input type="checkbox" id="toggleExtension" checked aria-label="Enable extension">
                         <span class="slider"></span>
                     </label>
                 </div>
-                <div class="description-box" id="patch-notes-container">
-                    <div class="patch-notes-loading">Loading patch notes...</div>
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <label data-i18n="language">Language</label>
+                        <div class="info-tooltip-wrapper">
+                            <div class="info-button" aria-label="Info">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                            </div>
+                            <div class="info-tooltip">
+                                <p data-i18n="language_desc">Select your preferred language for the extension interface.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <select id="languageSelect" class="language-select">
+                        <option value="en">English</option>
+                        <option value="ru">Русский</option>
+                        <option value="de">Deutsch</option>
+                        <option value="fr">Français</option>
+                        <option value="uk">Українська</option>
+                        <option value="pl">Polski</option>
+                    </select>
+                </div>
+                <div class="description-box patch-notes-collapsible" id="patch-notes-wrapper">
+                    <div class="patch-notes-header" id="patch-notes-toggle">
+                        <span class="patch-notes-title" data-i18n="release_notes">Release Notes</span>
+                        <span class="patch-notes-lang-badge">EN</span>
+                        <svg class="patch-notes-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                    <div class="patch-notes-content collapsed" id="patch-notes-container">
+                        <div class="patch-notes-loading">Loading patch notes...</div>
+                    </div>
                 </div>
             </div>
 
@@ -45,7 +75,7 @@
                 <div class="setting-group">
                     <div class="setting-item">
                         <div class="setting-header">
-                            <label for="matchhistory">Advanced Match History</label>
+                            <label for="matchhistory" data-i18n="advanced_match_history">Advanced Match History</label>
                             <div class="info-tooltip-wrapper">
                                 <div class="info-button" aria-label="Show more information">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -57,7 +87,7 @@
                                     </svg>
                                 </div>
                                 <div class="info-tooltip">
-                                    <p>Quick access to view the match scoreboard directly from the history.</p>
+                                    <p data-i18n="advanced_match_history_desc">Quick access to view the match scoreboard directly from the history.</p>
                                 </div>
                             </div>
                         </div>
@@ -70,13 +100,13 @@
                     <div class="nested-setting visible" id="matchHistorySettings">
                         <div class="settings-grid">
                             <div class="settings-cell">
-                                <span class="settings-cell-label">Elo History</span>
+                                <span class="settings-cell-label" data-i18n="elo_history">Elo History</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p>Displays elo delta between 2 related matches.</p>
+                                        <p data-i18n="elo_history_desc">Displays elo delta between 2 related matches.</p>
                                     </div>
                                 </div>
                                 <label class="switch">
@@ -85,13 +115,13 @@
                                 </label>
                             </div>
                             <div class="settings-cell">
-                                <span class="settings-cell-label">Match Counter</span>
+                                <span class="settings-cell-label" data-i18n="match_counter">Match Counter</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p>Displays match numbers for every 30th match.</p>
+                                        <p data-i18n="match_counter_desc">Displays match numbers for every 30th match.</p>
                                     </div>
                                 </div>
                                 <label class="switch">
@@ -100,13 +130,13 @@
                                 </label>
                             </div>
                             <div class="settings-cell">
-                                <span class="settings-cell-label">KDA Color</span>
+                                <span class="settings-cell-label" data-i18n="kda_color">KDA Color</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p>Colors KDA by k/d ratio. (k/d ≥ 1 = green)</p>
+                                        <p data-i18n="kda_color_desc">Colors KDA by k/d ratio. (k/d ≥ 1 = green)</p>
                                     </div>
                                 </div>
                                 <label class="switch">
@@ -115,13 +145,13 @@
                                 </label>
                             </div>
                             <div class="settings-cell">
-                                <span class="settings-cell-label">ADR Color</span>
+                                <span class="settings-cell-label" data-i18n="adr_color">ADR Color</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p>Colors ADR statistic. (adr ≥ 75 = green)</p>
+                                        <p data-i18n="adr_color_desc">Colors ADR statistic. (adr ≥ 75 = green)</p>
                                     </div>
                                 </div>
                                 <label class="switch">
@@ -130,13 +160,13 @@
                                 </label>
                             </div>
                             <div class="settings-cell">
-                                <span class="settings-cell-label">K/D Color</span>
+                                <span class="settings-cell-label" data-i18n="kd_color">K/D Color</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p>Colors K/D statistic. (k/d ≥ 1 = green)</p>
+                                        <p data-i18n="kd_color_desc">Colors K/D statistic. (k/d ≥ 1 = green)</p>
                                     </div>
                                 </div>
                                 <label class="switch">
@@ -145,13 +175,13 @@
                                 </label>
                             </div>
                             <div class="settings-cell">
-                                <span class="settings-cell-label">K/R Color</span>
+                                <span class="settings-cell-label" data-i18n="kr_color">K/R Color</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p>Colors K/R statistic. (k/r ≥ 0.7 = green)</p>
+                                        <p data-i18n="kr_color_desc">Colors K/R statistic. (k/r ≥ 0.7 = green)</p>
                                     </div>
                                 </div>
                                 <label class="switch">
@@ -166,7 +196,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p>Adds RWS column to match history popup.</p>
+                                        <p data-i18n="rws_desc">Adds RWS column to match history popup.</p>
                                     </div>
                                 </div>
                                 <label class="switch">
@@ -175,13 +205,13 @@
                                 </label>
                             </div>
                             <div class="settings-cell hidden-cell" id="rwsColoredStatsContainer">
-                                <span class="settings-cell-label">RWS Color</span>
+                                <span class="settings-cell-label" data-i18n="rws_color">RWS Color</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p>Colors RWS statistic. (RWS > 10 = green)</p>
+                                        <p data-i18n="rws_color_desc">Colors RWS statistic. (RWS > 10 = green)</p>
                                     </div>
                                 </div>
                                 <label class="switch">
@@ -196,7 +226,7 @@
                 <div class="setting-group">
                     <div class="setting-item">
                         <div class="setting-header">
-                            <label for="eloranking">New Elo Rankings</label>
+                            <label for="eloranking" data-i18n="new_elo_rankings">New Elo Rankings</label>
                             <div class="info-tooltip-wrapper">
                                 <div class="info-button" aria-label="Show more information">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -208,8 +238,7 @@
                                     </svg>
                                 </div>
                                 <div class="info-tooltip">
-                                    <p>It adds extra rating levels for a more accurate reflection of player skill at higher ranks.</p>
-                                    <p>It expands the standard 10-level Faceit system, making the ranking more detailed.</p>
+                                    <p data-i18n="new_elo_rankings_desc">It adds extra rating levels for a more accurate reflection of player skill at higher ranks. It expands the standard 10-level Faceit system, making the ranking more detailed.</p>
                                 </div>
                             </div>
                         </div>
@@ -223,7 +252,7 @@
                 <div class="setting-group">
                     <div class="setting-item">
                         <div class="setting-header">
-                            <label for="matchroom">Extended in-match info</label>
+                            <label for="matchroom" data-i18n="matchroom_stats">Extended in-match info</label>
                             <div class="info-tooltip-wrapper">
                                 <div class="info-button" aria-label="Show more information">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -235,8 +264,7 @@
                                     </svg>
                                 </div>
                                 <div class="info-tooltip">
-                                    <p>It shows extended info about teams and individual players in the match room, calculating the number of games and win percentage on each map.</p>
-                                    <p>This helps better assess team strengths on specific maps before the game starts.</p>
+                                    <p data-i18n="matchroom_stats_desc">It shows extended info about teams and individual players in the match room, calculating the number of games and win percentage on each map.</p>
                                 </div>
                             </div>
                         </div>
@@ -249,7 +277,7 @@
                     <div class="nested-setting visible" id="analyzeLimit">
                         <div class="setting-item">
                             <div class="setting-header">
-                                <label for="rangeSlider">Match Amount</label>
+                                <label for="rangeSlider" data-i18n="match_amount">Match Amount</label>
                             </div>
                             <div class="slider-controls">
                                 <input type="range" id="rangeSlider" class="range-slider" min="5" max="100" value="30" aria-label="Number of matches to analyze">
@@ -263,7 +291,7 @@
                     <div class="setting-item">
                         <div class="setting-header">
                             <div>
-                                <label for="poscatcher">Quick Position Setup</label>
+                                <label for="poscatcher" data-i18n="quick_position_setup">Quick Position Setup</label>
                                 <span class="beta-badge" style="display: none;">Beta</span>
                             </div>
                             <div class="info-tooltip-wrapper">
@@ -277,8 +305,7 @@
                                     </svg>
                                 </div>
                                 <div class="info-tooltip">
-                                    <p>Allows sending a specific message on a particular map when it's selected or picked.</p>
-                                    <p>You can configure custom messages for each CS2 map that will be automatically sent when the map is chosen during match selection.</p>
+                                    <p data-i18n="quick_position_setup_desc">Allows sending a specific message on a particular map when it's selected or picked.</p>
                                 </div>
                             </div>
                         </div>
@@ -293,7 +320,7 @@
                             <div class="map-cell">
                                 <img class="map-icon" src="icons/map_icon_de_dust2.svg" alt="Dust 2">
                                 <span class="map-cell-name">DUST 2</span>
-                                <input type="text" id="de_dust2Message" placeholder="message" maxlength="16" aria-label="Message for Dust 2">
+                                <input type="text" id="de_dust2Message" placeholder="message..." data-i18n-placeholder="map_message_placeholder" maxlength="16" aria-label="Message for Dust 2">
                                 <label class="switch map-switch">
                                     <input type="checkbox" id="de_dust2Enabled" aria-label="Enable Dust 2">
                                     <span class="slider"></span>
@@ -302,7 +329,7 @@
                             <div class="map-cell">
                                 <img class="map-icon" src="icons/map_icon_de_mirage.svg" alt="Mirage">
                                 <span class="map-cell-name">MIRAGE</span>
-                                <input type="text" id="de_mirageMessage" placeholder="message" maxlength="16" aria-label="Message for Mirage">
+                                <input type="text" id="de_mirageMessage" placeholder="message..." data-i18n-placeholder="map_message_placeholder" maxlength="16" aria-label="Message for Mirage">
                                 <label class="switch map-switch">
                                     <input type="checkbox" id="de_mirageEnabled" aria-label="Enable Mirage">
                                     <span class="slider"></span>
@@ -311,7 +338,7 @@
                             <div class="map-cell">
                                 <img class="map-icon" src="icons/map_icon_de_nuke.svg" alt="Nuke">
                                 <span class="map-cell-name">NUKE</span>
-                                <input type="text" id="de_nukeMessage" placeholder="message" maxlength="16" aria-label="Message for Nuke">
+                                <input type="text" id="de_nukeMessage" placeholder="message..." data-i18n-placeholder="map_message_placeholder" maxlength="16" aria-label="Message for Nuke">
                                 <label class="switch map-switch">
                                     <input type="checkbox" id="de_nukeEnabled" aria-label="Enable Nuke">
                                     <span class="slider"></span>
@@ -320,7 +347,7 @@
                             <div class="map-cell">
                                 <img class="map-icon" src="icons/map_icon_de_ancient.svg" alt="Ancient">
                                 <span class="map-cell-name">ANCIENT</span>
-                                <input type="text" id="de_ancientMessage" placeholder="message" maxlength="16" aria-label="Message for Ancient">
+                                <input type="text" id="de_ancientMessage" placeholder="message..." data-i18n-placeholder="map_message_placeholder" maxlength="16" aria-label="Message for Ancient">
                                 <label class="switch map-switch">
                                     <input type="checkbox" id="de_ancientEnabled" aria-label="Enable Ancient">
                                     <span class="slider"></span>
@@ -329,7 +356,7 @@
                             <div class="map-cell">
                                 <img class="map-icon" src="icons/map_icon_de_train.svg" alt="Train">
                                 <span class="map-cell-name">TRAIN</span>
-                                <input type="text" id="de_trainMessage" placeholder="message" maxlength="16" aria-label="Message for Train">
+                                <input type="text" id="de_trainMessage" placeholder="message..." data-i18n-placeholder="map_message_placeholder" maxlength="16" aria-label="Message for Train">
                                 <label class="switch map-switch">
                                     <input type="checkbox" id="de_trainEnabled" aria-label="Enable Train">
                                     <span class="slider"></span>
@@ -338,7 +365,7 @@
                             <div class="map-cell">
                                 <img class="map-icon" src="icons/map_icon_de_inferno.svg" alt="Inferno">
                                 <span class="map-cell-name">INFERNO</span>
-                                <input type="text" id="de_infernoMessage" placeholder="message" maxlength="16" aria-label="Message for Inferno">
+                                <input type="text" id="de_infernoMessage" placeholder="message..." data-i18n-placeholder="map_message_placeholder" maxlength="16" aria-label="Message for Inferno">
                                 <label class="switch map-switch">
                                     <input type="checkbox" id="de_infernoEnabled" aria-label="Enable Inferno">
                                     <span class="slider"></span>
@@ -347,7 +374,7 @@
                             <div class="map-cell">
                                 <img class="map-icon" src="icons/map_icon_de_overpass.svg" alt="Overpass">
                                 <span class="map-cell-name">OVERPASS</span>
-                                <input type="text" id="de_overpassMessage" placeholder="message" maxlength="16" aria-label="Message for Overpass">
+                                <input type="text" id="de_overpassMessage" placeholder="message..." data-i18n-placeholder="map_message_placeholder" maxlength="16" aria-label="Message for Overpass">
                                 <label class="switch map-switch">
                                     <input type="checkbox" id="de_overpassEnabled" aria-label="Enable Overpass">
                                     <span class="slider"></span>
@@ -360,7 +387,7 @@
                 <div class="setting-group">
                     <div class="setting-item">
                         <div class="setting-header">
-                            <label for="integrations">Integrations</label>
+                            <label for="integrations" data-i18n="integrations">Integrations</label>
                             <div class="info-tooltip-wrapper">
                                 <div class="info-button" aria-label="Show more information">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -372,8 +399,7 @@
                                     </svg>
                                 </div>
                                 <div class="info-tooltip">
-                                    <p>It adds partner integrations that may include promotional content.</p>
-                                    <p>These integrations help the project grow and stay free for everyone.</p>
+                                    <p data-i18n="integrations_desc">It adds partner integrations that may include promotional content.</p>
                                 </div>
                             </div>
                         </div>
@@ -388,19 +414,19 @@
             <div id="about" class="settings-category">
                 <div class="about-grid">
                     <div class="about-cell">
-                        <span class="about-cell-label">Version</span>
+                        <span class="about-cell-label" data-i18n="version">Version</span>
                         <span class="version-badge" id="version">1.0.0</span>
                     </div>
                     <div class="about-cell">
-                        <span class="about-cell-label">Author</span>
+                        <span class="about-cell-label" data-i18n="author">Author</span>
                         <span class="author-badge" id="author">TerraMiner</span>
                     </div>
                     <div class="about-cell">
-                        <span class="about-cell-label">Online</span>
+                        <span class="about-cell-label" data-i18n="online">Online</span>
                         <span class="online-badge" id="online">0</span>
                     </div>
                     <div class="about-cell">
-                        <span class="about-cell-label">Email</span>
+                        <span class="about-cell-label" data-i18n="email">Email</span>
                         <button id="copyButton" class="about-button" aria-label="Copy email address">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
                                 <path fill="#4caf50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z"/>
@@ -410,7 +436,7 @@
                                 <path fill="#fbc02d" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0 C43.076,8,45,9.924,45,12.298z"/>
                             </svg>
                         </button>
-                        <div id="notification" class="notification">Copied!</div>
+                        <div id="notification" class="notification" data-i18n="copied">Copied!</div>
                     </div>
                     <div class="about-cell">
                         <span class="about-cell-label">GitHub</span>
@@ -455,8 +481,7 @@
                     </div>
                 </div>
                 <div class="description-box">
-                    <p>Like this extension? <br> Support the developer with a small donation!</p>
-                    <p>Your help keeps it free and regularly updated.</p>
+                    <p data-i18n-html="donate_description">Like this extension?<br>Support the developer with a small donation! Your help keeps it free and regularly updated.</p>
                 </div>
             </div>
         </div>

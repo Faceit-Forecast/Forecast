@@ -99,6 +99,21 @@ async function getSettingValue(name, def) {
     });
 }
 
+async function setSettingValue(name, value) {
+    return new Promise((resolve, reject) => {
+        const storageAPI = browserType === FIREFOX ? browser.storage.sync : chrome.storage.sync;
+
+        storageAPI.set({[name]: value}, () => {
+            const errorMessage = browserType === FIREFOX ? browser.runtime.lastError : chrome.runtime.lastError;
+            if (errorMessage) {
+                reject(new Error(errorMessage));
+            } else {
+                resolve(value);
+            }
+        });
+    });
+}
+
 function parseNumber(text, isFloat = false) {
     if (!text) return NaN;
     const cleaned = text.replace(/[^\d.,-]/g, '').replace(',', '.');

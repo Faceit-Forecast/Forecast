@@ -6,6 +6,22 @@ const isTest = true;
 
 const BROWSER_TYPE = typeof browser === 'undefined' ? 'CHROMIUM' : 'FIREFOX';
 const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_overpass'];
+
+const PATCH_NOTES_URL = 'https://raw.githubusercontent.com/TerraMiner/Forecast/master/patch-notes.md';
+const PATCH_NOTES_CACHE_KEY = 'patch-notes-cache';
+const PATCH_NOTES_CACHE_TTL = 1000 * 60 * 30;
+
+const SUPPORTED_LANGUAGES = ['en', 'ru', 'de', 'fr', 'uk', 'pl'];
+const DEFAULT_LANGUAGE = 'en';
+const LANGUAGE_NAMES = {
+    en: "English",
+    ru: "Русский",
+    de: "Deutsch",
+    fr: "Français",
+    uk: "Українська",
+    pl: "Polski"
+};
+
 const TAB_LABELS = {
     "general": "General",
     "features": "Features",
@@ -13,9 +29,65 @@ const TAB_LABELS = {
     "donate": "Donate"
 };
 
-const PATCH_NOTES_URL = 'https://raw.githubusercontent.com/TerraMiner/Forecast/master/patch-notes.md';
-const PATCH_NOTES_CACHE_KEY = 'patch-notes-cache';
-const PATCH_NOTES_CACHE_TTL = 1000 * 60 * 30;
+let translations = {};
+let currentLanguage = DEFAULT_LANGUAGE;
+
+function detectBrowserLanguage() {
+    const browserLang = navigator.language?.split('-')[0] || navigator.userLanguage?.split('-')[0];
+    return SUPPORTED_LANGUAGES.includes(browserLang) ? browserLang : DEFAULT_LANGUAGE;
+}
+
+async function loadTranslationsFromFile(lang) {
+    const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
+
+    try {
+        const url = runtime.getURL(`_locales/${lang}/forecast.json`);
+        const response = await fetch(url);
+        if (response.ok) {
+            translations[lang] = await response.json();
+        }
+    } catch (e) {
+        console.error("Failed to load translations for " + lang, e);
+    }
+
+    if (lang !== DEFAULT_LANGUAGE && !translations[DEFAULT_LANGUAGE]) {
+        try {
+            const fallbackUrl = runtime.getURL(`_locales/${DEFAULT_LANGUAGE}/forecast.json`);
+            const fallbackResponse = await fetch(fallbackUrl);
+            if (fallbackResponse.ok) {
+                translations[DEFAULT_LANGUAGE] = await fallbackResponse.json();
+            }
+        } catch (e) {
+            console.error("Failed to load fallback translations", e);
+        }
+    }
+}
+
+function t(key, fallback = null) {
+    const langTranslations = translations[currentLanguage] || translations[DEFAULT_LANGUAGE];
+    const result = langTranslations?.[key];
+    if (result !== undefined) return result;
+    if (currentLanguage !== DEFAULT_LANGUAGE) {
+        const defaultResult = translations[DEFAULT_LANGUAGE]?.[key];
+        if (defaultResult !== undefined) return defaultResult;
+    }
+    return fallback !== null ? fallback : key;
+}
+
+function localizeDocument() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = t(key, el.textContent);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = t(key, el.placeholder);
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-html');
+        el.innerHTML = t(key, el.innerHTML);
+    });
+}
 
 const PatchNotesManager = {
     currentVersion: null,
@@ -36,7 +108,7 @@ const PatchNotesManager = {
             this.render(container, patchNotes);
         } catch (error) {
             console.error('Failed to load patch notes:', error);
-            container.innerHTML = '<div class="patch-notes-error">Failed to load patch notes</div>';
+            container.innerHTML = `<div class="patch-notes-error">${t('failed_load_patch_notes')}</div>`;
         }
     },
 
@@ -154,16 +226,18 @@ const PatchNotesManager = {
 
     render(container, patchNotes) {
         if (patchNotes.length === 0) {
-            container.innerHTML = '<div class="patch-notes-error">No patch notes available</div>';
+            container.innerHTML = `<div class="patch-notes-error">${t('no_patch_notes')}</div>`;
             return;
         }
 
-        const titleHtml = '<div class="patch-notes-title">Release Notes</div>';
+        const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
+        const loadingSvgUrl = runtime.getURL('src/visual/icons/loading.svg');
+        const loadedSvgUrl = runtime.getURL('src/visual/icons/loaded.svg');
 
         const notesHtml = patchNotes.map(note => {
             const isReleased = this.compareVersions(this.currentVersion, note.version) >= 0;
-            const badgeClass = isReleased ? 'released' : 'upcoming';
-            const badgeText = isReleased ? 'Released' : 'Upcoming';
+            const tooltipText = isReleased ? t('update_installed') : t('update_pending_review');
+            const iconUrl = isReleased ? loadedSvgUrl : loadingSvgUrl;
 
             const safeVersion = this.sanitizeText(note.version);
             const safeTitle = this.sanitizeText(note.title);
@@ -186,7 +260,10 @@ const PatchNotesManager = {
                     <div class="patch-note-header">
                         <span class="patch-note-version">${safeVersion}</span>
                         <span class="patch-note-title">${safeTitle}</span>
-                        <span class="patch-note-badge ${badgeClass}">${badgeText}</span>
+                        <div class="info-tooltip-wrapper patch-note-status-icon">
+                            <img src="${iconUrl}" width="18" height="18" alt="">
+                            <span class="info-tooltip">${tooltipText}</span>
+                        </div>
                     </div>
                     ${descriptionHtml}
                     ${imagesHtml}
@@ -194,7 +271,7 @@ const PatchNotesManager = {
             `;
         }).join('');
 
-        container.innerHTML = titleHtml + notesHtml;
+        container.innerHTML = notesHtml;
 
         container.querySelectorAll('.patch-note-image').forEach(img => {
             img.addEventListener('click', () => this.openImageOverlay(img.src, img.alt));
@@ -209,6 +286,59 @@ const PatchNotesManager = {
                     }, 1000);
                 }
             });
+        });
+
+        this.setupStatusTooltips(container);
+    },
+
+    setupStatusTooltips(container) {
+        container.querySelectorAll('.patch-note-status-icon').forEach(wrapper => {
+            const tooltip = wrapper.querySelector('.info-tooltip');
+            if (!tooltip) return;
+
+            const showTooltip = () => {
+                tooltip.style.visibility = 'hidden';
+                tooltip.style.opacity = '0';
+                tooltip.style.display = 'block';
+
+                const wrapperRect = wrapper.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const tooltipWidth = tooltipRect.width || 200;
+                const tooltipHeight = tooltipRect.height || 60;
+                const padding = 8;
+                const gap = 6;
+
+                let left = wrapperRect.left + (wrapperRect.width / 2) - (tooltipWidth / 2);
+                let top = wrapperRect.bottom + gap;
+
+                // Проверка выхода за нижнюю границу
+                if (top + tooltipHeight > window.innerHeight - padding) {
+                    top = wrapperRect.top - tooltipHeight - gap;
+                }
+
+                // Проверка выхода за верхнюю границу
+                if (top < padding) {
+                    top = padding;
+                }
+
+                // Проверка выхода за правую границу
+                if (left + tooltipWidth > window.innerWidth - padding) {
+                    left = window.innerWidth - tooltipWidth - padding;
+                }
+
+                // Проверка выхода за левую границу
+                if (left < padding) {
+                    left = padding;
+                }
+
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+                tooltip.style.display = '';
+                tooltip.style.visibility = '';
+                tooltip.style.opacity = '';
+            };
+
+            wrapper.addEventListener('mouseenter', showTooltip);
         });
     },
 
@@ -480,7 +610,8 @@ const UIUtils = {
 
         tabButtons.forEach(button => {
             const tabName = button.dataset.tab;
-            button.innerHTML = `<span>${TAB_LABELS[tabName] || tabName}</span>`;
+            const translationKey = `tab_${tabName}`;
+            button.innerHTML = `<span>${t(translationKey, TAB_LABELS[tabName] || tabName)}</span>`;
         });
 
         tabButtons.forEach(button => {
@@ -600,6 +731,19 @@ const EventHandlers = {
         }
 
         this.setupCopyButton();
+        this.setupPatchNotesToggle();
+    },
+
+    setupPatchNotesToggle() {
+        const toggle = document.getElementById('patch-notes-toggle');
+        const content = document.getElementById('patch-notes-container');
+
+        if (toggle && content) {
+            toggle.addEventListener('click', () => {
+                toggle.classList.toggle('expanded');
+                content.classList.toggle('collapsed');
+            });
+        }
     },
 
     setupCopyButton() {
@@ -750,8 +894,60 @@ window.addEventListener('message', (event) => {
     }
 }, false);
 
+async function initLanguage() {
+    const storageAPI = BROWSER_TYPE === 'FIREFOX' ? browser.storage.sync : chrome.storage.sync;
+    return new Promise((resolve) => {
+        storageAPI.get(['language'], async (result) => {
+            if (result.language && SUPPORTED_LANGUAGES.includes(result.language)) {
+                currentLanguage = result.language;
+            } else {
+                currentLanguage = detectBrowserLanguage();
+                storageAPI.set({language: currentLanguage});
+            }
+            await loadTranslationsFromFile(currentLanguage);
+            resolve(currentLanguage);
+        });
+    });
+}
+
+async function setLanguage(lang) {
+    if (!SUPPORTED_LANGUAGES.includes(lang)) {
+        lang = DEFAULT_LANGUAGE;
+    }
+    currentLanguage = lang;
+    const storageAPI = BROWSER_TYPE === 'FIREFOX' ? browser.storage.sync : chrome.storage.sync;
+    storageAPI.set({language: lang});
+    await loadTranslationsFromFile(lang);
+    localizeDocument();
+    updateTabs();
+    await PatchNotesManager.loadAndDisplay();
+}
+
+function updateTabs() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        const tabName = button.dataset.tab;
+        const translationKey = `tab_${tabName}`;
+        button.innerHTML = `<span>${t(translationKey, TAB_LABELS[tabName] || tabName)}</span>`;
+    });
+}
+
+function setupLanguageSelector() {
+    const languageSelect = document.getElementById('languageSelect');
+    if (!languageSelect) return;
+
+    languageSelect.value = currentLanguage;
+
+    languageSelect.addEventListener('change', async (e) => {
+        await setLanguage(e.target.value);
+    });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     try {
+        await initLanguage();
+        localizeDocument();
+
         await Promise.all([
             SettingsManager.load(),
             UIUtils.loadManifestInfo(),
@@ -765,6 +961,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         EventHandlers.setupQuickPositionEventListeners();
         EventHandlers.setupMatchHistoryEventListeners();
         EventHandlers.setupTooltips();
+        setupLanguageSelector();
 
     } catch (error) {
         console.error("Error during DOMContentLoaded:", error);

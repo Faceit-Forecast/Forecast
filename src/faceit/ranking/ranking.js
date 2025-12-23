@@ -74,6 +74,7 @@ const rankingModule = new Module("eloranking", async () => {
     doAfterStatisticNodeAppear(async (node) => {
         node.parentElement.querySelector(`[class*=forecast-statistic-table]`)?.remove()
         let newNode = getHtmlResource("src/visual/tables/level-progress-table.html").cloneNode(true)
+        localizeHtmlResource(newNode);
         appendTo(newNode, node);
         node.remove();
         newNode.classList.add(`forecast-statistic-table-${rankingModule.sessionId}`)
@@ -100,7 +101,9 @@ async function insertAllStatisticToNewTable(table) {
     let levelRanges = gameLevelRanges[gameType];
 
     table.querySelector("[class*=elo-need-to-reach]").innerText = `${currentLevel === levelRanges.length ? "" : levelRanges[currentLevel].min - elo}`
-    table.querySelector("[class*=elo-need-to-reach-text]").innerText = currentLevel === levelRanges.length ? "You reached max level!" : `Points needed to reach level ${currentLevel + 1}`;
+    table.querySelector("[class*=elo-need-to-reach-text]").innerText = currentLevel === levelRanges.length
+        ? t("max_level_reached", "You reached max level!")
+        : `${t("points_needed", "Points needed to reach level")} ${currentLevel + 1}`;
 
     for (let level = 1; level <= levelRanges.length; level++) {
         const levelNode = table.querySelector(`[class*=level-node-${level}]`);

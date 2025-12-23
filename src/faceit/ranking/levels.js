@@ -584,6 +584,7 @@ const newLevelsModule = new Module("eloranking", async () => {
         if (!uniqueCheck()) {
             node.parentElement.style.width = "560px";
             let newTable = getHtmlResource("src/visual/tables/skill-levels-info-table.html").cloneNode(true)
+            localizeHtmlResource(newTable);
             newTable.id = levelInfoTableId;
             let challengerNode = newTable.querySelector("[class*=challengerinfos-icon]");
             let challengerIcon = getHtmlResource("src/visual/tables/levels/challenger.html").cloneNode(true).firstChild;
@@ -596,7 +597,7 @@ const newLevelsModule = new Module("eloranking", async () => {
                 let levelIcon = getLevelIcon(level).firstChild;
                 levelIcon.style.scale = "1.15";
                 const {min, max} = levelRanges[level - 1];
-                levelNode.querySelector("[class='levelinfos-name']").innerText = `Level ${level}`;
+                levelNode.querySelector("[class='levelinfos-name']").innerText = `${t("level", "Level")} ${level}`;
                 levelNode.querySelector("[class=levelinfos-range]").innerText = level === 20 ? `(${min}+)` : `(${min} - ${max})`;
                 levelOldIconNode.appendChild(levelIcon);
             }

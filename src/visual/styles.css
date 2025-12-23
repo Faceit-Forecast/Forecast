@@ -332,7 +332,6 @@ body {
     color: #777;
     cursor: pointer;
     padding: 5px;
-    margin-left: 5px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -459,6 +458,42 @@ input[type="text"]:focus {
     opacity: 0;
     width: 0;
     height: 0;
+}
+
+.language-select {
+    background-color: #0a0a0a;
+    border: 1px solid #242424;
+    border-radius: 4px;
+    color: #fff;
+    padding: 6px 24px 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    min-width: 110px;
+}
+
+.language-select:hover {
+    border-color: #ff7300;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ff7300' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.language-select:focus {
+    border-color: #ff7300;
+    box-shadow: 0 0 0 1px rgba(255, 115, 0, 0.3);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ff7300' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.language-select option {
+    background-color: #0a0a0a;
+    color: #fff;
+    padding: 8px 12px;
 }
 
 .slider {
@@ -1025,7 +1060,6 @@ input:checked + .slider:after {
     color: #777;
     cursor: default;
     padding: 5px;
-    margin-left: 10px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1102,19 +1136,64 @@ input:checked + .slider:after {
     margin-bottom: 3px;
 }
 
-#patch-notes-container {
-    padding: 15px;
+.patch-notes-collapsible {
+    padding: 0;
+}
+
+.patch-notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.patch-notes-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .patch-notes-title {
-    text-align: center;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     color: #fff;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(36, 36, 36, 0.5);
     letter-spacing: 0.5px;
+    flex: 1;
+}
+
+.patch-notes-lang-badge {
+    background-color: rgba(255, 115, 0, 0.2);
+    color: #ff7300;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 8px;
+}
+
+.patch-notes-chevron {
+    color: #888;
+    transition: transform 0.3s ease;
+}
+
+.patch-notes-header.expanded .patch-notes-chevron {
+    transform: rotate(180deg);
+}
+
+.patch-notes-content {
+    padding: 15px;
+    transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+}
+
+.patch-notes-content.collapsed {
+    max-height: 0;
+    padding: 0 15px;
+    opacity: 0;
+    overflow: hidden;
+}
+
+#patch-notes-container {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .patch-notes-loading {
@@ -1161,23 +1240,11 @@ input:checked + .slider:after {
     flex: 1;
 }
 
-.patch-note-badge {
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #fff;
+.patch-note-status-icon {
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
-.patch-note-badge.released {
-    background: #047a47;
-}
-
-.patch-note-badge.upcoming {
-    background: #f50;
-}
 
 .patch-note-description {
     color: #aaa;

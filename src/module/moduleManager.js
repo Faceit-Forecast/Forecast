@@ -21,6 +21,7 @@ async function initExtension() {
     await initializeMatchHistoryCache();
     await loadMatchHistoryCache();
     await resourcesModule.produceOf("load");
+    await i18nModule.produceOf("load");
 
     for (let lobbyModule of lobbyModules) {
         lobbyModule.isEnabled = await isSettingEnabled(lobbyModule.module.id, lobbyModule.isEnabledByDefault);

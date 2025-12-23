@@ -21,7 +21,7 @@ async function setupPlayerCardMatchData(playerId, nickname, targetNode) {
     let tableId = `session-${matchRoomModule.sessionId}-player-table-${playerId}`
     if (targetNode.querySelector("[class~=tableId]")) return null
     let htmlResource = getHtmlResource('src/visual/tables/player.html').cloneNode(true);
-    htmlResource.querySelector('[class=player-name]').textContent = `Player Stats`
+    htmlResource.querySelector('[class=player-name]').textContent = t('player_stats', 'Player Stats')
     setupBrandIcon(htmlResource, 24, 24)
     appendTo(htmlResource, targetNode)
     let table = htmlResource.querySelector("[class~=player-table]")
@@ -96,9 +96,10 @@ async function findUserCard(nickname, callback) {
 }
 
 
-async function calculateStats(team, playerId, nickname, matchAmount) {
+async function calculateStats(team, playerId, matchAmount) {
     let gameType = extractGameType("cs2")
     let data = await fetchPlayerInGameStats(playerId, gameType, matchAmount);
+    let nickname = (await fetchPlayerStatsById(playerId))['nickname']
 
     if (!data.items || data.items.length === 0) {
         return;
@@ -146,10 +147,10 @@ async function displayWinRates(matchDetails) {
     const matchAmount = await getSettingValue('sliderValue',30);
 
     const team1Promises = team1["roster"].map(player =>
-        calculateStats(`${team1.name}$roster1`, player["player_id"], player["nickname"], matchAmount)
+        calculateStats(`${team1.name}$roster1`, player["player_id"], matchAmount)
     );
     const team2Promises = team2["roster"].map(player =>
-        calculateStats(`${team2.name}$roster2`, player["player_id"], player["nickname"], matchAmount)
+        calculateStats(`${team2.name}$roster2`, player["player_id"], matchAmount)
     );
 
     await Promise.all([...team1Promises, ...team2Promises]);

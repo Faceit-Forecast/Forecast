@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.7.5",
+  "version": "1.7.4",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",
@@ -31,6 +31,7 @@
         "src/module/observer/observe-handler.js",
         "src/module/module.js",
         "src/faceit/resources/resources.js",
+        "src/utils/i18n.js",
         "src/faceit/room/matchroom.js",
         "src/faceit/poscatcher/poscatch.js",
         "src/faceit/history/matchhistorycache.js",
@@ -49,6 +50,12 @@
     {
       "resources": [
         "patch-notes.md",
+        "_locales/en/forecast.json",
+        "_locales/ru/forecast.json",
+        "_locales/de/forecast.json",
+        "_locales/fr/forecast.json",
+        "_locales/uk/forecast.json",
+        "_locales/pl/forecast.json",
         "src/visual/tables/forecaststyles.css",
         "src/visual/tables/team.html",
         "src/visual/tables/match-history-popup.html",
@@ -82,6 +89,8 @@
         "src/visual/icons/logo128.png",
         "src/visual/icons/logo.svg",
         "src/visual/icons/rawlogo.svg",
+        "src/visual/icons/loading.svg",
+        "src/visual/icons/loaded.svg",
         "src/visual/icons/map_icon_de_dust2.svg",
         "src/visual/icons/map_icon_de_mirage.svg",
         "src/visual/icons/map_icon_de_nuke.svg",
