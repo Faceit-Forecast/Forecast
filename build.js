@@ -14,7 +14,12 @@ const config = {
     bundleJS: true,
     bundledFileName: 'forecast.js',
     excludeFromBundle: ['src/visual/popup.js'],
-    additionalIncludes: ['_locales', 'LICENSE', 'patch-notes.md'],
+    additionalIncludes: ['_locales', 'LICENSE'],
+    sourceArchive: {
+        enabled: true,
+        includes: ['_locales', 'src', 'build.js', 'LICENSE', 'manifest.json', 'package.json', 'package-lock.json'],
+        rename: {'BUILD.md': 'README.md'}
+    },
     minifyOptions: {
         js: {
             compress: {
@@ -23,10 +28,37 @@ const config = {
                 drop_debugger: true,
                 keep_classnames: true,
                 keep_fnames: true,
-                passes: 2
+                passes: 3,
+                booleans_as_integers: false,
+                collapse_vars: true,
+                comparisons: true,
+                conditionals: true,
+                evaluate: true,
+                hoist_funs: true,
+                hoist_vars: false,
+                if_return: true,
+                join_vars: true,
+                loops: true,
+                negate_iife: true,
+                properties: true,
+                reduce_vars: true,
+                sequences: true,
+                side_effects: true,
+                switches: true,
+                toplevel: false,
+                typeofs: true,
+                unused: true
             },
-            mangle: {keep_classnames: true, keep_fnames: true},
-            format: {comments: /^!/}
+            mangle: {
+                keep_classnames: true,
+                keep_fnames: true,
+                toplevel: false
+            },
+            format: {
+                comments: false,
+                ascii_only: true,
+                semicolons: true
+            }
         },
         html: {
             collapseWhitespace: true,
@@ -34,21 +66,70 @@ const config = {
             removeRedundantAttributes: true,
             removeScriptTypeAttributes: true,
             removeStyleLinkTypeAttributes: true,
+            removeEmptyAttributes: true,
+            removeOptionalTags: false,
             minifyCSS: true,
-            minifyJS: true
+            minifyJS: true,
+            collapseBooleanAttributes: true,
+            decodeEntities: true,
+            sortAttributes: true,
+            sortClassName: true
         },
-        css: {level: 2},
+        css: {
+            level: {
+                2: {
+                    mergeAdjacentRules: true,
+                    mergeIntoShorthands: true,
+                    mergeMedia: true,
+                    mergeNonAdjacentRules: true,
+                    mergeSemantically: false,
+                    overrideProperties: true,
+                    removeEmpty: true,
+                    reduceNonAdjacentRules: true,
+                    removeDuplicateFontRules: true,
+                    removeDuplicateMediaBlocks: true,
+                    removeDuplicateRules: true,
+                    removeUnusedAtRules: false
+                }
+            }
+        },
         svg: {
             plugins: [
                 'removeComments',
                 'removeMetadata',
                 'removeEditorsNSData',
+                'cleanupAttrs',
+                'cleanupEnableBackground',
+                'cleanupIds',
                 'cleanupNumericValues',
+                'collapseGroups',
                 'convertColors',
+                'convertEllipseToCircle',
+                'convertPathData',
+                'convertShapeToPath',
+                'convertTransform',
+                'mergePaths',
+                'removeDesc',
+                'removeDoctype',
                 'removeEmptyAttrs',
                 'removeEmptyContainers',
                 'removeEmptyText',
-                'minifyStyles'
+                'removeHiddenElems',
+                'removeNonInheritableGroupAttrs',
+                'removeTitle',
+                'removeUnknownsAndDefaults',
+                'removeUnusedNS',
+                'removeUselessDefs',
+                'removeUselessStrokeAndFill',
+                'removeXMLProcInst',
+                'sortAttrs',
+                'minifyStyles',
+                {
+                    name: 'removeAttrs',
+                    params: {
+                        attrs: ['data-name', 'class']
+                    }
+                }
             ]
         }
     },
@@ -307,6 +388,36 @@ async function createZipArchive(sourceDir, outputPath) {
     });
 }
 
+async function createSourceArchive(outputPath, includes, rename = {}) {
+    return new Promise((resolve, reject) => {
+        const output = fs.createWriteStream(outputPath);
+        const archive = archiver('zip', {zlib: {level: 9}});
+        output.on('close', () => resolve(archive.pointer()));
+        archive.on('error', reject);
+        archive.pipe(output);
+
+        for (const item of includes) {
+            const itemPath = `./${item}`;
+            if (fs.existsSync(itemPath)) {
+                if (fs.statSync(itemPath).isDirectory()) {
+                    archive.directory(itemPath, item);
+                } else {
+                    archive.file(itemPath, {name: item});
+                }
+            }
+        }
+
+        for (const [srcFile, destName] of Object.entries(rename)) {
+            const srcPath = `./${srcFile}`;
+            if (fs.existsSync(srcPath)) {
+                archive.file(srcPath, {name: destName});
+            }
+        }
+
+        archive.finalize();
+    });
+}
+
 async function build() {
     const startTime = Date.now();
 
@@ -377,6 +488,14 @@ async function build() {
 
     const zipSize = await createZipArchive(config.distDir, zipPath);
     log(`Archive: ${zipName} (${formatBytes(zipSize)})`, 'success');
+
+    if (config.sourceArchive.enabled) {
+        const sourceZipName = `forecast-source-v${version}.zip`;
+        const sourceZipPath = path.join(config.outputDir, sourceZipName);
+        const sourceZipSize = await createSourceArchive(sourceZipPath, config.sourceArchive.includes, config.sourceArchive.rename);
+        log(`Source archive: ${sourceZipName} (${formatBytes(sourceZipSize)})`, 'success');
+    }
+
     log(`Duration: ${((Date.now() - startTime) / 1000).toFixed(2)}s`, 'info');
 }
 

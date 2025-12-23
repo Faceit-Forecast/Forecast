@@ -2,7 +2,7 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const isTest = true;
+const isTest = false;
 
 const BROWSER_TYPE = typeof browser === 'undefined' ? 'CHROMIUM' : 'FIREFOX';
 const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_overpass'];

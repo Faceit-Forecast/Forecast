@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",
@@ -49,7 +49,6 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "patch-notes.md",
         "_locales/en/forecast.json",
         "_locales/ru/forecast.json",
         "_locales/de/forecast.json",
