@@ -76,22 +76,7 @@ const config = {
             sortClassName: true
         },
         css: {
-            level: {
-                2: {
-                    mergeAdjacentRules: true,
-                    mergeIntoShorthands: true,
-                    mergeMedia: true,
-                    mergeNonAdjacentRules: true,
-                    mergeSemantically: false,
-                    overrideProperties: true,
-                    removeEmpty: true,
-                    reduceNonAdjacentRules: true,
-                    removeDuplicateFontRules: true,
-                    removeDuplicateMediaBlocks: true,
-                    removeDuplicateRules: true,
-                    removeUnusedAtRules: false
-                }
-            }
+            level: 1
         },
         svg: {
             plugins: [

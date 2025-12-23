@@ -432,7 +432,7 @@ const SettingsManager = {
         coloredStatsADR: true,
         coloredStatsKD: true,
         coloredStatsKR: true,
-        showRWS: false,
+        showRWS: true,
         coloredStatsRWS: true
     },
 
