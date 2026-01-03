@@ -8,7 +8,7 @@ FCR ideal score is 20% when all 5 players contribute equally
 FCR color coded: green (≥20%), yellow (15-20%), red (<15%)
 Match history popup now sorted by ADR
 Internal code improvements and optimizations
-
+<img width="587" height="394" alt="image" src="https://github.com/user-attachments/assets/73585e64-264b-4c32-89b7-60fb7b1fd608" />
 
 [1.7.5] Match History Enhancements
 Fixed duplicate popup appearing in match history
