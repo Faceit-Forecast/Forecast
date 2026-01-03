@@ -4,7 +4,14 @@
 
 const isTest = false;
 
-const BROWSER_TYPE = typeof browser === 'undefined' ? 'CHROMIUM' : 'FIREFOX';
+const FIREFOX = "FIREFOX"
+const CHROMIUM = "CHROMIUM"
+
+const BROWSER_TYPE = typeof browser === 'undefined' ? CHROMIUM : FIREFOX
+const CLIENT_API = BROWSER_TYPE === FIREFOX ? browser : chrome;
+const CLIENT_RUNTIME = CLIENT_API.runtime;
+const CLIENT_STORAGE = CLIENT_API.storage.sync;
+
 const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_overpass'];
 
 const PATCH_NOTES_URL = 'https://raw.githubusercontent.com/TerraMiner/Forecast/master/patch-notes.md';
@@ -38,10 +45,8 @@ function detectBrowserLanguage() {
 }
 
 async function loadTranslationsFromFile(lang) {
-    const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
-
     try {
-        const url = runtime.getURL(`_locales/${lang}/forecast.json`);
+        const url = CLIENT_RUNTIME.getURL(`_locales/${lang}/forecast.json`);
         const response = await fetch(url);
         if (response.ok) {
             translations[lang] = await response.json();
@@ -52,7 +57,7 @@ async function loadTranslationsFromFile(lang) {
 
     if (lang !== DEFAULT_LANGUAGE && !translations[DEFAULT_LANGUAGE]) {
         try {
-            const fallbackUrl = runtime.getURL(`_locales/${DEFAULT_LANGUAGE}/forecast.json`);
+            const fallbackUrl = CLIENT_RUNTIME.getURL(`_locales/${DEFAULT_LANGUAGE}/forecast.json`);
             const fallbackResponse = await fetch(fallbackUrl);
             if (fallbackResponse.ok) {
                 translations[DEFAULT_LANGUAGE] = await fallbackResponse.json();
@@ -93,8 +98,7 @@ const PatchNotesManager = {
     currentVersion: null,
 
     async init() {
-        const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
-        this.currentVersion = runtime.getManifest().version;
+        this.currentVersion = CLIENT_RUNTIME.getManifest().version;
         await this.loadAndDisplay();
     },
 
@@ -114,8 +118,7 @@ const PatchNotesManager = {
 
     async fetchWithCache() {
         if (isTest) {
-            const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
-            const url = runtime.getURL('patch-notes.md');
+            const url = CLIENT_RUNTIME.getURL('patch-notes.md');
             const response = await fetch(url);
             if (!response.ok) throw new Error(`Failed to load local file: ${response.status}`);
             return await response.text();
@@ -230,9 +233,8 @@ const PatchNotesManager = {
             return;
         }
 
-        const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
-        const loadingSvgUrl = runtime.getURL('src/visual/icons/loading.svg');
-        const loadedSvgUrl = runtime.getURL('src/visual/icons/loaded.svg');
+        const loadingSvgUrl = CLIENT_RUNTIME.getURL('src/visual/icons/loading.svg');
+        const loadedSvgUrl = CLIENT_RUNTIME.getURL('src/visual/icons/loaded.svg');
 
         const notesHtml = patchNotes.map(note => {
             const isReleased = this.compareVersions(this.currentVersion, note.version) >= 0;
@@ -392,27 +394,15 @@ const PatchNotesManager = {
 };
 
 const StorageUtils = {
-    get api() {
-        return BROWSER_TYPE === 'FIREFOX' ? browser.storage.sync : chrome.storage.sync;
-    },
-
     async get(keys) {
         return new Promise((resolve, reject) => {
-            if (this.api) {
-                this.api.get(keys, resolve);
-            } else {
-                reject(new Error("Storage API not available."));
-            }
+            CLIENT_STORAGE.get(keys, resolve);
         });
     },
 
     async set(items) {
         return new Promise((resolve, reject) => {
-            if (this.api) {
-                this.api.set(items, resolve);
-            } else {
-                reject(new Error("Storage API not available."));
-            }
+            CLIENT_STORAGE.set(items, resolve);
         });
     }
 };
@@ -424,7 +414,7 @@ const SettingsManager = {
         matchroom: true,
         eloranking: true,
         matchhistory: true,
-        poscatcher: false,
+        poscatcher: true,
         integrations: true,
         eloHistoryCalculation: true,
         matchCounter: true,
@@ -432,15 +422,14 @@ const SettingsManager = {
         coloredStatsADR: true,
         coloredStatsKD: true,
         coloredStatsKR: true,
-        showRWS: true,
-        coloredStatsRWS: true
+        showFCR: true
     },
 
     async load() {
         try {
             const keys = ['isEnabled', 'sliderValue', 'matchroom', 'eloranking', 'matchhistory', 'poscatcher',
                 'eloHistoryCalculation', 'matchCounter', 'coloredStatsKDA', 'coloredStatsADR', 'coloredStatsKD',
-                'coloredStatsKR', 'showRWS', 'coloredStatsRWS',
+                'coloredStatsKR', 'showFCR', 'coloredStatsFCR',
                 ...CS2_MAPS.flatMap(map => [`${map}Enabled`, `${map}Message`]), 'integrations'];
 
             const settings = await StorageUtils.get(keys);
@@ -525,8 +514,8 @@ const SettingsManager = {
             coloredStatsADR: 'coloredStatsADR',
             coloredStatsKD: 'coloredStatsKD',
             coloredStatsKR: 'coloredStatsKR',
-            showRWS: 'showRWS',
-            coloredStatsRWS: 'coloredStatsRWS'
+            coloredStatsFCR: 'coloredStatsFCR',
+            showFCR: 'showFCR'
         };
 
         Object.entries(settingsElements).forEach(([elementId, settingKey]) => {
@@ -536,21 +525,21 @@ const SettingsManager = {
             }
         });
 
-        const showRWS = settings.showRWS ?? this.defaults.showRWS;
-        this.updateRWSColoredStatsVisibility(showRWS);
+        const showFCR = settings.showFCR ?? this.defaults.showFCR;
+        this.updateFCRColoredStatsVisibility(showFCR);
 
         const matchHistoryEnabled = settings.matchhistory ?? this.defaults.matchhistory;
         this.updateDependentSettings('matchhistory', ['#matchHistorySettings'], matchHistoryEnabled);
     },
 
-    updateRWSColoredStatsVisibility(isEnabled) {
-        const rwsColoredStatsContainer = document.getElementById('rwsColoredStatsContainer');
-        if (!rwsColoredStatsContainer) return;
+    updateFCRColoredStatsVisibility(isEnabled) {
+        const fcrColoredStatsContainer = document.getElementById('fcrColoredStatsContainer');
+        if (!fcrColoredStatsContainer) return;
 
         if (isEnabled) {
-            rwsColoredStatsContainer.classList.remove('hidden-cell');
+            fcrColoredStatsContainer.classList.remove('hidden-cell');
         } else {
-            rwsColoredStatsContainer.classList.add('hidden-cell');
+            fcrColoredStatsContainer.classList.add('hidden-cell');
         }
     },
 
@@ -631,8 +620,7 @@ const UIUtils = {
     },
 
     async loadManifestInfo() {
-        const runtime = BROWSER_TYPE === 'FIREFOX' ? browser.runtime : chrome.runtime;
-        const manifest = runtime.getManifest();
+        const manifest = CLIENT_RUNTIME.getManifest();
 
         const elements = {
             version: manifest.version,
@@ -794,11 +782,13 @@ const EventHandlers = {
             const messageInput = document.getElementById(`${map}Message`);
             const counter = document.getElementById(`${map}Counter`);
 
-            if (messageInput && counter) {
+            if (messageInput) {
                 messageInput.addEventListener('input', async function () {
                     const length = this.value.length;
-                    counter.textContent = length;
-                    UIUtils.updateCharCounter(counter, length, 16);
+                    if (counter) {
+                        counter.textContent = length;
+                        UIUtils.updateCharCounter(counter, length, 16);
+                    }
                     await SettingsManager.save({[`${map}Message`]: this.value});
                 });
             }
@@ -813,8 +803,8 @@ const EventHandlers = {
             'coloredStatsADR',
             'coloredStatsKD',
             'coloredStatsKR',
-            'showRWS',
-            'coloredStatsRWS'
+            'showFCR',
+            'coloredStatsFCR'
         ];
 
         settingsToggles.forEach(toggleId => {
@@ -824,8 +814,8 @@ const EventHandlers = {
             element.addEventListener('change', async function () {
                 await SettingsManager.save({[toggleId]: this.checked});
 
-                if (toggleId === 'showRWS') {
-                    SettingsManager.updateRWSColoredStatsVisibility(this.checked);
+                if (toggleId === 'showFCR') {
+                    SettingsManager.updateFCRColoredStatsVisibility(this.checked);
                 }
             });
         });
@@ -891,14 +881,13 @@ window.addEventListener('message', (event) => {
 }, false);
 
 async function initLanguage() {
-    const storageAPI = BROWSER_TYPE === 'FIREFOX' ? browser.storage.sync : chrome.storage.sync;
     return new Promise((resolve) => {
-        storageAPI.get(['language'], async (result) => {
+        CLIENT_STORAGE.get(['language'], async (result) => {
             if (result.language && SUPPORTED_LANGUAGES.includes(result.language)) {
                 currentLanguage = result.language;
             } else {
                 currentLanguage = detectBrowserLanguage();
-                storageAPI.set({language: currentLanguage});
+                CLIENT_STORAGE.set({language: currentLanguage});
             }
             await loadTranslationsFromFile(currentLanguage);
             resolve(currentLanguage);
@@ -911,8 +900,7 @@ async function setLanguage(lang) {
         lang = DEFAULT_LANGUAGE;
     }
     currentLanguage = lang;
-    const storageAPI = BROWSER_TYPE === 'FIREFOX' ? browser.storage.sync : chrome.storage.sync;
-    storageAPI.set({language: lang});
+    CLIENT_STORAGE.set({language: lang});
     await loadTranslationsFromFile(lang);
     localizeDocument();
     updateTabs();

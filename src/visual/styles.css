@@ -742,6 +742,7 @@ input:checked + .slider:after {
     border-radius: 6px;
     width: calc(50% - 4px);
     box-sizing: border-box;
+    position: relative;
     transition: width 0.15s ease, opacity 0.15s ease, padding 0.15s ease, margin 0.15s ease, transform 0.15s ease;
 }
 
@@ -755,6 +756,52 @@ input:checked + .slider:after {
     pointer-events: none;
 }
 
+.settings-cell.disabled-cell {
+    position: relative;
+}
+
+.settings-cell.disabled-cell .slider {
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.4;
+    filter: grayscale(80%);
+}
+
+.settings-cell.disabled-cell .switch {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.settings-cell.disabled-cell .settings-cell-label {
+    color: #666;
+    opacity: 0.6;
+}
+
+.settings-cell.disabled-cell .info-tooltip-wrapper {
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    filter: none !important;
+    position: relative;
+    z-index: 100;
+}
+
+.settings-cell.disabled-cell .info-button {
+    opacity: 0.7;
+    pointer-events: auto !important;
+    cursor: help;
+    transition: opacity 0.2s ease;
+}
+
+.settings-cell.disabled-cell .info-button:hover {
+    opacity: 1;
+}
+
+.settings-cell.disabled-cell .info-tooltip {
+    pointer-events: auto;
+    filter: none;
+    opacity: 1;
+}
+
 .settings-cell-label {
     font-size: 10px;
     text-align: left;
@@ -764,6 +811,16 @@ input:checked + .slider:after {
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
+}
+
+.temp-icon {
+    margin-left: 2px;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.temp-icon:hover {
+    opacity: 1;
 }
 
 .settings-cell .switch {

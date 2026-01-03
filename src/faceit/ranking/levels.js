@@ -185,7 +185,6 @@ const newLevelsModule = new Module("eloranking", async () => {
     let levelInfoTableId = `session-${sessionId}-level-info-table-container`
     let matchmakingHolderId = `session-${sessionId}-matchmaking-holder`
     let collectionLevelIconId = `session-${sessionId}-collection-level-icon`
-
     if (lobby.pageType === "matchroom") {
         let gameType = extractGameType("cs2");
         let matchId = extractMatchId();
@@ -236,25 +235,29 @@ const newLevelsModule = new Module("eloranking", async () => {
             newLevelsModule.removalNode(newIcon);
         });
     } else if (lobby.pageType === "profile") {
-        let selector = '[class*=styles__MainSection] > [class*=styles__EloAndLeagueContainer] > div > [class*=styles__Flex] > div';
-        await newLevelsModule.doAfterNodeAppear(selector, async (node) => {
-            let uniqueCheck = () => node.querySelector(`[class*='${newEloLevelIconId}']`)
-            if (uniqueCheck()) return;
-            await newLevelsModule.doAfterAsync(() => node.children?.length >= 2 && node.querySelector('svg'), async () => {
-                if (uniqueCheck()) return
+        let primarySelector = '[class*=styles__MainSection] > [class*=styles__EloAndLeagueContainer] > div > [class*=styles__Flex] > div'
+        let eloTextSelector = `${primarySelector} > div > h5`;
+        let badgeHolderSelector = `${primarySelector} > div[class*=BadgeHolder]`
+        await newLevelsModule.doAfterNodeAppear(eloTextSelector, async (eloText) => {
+            const node = getNthParent(eloText, 2)
+            let mainProfileLevelIconId = "main-profile-icon"
+
+            const updateIcon = (mutationsList) => {
+
+                if (mutationsList?.some(m =>
+                    [...m.addedNodes, ...m.removedNodes]
+                        .some(n => n.nodeType === 1 && n.classList.contains(mainProfileLevelIconId))
+                )) return;
+
+                node.querySelector(`[class*='${mainProfileLevelIconId}']`)?.remove()
                 let badgeHolder = node.querySelector('[class*=BadgeHolder__Holder]')
-                let svgNode = node.querySelector('svg')
-                let isTopIcon = !!badgeHolder
-                let eloText = node.querySelector("h5")
-                if (node.querySelector(`[class*='${newEloLevelIconId}'`)) return
                 let elo = Number.parseInt(eloText.textContent.replace(/[\s,._]/g, ''), 10);
                 let currentLevel = getLevel(elo, lobby.gameType);
                 let icon = getLevelIcon(currentLevel);
-                const color = icon.querySelectorAll('path')[2].getAttribute('fill');
+                const color = getLevelColor(currentLevel);
                 let levelSpan = icon.firstChild;
                 levelSpan.style.width = "64px";
                 levelSpan.style.height = "64px";
-                icon.classList.add(newEloLevelIconId);
                 let container = node.parentElement.parentElement;
 
                 container.classList.add('profile-level-container')
@@ -266,22 +269,30 @@ const newLevelsModule = new Module("eloranking", async () => {
                 container.style.setProperty('--glow-color-5', `${color}05`);
                 container.style.setProperty('--glow-color-6', `${color}00`);
 
-                eloText.textContent += " ELO"
                 eloText.style.whiteSpace = "nowrap";
-                if (isTopIcon) {
+                if (badgeHolder) {
                     let div = document.createElement("div");
                     let badgeHodlerParent = badgeHolder.parentElement
                     div.appendChild(icon)
+                    div.classList.add(mainProfileLevelIconId);
                     levelSpan.style.width = "52px";
                     levelSpan.style.height = "52px";
                     badgeHolder.style.scale = "0.7";
                     badgeHodlerParent.prepend(div)
+                    newLevelsModule.removalNode(div);
                 } else {
-                    if (node.querySelector(`[class*='${newEloLevelIconId}'`)) return
-                    newLevelsModule.appendToAndHide(icon, svgNode)
+                    icon.classList.add(mainProfileLevelIconId);
+                    node.prepend(icon);
                     newLevelsModule.removalNode(icon);
                 }
-            })
+            }
+            updateIcon();
+            const observeOptions = {
+                childList: true,
+                characterData: true,
+                subtree: true
+            }
+            new MutationObserver(updateIcon).observe(node, observeOptions);
         });
 
         let selector2 = '[class*=styles__MainSection] > div:nth-child(3) > [class*=styles__Col] > a > div > div > div > div:nth-child(3) > div > div:nth-child(2) > span';
@@ -297,19 +308,22 @@ const newLevelsModule = new Module("eloranking", async () => {
 
         let selector3 = '[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Col]'
         await newLevelsModule.doAfterAllNodeAppear(selector3, async (node) => {
-            let chart = getNthParent(node, 4)
-            let chartParent = chart.parentElement
-            if (Array.from(chartParent.children)[2] !== chart) return
-            let nick = extractPlayerNick()
+            let existing = node.querySelector("[unique]")
+            existing?.remove()
+            let chart = getNthParent(node, 4);
+            let chartParent = chart.parentElement;
+            if (Array.from(chartParent.children)[2] !== chart) return;
+            let nick = extractPlayerNick();
             let playerStatistic = await fetchPlayerStatsByNickName(nick);
-            let {gameStats, gameType} = getStatistic(playerStatistic)
-            if (!gameStats) return
+            let {gameStats, gameType} = getStatistic(playerStatistic);
+            if (!gameStats) return;
             let elo = Number.parseInt(gameStats["faceit_elo"], 10);
             let currentLevel = getLevel(elo, gameType);
-            let levelIcon = getLevelIcon(currentLevel)
-            levelIcon.style.scale = "1.25"
-            node.appendChild(levelIcon)
-        })
+            let levelIcon = getLevelIcon(currentLevel);
+            levelIcon.setAttribute("unique", "")
+            levelIcon.style.scale = "1.25";
+            node.appendChild(levelIcon);
+        });
 
         let selector4 = '[class*=styles__TickIconWrapper]'
         await newLevelsModule.doAfterAllNodeAppear(selector4, (node) => {
@@ -718,10 +732,8 @@ async function insertStatsToEloBar(nick, table) {
 
     const progressBar = table.querySelector("a > div > div.details > div:nth-child(2) > div.progress-container.elo-progress-bar-container > div");
 
-    let nextLevelIcon = levelIcons.get(currentLevel + 1)
-    if (!nextLevelIcon) nextLevelIcon = levelIcon
-    let nextLevelColor = nextLevelIcon.querySelector("div > span > svg > g > path:nth-child(3)").getAttribute("fill")
-    let currentLevelColor = levelIcon.querySelector("div > span > svg > g > path:nth-child(3)").getAttribute("fill")
+    let nextLevelColor = getLevelColor(currentLevel + 1) || getLevelColor(currentLevel);
+    let currentLevelColor = getLevelColor(currentLevel);
 
     currentEloNode.style.setProperty("--glow-color", `${currentLevelColor}B3`);
     eloSvgIconNode.style.setProperty("--glow-color", `${currentLevelColor}B3`);

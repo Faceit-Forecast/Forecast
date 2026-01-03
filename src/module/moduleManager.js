@@ -12,7 +12,7 @@ const lobbyModules = [
     { pages: ['*'], module: logoSidebarModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['stats'], module: rankingModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['matchroom'], module: matchRoomModule, isEnabled: null, isEnabledByDefault: true },
-    { pages: ['matchroom'], module: posCatcherModule, isEnabled: null, isEnabledByDefault: false },
+    { pages: ['matchroom'], module: posCatcherModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['history', 'profile'], module: matchHistoryModule, isEnabled: null, isEnabledByDefault: true },
 ];
 

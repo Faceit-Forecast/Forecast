@@ -58,14 +58,14 @@
                     </select>
                 </div>
                 <div class="description-box patch-notes-collapsible" id="patch-notes-wrapper">
-                    <div class="patch-notes-header" id="patch-notes-toggle">
+                    <div class="patch-notes-header expanded" id="patch-notes-toggle">
                         <span class="patch-notes-title" data-i18n="release_notes">Release Notes</span>
                         <span class="patch-notes-lang-badge">EN</span>
                         <svg class="patch-notes-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                     </div>
-                    <div class="patch-notes-content collapsed" id="patch-notes-container">
+                    <div class="patch-notes-content" id="patch-notes-container">
                         <div class="patch-notes-loading">Loading patch notes...</div>
                     </div>
                 </div>
@@ -189,33 +189,33 @@
                                     <span class="slider"></span>
                                 </label>
                             </div>
-                            <div class="settings-cell">
-                                <span class="settings-cell-label">RWS</span>
+                            <div class="settings-cell" id="fcrSettingsCell">
+                                <span class="settings-cell-label">FCR</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p data-i18n="rws_desc">Adds RWS column to match history popup.</p>
+                                        <p data-i18n="fcr_desc">FCR - percentage of rounds where player got a Kill, Assist, Survived, or was Traded. Higher is better (70%+ is good).</p>
                                     </div>
                                 </div>
                                 <label class="switch">
-                                    <input type="checkbox" id="showRWS" aria-label="Enable RWS">
+                                    <input type="checkbox" id="showFCR" checked aria-label="Enable FCR">
                                     <span class="slider"></span>
                                 </label>
                             </div>
-                            <div class="settings-cell hidden-cell" id="rwsColoredStatsContainer">
-                                <span class="settings-cell-label" data-i18n="rws_color">RWS Color</span>
+                            <div class="settings-cell hidden-cell" id="fcrColoredStatsContainer">
+                                <span class="settings-cell-label" data-i18n="fcr_color">FCR Color</span>
                                 <div class="info-tooltip-wrapper">
                                     <div class="info-button" aria-label="Info">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                     </div>
                                     <div class="info-tooltip">
-                                        <p data-i18n="rws_color_desc">Colors RWS statistic. (RWS > 10 = green)</p>
+                                        <p data-i18n="fcr_color_desc">Colors FCR statistic. (≥20% = green, 15-20% = yellow, &lt;15% = red)</p>
                                     </div>
                                 </div>
                                 <label class="switch">
-                                    <input type="checkbox" id="coloredStatsRWS" checked aria-label="Enable Colored RWS">
+                                    <input type="checkbox" id="coloredStatsFCR" checked aria-label="Enable Colored FCR">
                                     <span class="slider"></span>
                                 </label>
                             </div>

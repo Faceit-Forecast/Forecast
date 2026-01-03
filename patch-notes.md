@@ -1,3 +1,15 @@
+[1.7.6] FCR Rating & Bug Fixes
+Improved extension performance and loading speed
+Fixed match room not loading in certain conditions
+Fixed Quick Pos Setup not saving text input
+Replaced RWS with FCR (Forecast Rating) - your team contribution percentage (0-100%)
+FCR is calculated from kills, assists, ADR, entry frags, clutches and utility usage
+FCR ideal score is 20% when all 5 players contribute equally
+FCR color coded: green (≥20%), yellow (15-20%), red (<15%)
+Match history popup now sorted by ADR
+Internal code improvements and optimizations
+
+
 [1.7.5] Match History Enhancements
 Fixed duplicate popup appearing in match history
 Fixed duplicate level indicators on player profiles

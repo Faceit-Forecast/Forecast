@@ -2,18 +2,23 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const prefix = "%c[%cFORE%cCAST%c]:"
 const FIREFOX = "FIREFOX"
 const CHROMIUM = "CHROMIUM"
 
-const browserType = typeof browser === 'undefined' ? CHROMIUM : FIREFOX
+const BROWSER_TYPE = typeof browser === 'undefined' ? CHROMIUM : FIREFOX
+const CLIENT_API = BROWSER_TYPE === FIREFOX ? browser : chrome;
+const CLIENT_RUNTIME = CLIENT_API.runtime;
+const CLIENT_STORAGE = CLIENT_API.storage.sync;
+const EXTENSION_VERSION = CLIENT_RUNTIME.getManifest().version;
+
+const log_prefix = "%c[%cFORE%cCAST%c]:"
 
 function println(...args) {
-    console.log(prefix, 'color: white; background-color: black;', 'color: orange; font-weight: bold; background-color: black;', 'color: white; font-weight: bold; background-color: black;', 'color: white; background-color: black;', args.join(" "));
+    console.log(log_prefix, 'color: white; background-color: black;', 'color: orange; font-weight: bold; background-color: black;', 'color: white; font-weight: bold; background-color: black;', 'color: white; background-color: black;', args.join(" "));
 }
 
 function error(message, err) {
-    console.error(prefix, 'color: white; background-color: black;', 'color: orange; font-weight: bold; background-color: black;', 'color: white; font-weight: bold; background-color: black;', 'color: white; background-color: black;',message || err?.message, err?.stack)
+    console.error(log_prefix, 'color: white; background-color: black;', 'color: orange; font-weight: bold; background-color: black;', 'color: white; font-weight: bold; background-color: black;', 'color: white; background-color: black;',message || err?.message, err?.stack)
 }
 
 function setupBrandIcon(htmlResource, width = 28, height = 28) {
@@ -85,10 +90,9 @@ function getNthParent(el, n) {
 
 async function getSettingValue(name, def) {
     return new Promise((resolve, reject) => {
-        const storageAPI = browserType === FIREFOX ? browser.storage.sync : chrome.storage.sync;
 
-        storageAPI.get([name], (result) => {
-            const errorMessage = browserType === FIREFOX ? browser.runtime.lastError : chrome.runtime.lastError;
+        CLIENT_STORAGE.get([name], (result) => {
+            const errorMessage = CLIENT_RUNTIME.lastError;
             if (errorMessage) {
                 reject(new Error(errorMessage));
             } else {
@@ -101,10 +105,9 @@ async function getSettingValue(name, def) {
 
 async function setSettingValue(name, value) {
     return new Promise((resolve, reject) => {
-        const storageAPI = browserType === FIREFOX ? browser.storage.sync : chrome.storage.sync;
 
-        storageAPI.set({[name]: value}, () => {
-            const errorMessage = browserType === FIREFOX ? browser.runtime.lastError : chrome.runtime.lastError;
+        CLIENT_STORAGE.set({[name]: value}, () => {
+            const errorMessage = CLIENT_RUNTIME.lastError;
             if (errorMessage) {
                 reject(new Error(errorMessage));
             } else {
@@ -151,20 +154,18 @@ function replaceNodeWithColored(node, text, condition) {
 }
 
 async function isSettingEnabled(name, def) {
-    const storageAPI = browserType === FIREFOX ? browser.storage.sync : chrome.storage.sync;
-    const settings = await storageAPI.get([name]);
+    const settings = await CLIENT_STORAGE.get([name]);
 
     if (settings[name] === undefined) {
-        await storageAPI.set({ [name]: def });
+        await CLIENT_STORAGE.set({ [name]: def });
         return def;
     }
     return settings[name];
 }
 
 async function getSettings(settingsMap) {
-    const storageAPI = browserType === FIREFOX ? browser.storage.sync : chrome.storage.sync;
     const keys = Object.keys(settingsMap);
-    const storedSettings = await storageAPI.get(keys);
+    const storedSettings = await CLIENT_STORAGE.get(keys);
 
     const result = {};
     const toSet = {};
@@ -179,7 +180,7 @@ async function getSettings(settingsMap) {
     });
 
     if (Object.keys(toSet).length > 0) {
-        await storageAPI.set(toSet);
+        await CLIENT_STORAGE.set(toSet);
     }
 
     return result;

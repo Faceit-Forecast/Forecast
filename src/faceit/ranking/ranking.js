@@ -49,6 +49,38 @@ const gameLevelRanges = {
     ]
 };
 
+const levelColors = {
+    1: '#EEE',
+    2: '#1CE400',
+    3: '#1CE400',
+    4: '#FFC800',
+    5: '#FFC800',
+    6: '#FFC800',
+    7: '#FFC800',
+    8: '#FF6309',
+    9: '#FF6309',
+    10: '#FE1F00',
+    11: '#FE0123',
+    12: '#FD0346',
+    13: '#FE0379',
+    14: '#FF019B',
+    15: '#CC29C8',
+    16: '#4693EC',
+    17: '#1FB2F7',
+    18: '#00CBFF',
+    19: '#4CDBFF',
+    20: '#FFFFFF'
+};
+
+function getLevelColor(level) {
+    return levelColors[level] || '#FFFFFF';
+}
+
+function getEloColor(elo, gameType = 'cs2') {
+    const level = getLevel(elo, gameType);
+    return getLevelColor(level);
+}
+
 function insertAllLevelsToTable(table, currentLevel) {
     levelIcons.forEach((icon, level) => {
         let svgNode = icon.cloneNode(true)
@@ -96,7 +128,7 @@ async function insertAllStatisticToNewTable(table) {
 
     let currentEloNode = table.querySelector("[class*=current-elo]")
     currentEloNode.innerText = `${elo}`
-    let levelColor = getLevelIcon(currentLevel).querySelector("div > span > svg > g > path:nth-child(3)").getAttribute("fill")
+    let levelColor = getLevelColor(currentLevel);
     currentEloNode.style.setProperty("--glow-color", `${levelColor}B3`);
     let levelRanges = gameLevelRanges[gameType];
 
@@ -113,15 +145,15 @@ async function insertAllStatisticToNewTable(table) {
         if (!prevLevelIcon) prevLevelIcon = currentLevelIcon
         let nextLevelIcon = levelIcons.get(level + 1)
         if (!nextLevelIcon) nextLevelIcon = currentLevelIcon
-        let prevLevelColor = prevLevelIcon.querySelector("div > span > svg > g > path:nth-child(3)").getAttribute("fill")
-        let currentLevelColor = currentLevelIcon.querySelector("div > span > svg > g > path:nth-child(3)").getAttribute("fill")
+        let prevLevelColor = getLevelColor(level - 1) || getLevelColor(level);
+        let currentLevelColor = getLevelColor(level);
 
         progressBar.style.setProperty('--gradient-start', prevLevelColor);
         progressBar.style.setProperty('--gradient-end', currentLevelColor);
 
         let levelMinEloTextNode = levelNode.querySelector(`[class~="level-value"]`)
         const {min, max} = levelRanges[level - 1]
-        levelNode.setAttribute("range",level === levelRanges.length ? `${min}+` : `${min}-${max}`)
+        levelNode.setAttribute("range", level === levelRanges.length ? `${min}+` : `${min}-${max}`)
         levelMinEloTextNode.innerText = min
         if (currentLevel > level) {
             levelNode.setAttribute("reached", '')

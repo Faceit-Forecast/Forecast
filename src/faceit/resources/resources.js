@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
+const parser = new DOMParser();
 
 const levelIcons = new Map();
 const htmls = new Map();
@@ -60,16 +61,7 @@ async function loadSVGDataURIs() {
 }
 
 async function getSVGText(filePath) {
-    let url;
-
-    if (browserType === FIREFOX) {
-        url = browser.runtime.getURL(filePath);
-    } else if (browserType === CHROMIUM) {
-        url = chrome.runtime.getURL(filePath);
-    } else {
-        error("Unable to determine runtime environment.");
-        return null;
-    }
+    let url = CLIENT_RUNTIME.getURL(filePath);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -117,16 +109,7 @@ function setupStyles() {
 }
 
 async function getHTMLCodeFromFile(filePath) {
-    let url;
-
-    if (browserType === FIREFOX) {
-        url = browser.runtime.getURL(filePath);
-    } else if (browserType === CHROMIUM) {
-        url = chrome.runtime.getURL(filePath);
-    } else {
-        error("Unable to determine runtime environment.");
-        return null;
-    }
+    let url = CLIENT_RUNTIME.getURL(filePath);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -136,7 +119,6 @@ async function getHTMLCodeFromFile(filePath) {
 
     const htmlContent = await response.text();
 
-    const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
     const tempDiv = document.createElement('div');
 

@@ -4,21 +4,31 @@
 const baseUrlFC = "https://api.fforecast.net"
 
 async function fetchFC(url, errorMsg) {
-    const res = await fetch(url);
+    let res;
+    try {
+        res = await fetch(url);
+    } catch (err) {
+        error(`${errorMsg}: ${err.message}`);
+        return null;
+    }
 
-    if (!res.ok) throw new Error(`${errorMsg}: ${res.statusText}`);
+    if (!res.ok) {
+        error(`${errorMsg}: ${res.statusText}`);
+        return null;
+    }
 
     const text = await res.text();
     try {
         return text ? JSON.parse(text) : null;
     } catch (err) {
-        error(err)
+        error(err);
         error(`${errorMsg}: invalid JSON`);
+        return null;
     }
 }
 
 async function fetchPing() {
-    await fetchFC(`${baseUrlFC}/session/ping`, "Error on pinging");
+    await fetchFC(`${baseUrlFC}/session/ping?ver=${EXTENSION_VERSION}`, "Error on pinging");
 }
 
 function sanitizeHtml(html) {

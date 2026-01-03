@@ -92,8 +92,7 @@ function toggleExistingPopup() {
 }
 
 function getPopupURL() {
-    const runtimeAPI = browserType === FIREFOX ? browser.runtime : chrome.runtime;
-    return runtimeAPI.getURL("src/visual/popup.html");
+    return CLIENT_RUNTIME.getURL("src/visual/popup.html");
 }
 
 function createPopupStructure(popupURL) {

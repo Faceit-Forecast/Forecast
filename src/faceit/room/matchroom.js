@@ -1,9 +1,8 @@
 /*
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
-let teamCache = new Map()
-
 const matchRoomModule = new Module("matchroom", async () => {
+    matchRoomModule.teamCache = new Map()
     matchRoomModule.temporaryFaceitBugFix();
     const matchId = extractMatchId();
 
@@ -14,7 +13,7 @@ const matchRoomModule = new Module("matchroom", async () => {
         error("Error when retrieving match statistics", err);
     }
 }, async () => {
-    teamCache.clear()
+    matchRoomModule.teamCache.clear()
 })
 
 async function setupPlayerCardMatchData(playerId, nickname, targetNode) {
@@ -75,7 +74,6 @@ async function getMatchWinRates(matchId) {
     }
 
     const matchStats = await fetchMatchStats(matchId);
-
     if (!matchStats) {
         error("Error when retrieving match statistics: Incorrect match structure.");
         return
@@ -105,9 +103,9 @@ async function calculateStats(team, playerId, matchAmount) {
         return;
     }
 
-    if (!teamCache.has(team)) teamCache.set(team, new Map());
+    if (!matchRoomModule.teamCache.has(team)) matchRoomModule.teamCache.set(team, new Map());
 
-    const teamMap = teamCache.get(team);
+    const teamMap = matchRoomModule.teamCache.get(team);
 
     data.items.forEach(item => {
         const stats = item.stats;
@@ -155,7 +153,7 @@ async function displayWinRates(matchDetails) {
 
     await Promise.all([...team1Promises, ...team2Promises]);
     let teamTableNodeId = `team-table-${matchRoomModule.sessionId}`
-    await matchRoomModule.doAfterNodeAppear('[name="info"][class*=Overview__Column]', async (node) => {
+    await matchRoomModule.doAfterAllNodeAppear('[name="info"][class*=Overview__Column]', async (node) => {
         let existingTeamTableNode = node.querySelector(`[class*=team-table]`);
         if (existingTeamTableNode) {
             if (existingTeamTableNode.classList.contains(teamTableNodeId)) return
@@ -175,7 +173,7 @@ async function displayWinRates(matchDetails) {
         htmlResource.classList.add(teamTableNodeId)
         innerNode.after(htmlResource);
 
-        teamCache.forEach((teamMap, teamName) => {
+        matchRoomModule.teamCache.forEach((teamMap, teamName) => {
             const teamMatches = calculateTeamMatches(teamMap);
             displayTeamMatches(htmlResource, teamName, teamMatches);
         });

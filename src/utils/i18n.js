@@ -45,10 +45,8 @@ function detectI18nBrowserLanguage() {
 }
 
 async function loadTranslations(lang) {
-    const runtimeAPI = browserType === FIREFOX ? browser.runtime : chrome.runtime;
-
     try {
-        const url = runtimeAPI.getURL(`_locales/${lang}/forecast.json`);
+        const url = CLIENT_RUNTIME.getURL(`_locales/${lang}/forecast.json`);
         const response = await fetch(url);
         if (response.ok) {
             i18nTranslations[lang] = await response.json();
@@ -59,7 +57,7 @@ async function loadTranslations(lang) {
 
     if (lang !== I18N_DEFAULT_LANGUAGE && !i18nTranslations[I18N_DEFAULT_LANGUAGE]) {
         try {
-            const fallbackUrl = runtimeAPI.getURL(`_locales/${I18N_DEFAULT_LANGUAGE}/forecast.json`);
+            const fallbackUrl = CLIENT_RUNTIME.getURL(`_locales/${I18N_DEFAULT_LANGUAGE}/forecast.json`);
             const fallbackResponse = await fetch(fallbackUrl);
             if (fallbackResponse.ok) {
                 i18nTranslations[I18N_DEFAULT_LANGUAGE] = await fallbackResponse.json();
