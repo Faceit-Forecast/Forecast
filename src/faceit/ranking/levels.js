@@ -236,7 +236,7 @@ const newLevelsModule = new Module("eloranking", async () => {
         });
     } else if (lobby.pageType === "profile") {
         let primarySelector = '[class*=styles__MainSection] > [class*=styles__EloAndLeagueContainer] > div > [class*=styles__Flex] > div'
-        let eloTextSelector = `${primarySelector} > div > h5`;
+        let eloTextSelector = `${primarySelector} > div > span[class*=Text]`;
         let badgeHolderSelector = `${primarySelector} > div[class*=BadgeHolder]`
         await newLevelsModule.doAfterNodeAppear(eloTextSelector, async (eloText) => {
             const node = getNthParent(eloText, 2)

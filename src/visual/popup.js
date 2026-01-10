@@ -422,7 +422,8 @@ const SettingsManager = {
         coloredStatsADR: true,
         coloredStatsKD: true,
         coloredStatsKR: true,
-        showFCR: true
+        showFCR: true,
+        coloredStatsFCR: true
     },
 
     async load() {
