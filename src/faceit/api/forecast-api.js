@@ -3,32 +3,76 @@
  */
 const baseUrlFC = "https://api.fforecast.net"
 
-async function fetchFC(url, errorMsg) {
-    let res;
+let cachedDeviceId = null;
+
+async function getDeviceId() {
+    if (cachedDeviceId) return cachedDeviceId;
+
+    return new Promise((resolve) => {
+        CLIENT_API.storage.local.get(['deviceId'], async (result) => {
+            if (result.deviceId) {
+                cachedDeviceId = result.deviceId;
+                resolve(result.deviceId);
+            } else {
+                const newDeviceId = await registerDevice();
+                if (newDeviceId) {
+                    cachedDeviceId = newDeviceId;
+                    CLIENT_API.storage.local.set({ deviceId: newDeviceId });
+                }
+                resolve(newDeviceId);
+            }
+        });
+    });
+}
+
+async function registerDevice() {
     try {
-        res = await fetch(url);
+        const res = await fetch(`${baseUrlFC}/v2/extension/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Extension-Version': EXTENSION_VERSION
+            },
+            body: JSON.stringify({})
+        });
+
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        return data.deviceId || null;
     } catch (err) {
-        error(`${errorMsg}: ${err.message}`);
+        error("Failed to register device:", err);
         return null;
     }
+}
 
-    if (!res.ok) {
-        error(`${errorMsg}: ${res.statusText}`);
-        return null;
-    }
-
-    const text = await res.text();
+async function fetchFC(url, options = {}) {
     try {
+        const deviceId = await getDeviceId();
+        const headers = options.headers || {};
+        if (deviceId) {
+            headers['X-Device-ID'] = deviceId;
+        }
+        headers['X-Extension-Version'] = EXTENSION_VERSION;
+        const res = await fetch(url, { ...options, headers });
+
+        if (!res.ok) {
+            if (res.status !== 204) {
+                error(`Request failed: ${res.statusText}`);
+            }
+            return null;
+        }
+
+        const text = await res.text();
         return text ? JSON.parse(text) : null;
     } catch (err) {
-        error(err);
-        error(`${errorMsg}: invalid JSON`);
+        error(`Request error: ${err.message}`);
         return null;
     }
 }
 
 async function fetchPing() {
-    await fetchFC(`${baseUrlFC}/session/ping?ver=${EXTENSION_VERSION}`, "Error on pinging");
+    await fetchFC(`${baseUrlFC}/v2/extension/ping`);
 }
 
 function sanitizeHtml(html) {
@@ -62,42 +106,22 @@ async function fetchBannerData(language, slot) {
     if (cachedData) {
         try {
             const parsed = JSON.parse(cachedData);
-
-            sendBannerMetric(parsed.bannerId, language,slot);
-
+            sendBannerMetric(parsed.bannerId, language, slot);
             return parsed;
         } catch (e) {
             error("Failed to parse cached banner data:", e);
         }
     }
 
-    try {
-        const res = await fetch(`${baseUrlFC}/integrations/banner?lang=${language}&slot=${slot}`);
+    const bannerData = await fetchFC(`${baseUrlFC}/v2/integrations/banner?lang=${language}&slot=${slot}`);
 
-        if (res.status === 204) return null;
-
-        if (!res.ok) {
-            error(`Failed to fetch banner: ${res.statusText}`);
-            return null;
-        }
-
-        const bannerData = await res.json();
-
+    if (bannerData) {
         setCookie("forecast-banner-cache", JSON.stringify(bannerData), 5);
-
-        return bannerData;
-    } catch (err) {
-        error("Error fetching banner:", err);
-        return null;
     }
+
+    return bannerData;
 }
 
 async function sendBannerMetric(bannerId, language, slot) {
-    try {
-        await fetch(`${baseUrlFC}/integrations/banner?metricOnly=true&bannerId=${bannerId}&lang=${language}&slot=${slot}`, {
-            method: 'GET'
-        });
-    } catch (err) {
-        error(err)
-    }
+    await fetchFC(`${baseUrlFC}/v2/integrations/banner?metricOnly=true&bannerId=${bannerId}&lang=${language}&slot=${slot}`);
 }
