@@ -50,6 +50,8 @@
   "version": "Version",
   "author": "Autor",
   "online": "Online",
+  "discord": "Discord",
+  "website": "Webseite",
   "email": "E-Mail",
 
   "donate_description": "Gefällt dir die Erweiterung?<br>Unterstütze den Entwickler mit einer Spende! Deine Hilfe hält sie kostenlos und regelmäßig aktualisiert.",

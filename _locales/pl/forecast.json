@@ -50,6 +50,8 @@
   "version": "Wersja",
   "author": "Autor",
   "online": "Online",
+  "discord": "Discord",
+  "website": "Strona",
   "email": "E-mail",
 
   "donate_description": "Podoba ci się to rozszerzenie?<br>Wesprzyj programistę darowizną! Twoja pomoc utrzymuje je darmowym i regularnie aktualizowanym.",
