@@ -1,5 +1,5 @@
 [1.7.7] Bug Fixes
-Fixed level indicator bug on player profiles
+Fixed level icon not appearing on player profiles
 Improved About tab in extension popup
 
 [1.7.6] FCR Rating & Bug Fixes
