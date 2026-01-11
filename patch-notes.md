@@ -1,3 +1,7 @@
+[1.7.7] Bug Fixes
+Fixed level indicator bug on player profiles
+Improved About tab in extension popup
+
 [1.7.6] FCR Rating & Bug Fixes
 Improved extension performance and loading speed
 Fixed match room not loading in certain conditions
