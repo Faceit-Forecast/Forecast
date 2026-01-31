@@ -10,6 +10,7 @@ const lobbyModules = [
     { pages: ['*'], module: integrationsModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['*'], module: newLevelsModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['*'], module: logoSidebarModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['*'], module: profilesModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['stats'], module: rankingModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['matchroom'], module: matchRoomModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['matchroom'], module: posCatcherModule, isEnabled: null, isEnabledByDefault: true },
@@ -20,6 +21,7 @@ async function initExtension() {
     if (!(await isExtensionEnabled())) return
     await initializeMatchHistoryCache();
     await loadMatchHistoryCache();
+    initTemplates();
     await resourcesModule.produceOf("load");
     await i18nModule.produceOf("load");
 
@@ -42,8 +44,8 @@ async function initExtension() {
     }, 50);
 }
 
-initExtension().catch(error => {
-    error("Failed to initialize extension:", error);
+initExtension().catch(err => {
+    error("Failed to initialize extension:", err);
 });
 
 function determineAction(pages, currentLobby, previousLobby) {

@@ -19,7 +19,7 @@ const matchRoomModule = new Module("matchroom", async () => {
 async function setupPlayerCardMatchData(playerId, nickname, targetNode) {
     let tableId = `session-${matchRoomModule.sessionId}-player-table-${playerId}`
     if (targetNode.querySelector("[class~=tableId]")) return null
-    let htmlResource = getHtmlResource('src/visual/tables/player.html').cloneNode(true);
+    let htmlResource = PLAYER_WINRATE_TABLE_TEMPLATE.cloneNode(true);
     htmlResource.querySelector('[class=player-name]').textContent = t('player_stats', 'Player Stats')
     setupBrandIcon(htmlResource, 24, 24)
     appendTo(htmlResource, targetNode)
@@ -84,7 +84,7 @@ async function getMatchWinRates(matchId) {
 
 async function findUserCard(nickname, callback) {
     let nickNodeSelector = 'div[class*=styles__PopoverStyled] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5'
-    await matchRoomModule.doAfterNodeAppearWithCondition(nickNodeSelector, (node) => node.innerText === nickname, (node) => {
+    matchRoomModule.doAfterNodeAppearWithCondition(nickNodeSelector, (node) => node.innerText === nickname, (node) => {
         let parentNode = node.parentElement.parentElement.parentElement.parentElement.querySelector('div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]')
         if (!matchRoomModule.isProcessedNode(parentNode)) {
             matchRoomModule.processedNode(parentNode);
@@ -166,7 +166,7 @@ async function displayWinRates(matchDetails) {
 
         let innerNode = targetNode.querySelector('[class*=Overview__Stack]')
 
-        let htmlResource = getHtmlResource('src/visual/tables/team.html').cloneNode(true)
+        let htmlResource = TEAM_WINRATE_TABLE_TEMPLATE.cloneNode(true)
         setupBrandIcon(htmlResource, 24, 24)
 
         node.style.overflowBlock = 'unset';

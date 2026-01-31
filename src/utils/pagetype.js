@@ -72,6 +72,11 @@ const FRIENDS = new PageType(
     /^https:\/\/www\.faceit\.com\/([^/]+)\/players\/([^/]+)\/friends$/
 );
 
+const GUESTBOOK = new PageType(
+    "friends",
+    /^https:\/\/www\.faceit\.com\/([^/]+)\/players\/([^/]+)\/guestbook$/
+);
+
 const VIDEOS = new PageType(
     "videos",
     /^https:\/\/www\.faceit\.com\/([^/]+)\/players\/([^/]+)\/videos$/
@@ -129,6 +134,7 @@ const pageTypes = [
     LEAGUES,
     TOURNAMENTS,
     FRIENDS,
+    GUESTBOOK,
     VIDEOS,
     INVENTORY,
     CLUBS,

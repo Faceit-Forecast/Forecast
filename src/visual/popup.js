@@ -10,9 +10,17 @@ const CHROMIUM = "CHROMIUM"
 const BROWSER_TYPE = typeof browser === 'undefined' ? CHROMIUM : FIREFOX
 const CLIENT_API = BROWSER_TYPE === FIREFOX ? browser : chrome;
 const CLIENT_RUNTIME = CLIENT_API.runtime;
-const CLIENT_STORAGE = CLIENT_API.storage.sync;
+const CLIENT_STORAGE_SYNC = CLIENT_API.storage.sync;
 
-const CS2_MAPS = ['de_dust2', 'de_mirage', 'de_nuke', 'de_ancient', 'de_train', 'de_inferno', 'de_overpass'];
+const MAPS_CONFIG_URL = 'https://cdn.fforecast.net/config/maps-config.json';
+const MAPS_CONFIG_CACHE_KEY = 'maps-config-cache';
+const MAPS_CONFIG_CACHE_TTL = 1000 * 60 * 60 * 6;
+
+const MAPS_ICONS_CDN_URL = 'https://cdn.fforecast.net/web/images/maps';
+const MAPS_ICONS_SIZE = 48;
+
+let mapsConfig = null;
+let CS2_MAPS = [];
 
 const PATCH_NOTES_URL = 'https://raw.githubusercontent.com/TerraMiner/Forecast/master/patch-notes.md';
 const PATCH_NOTES_CACHE_KEY = 'patch-notes-cache';
@@ -20,14 +28,6 @@ const PATCH_NOTES_CACHE_TTL = 1000 * 60 * 30;
 
 const SUPPORTED_LANGUAGES = ['en', 'ru', 'de', 'fr', 'uk', 'pl'];
 const DEFAULT_LANGUAGE = 'en';
-const LANGUAGE_NAMES = {
-    en: "English",
-    ru: "Русский",
-    de: "Deutsch",
-    fr: "Français",
-    uk: "Українська",
-    pl: "Polski"
-};
 
 const TAB_LABELS = {
     "general": "General",
@@ -278,7 +278,7 @@ const PatchNotesManager = {
         container.querySelectorAll('.patch-note-image').forEach(img => {
             img.addEventListener('click', () => this.openImageOverlay(img.src, img.alt));
 
-            img.addEventListener('error', function() {
+            img.addEventListener('error', function () {
                 if (!this.dataset.retried) {
                     this.dataset.retried = 'true';
                     const originalSrc = this.src;
@@ -395,14 +395,366 @@ const PatchNotesManager = {
 
 const StorageUtils = {
     async get(keys) {
-        return new Promise((resolve, reject) => {
-            CLIENT_STORAGE.get(keys, resolve);
+        return new Promise((resolve, _) => {
+            CLIENT_STORAGE_SYNC.get(keys, resolve);
         });
     },
 
     async set(items) {
-        return new Promise((resolve, reject) => {
-            CLIENT_STORAGE.set(items, resolve);
+        return new Promise((resolve, _) => {
+            CLIENT_STORAGE_SYNC.set(items, resolve);
+        });
+    }
+};
+
+const AUTH_HOST = 'https://auth.fforecast.net';
+const BASE_API_URL = 'https://api.fforecast.net';
+const AUTH_STORAGE_KEY = 'forecast_auth';
+const DEVICE_ID_KEY = 'deviceId';
+
+const AuthManager = {
+    state: {
+        isAuthenticated: false,
+        user: null
+    },
+    authCheckInterval: null,
+    deviceId: null,
+    authTabId: null,
+    isLoggingIn: false,
+    authWindow: null,
+    authWindowCheckInterval: null,
+    authState: 'idle',
+
+    async init() {
+        try {
+            this.deviceId = await this.getDeviceId();
+
+            const stored = await StorageUtils.get([AUTH_STORAGE_KEY]);
+            if (stored[AUTH_STORAGE_KEY]) {
+                const authData = stored[AUTH_STORAGE_KEY];
+                if (authData.expiresAt > Date.now()) {
+                    this.state = {
+                        isAuthenticated: true,
+                        user: authData.user
+                    };
+                }
+            }
+
+
+        } catch (e) {
+            console.warn('[Auth] Init failed:', e);
+        }
+        this.updateUI();
+        return this.state;
+    },
+
+    async getDeviceId() {
+        return new Promise((resolve) => {
+            CLIENT_STORAGE_SYNC.get([DEVICE_ID_KEY], async (result) => {
+                if (result[DEVICE_ID_KEY]) {
+                    resolve(result[DEVICE_ID_KEY]);
+                } else {
+                    const newDeviceId = await this.registerDevice();
+                    if (newDeviceId) {
+                        CLIENT_STORAGE_SYNC.set({[DEVICE_ID_KEY]: newDeviceId});
+                    }
+                    resolve(newDeviceId);
+                }
+            });
+        });
+    },
+
+    async registerDevice() {
+        try {
+            const version = CLIENT_RUNTIME.getManifest().version;
+            const res = await fetch('https://api.fforecast.net/v2/extension/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Extension-Version': version
+                },
+                body: JSON.stringify({})
+            });
+
+            if (!res.ok) return null;
+
+            const data = await res.json();
+            return data.deviceId || null;
+        } catch (err) {
+            console.error('[Auth] Failed to register device:', err);
+            return null;
+        }
+    },
+
+    async login() {
+        try {
+            if (this.isLoggingIn) {
+                return {success: false, error: 'Login already in progress'};
+            }
+
+            this.isLoggingIn = true;
+            this.authState = 'loading';
+            this.updateUI();
+
+            if (!this.deviceId) {
+                this.deviceId = await this.getDeviceId();
+            }
+
+            if (!this.deviceId) {
+                console.error('[Auth] No device ID available');
+                this.handleAuthError('No device ID');
+                return {success: false, error: 'No device ID'};
+            }
+
+            const stateParam = this.generateState();
+            await StorageUtils.set({
+                'oauth_state': stateParam,
+                'auth_pending': true,
+                'auth_pending_timestamp': Date.now()
+            });
+
+            const startUrl = `${AUTH_HOST}/faceit/start?device_id=${encodeURIComponent(this.deviceId)}&state=${stateParam}&json=true`;
+
+            let authUrl;
+            try {
+                const resp = await fetch(startUrl, {
+                    method: 'GET',
+                    headers: {'Accept': 'application/json'}
+                });
+                if (!resp.ok) throw new Error('Auth service start failed: ' + resp.status);
+                const payload = await resp.json();
+                authUrl = payload.authUrl;
+            } catch (err) {
+                console.warn('[Auth] Failed to fetch authUrl, falling back', err);
+                authUrl = `${AUTH_HOST}/faceit/start?state=${stateParam}&device_id=${encodeURIComponent(this.deviceId)}`;
+            }
+
+            const response = await CLIENT_RUNTIME.sendMessage({
+                type: 'START_AUTH',
+                data: {
+                    authUrl: authUrl,
+                    state: stateParam,
+                    deviceId: this.deviceId
+                }
+            });
+
+            if (!response.success) {
+                this.handleAuthError(response.error);
+                return response;
+            }
+
+            return {success: true};
+
+        } catch (e) {
+            console.error('[Auth] Login failed:', e);
+            this.handleAuthError(e.message);
+            return {success: false, error: e.message};
+        }
+    },
+
+    handleAuthSuccess(user) {
+        this.authState = 'success';
+        this.state = {isAuthenticated: true, user: user};
+        this.updateUI();
+
+        setTimeout(() => {
+            this.isLoggingIn = false;
+            this.authState = 'idle';
+            this.updateUI();
+        }, 1000);
+    },
+
+    handleAuthError(errorMessage) {
+        console.error('[Auth] Authentication error:', errorMessage);
+
+        this.authState = 'error';
+        this.updateUI();
+
+        setTimeout(() => {
+            this.isLoggingIn = false;
+            this.authState = 'idle';
+            this.updateUI();
+        }, 2000);
+    },
+
+    generateState() {
+        return crypto.randomUUID();
+    },
+
+    async logout() {
+        try {
+            if (this.deviceId) {
+                await fetch(`${BASE_API_URL}/v1/auth/unlink?faceit_id=${this.state.user.playerId}`, {
+                    method: 'POST',
+                    headers: {'X-Device-ID': this.deviceId}
+                });
+            }
+            await StorageUtils.set({[AUTH_STORAGE_KEY]: null});
+            this.state = {isAuthenticated: false, user: null};
+            this.isLoggingIn = false;
+            this.authState = 'idle';
+            this.updateUI();
+            return {success: true};
+        } catch (e) {
+            console.error('[Auth] Logout failed:', e);
+            return {success: false, error: e.message};
+        }
+    },
+
+    updateUI() {
+        const authSection = document.getElementById('authSection');
+        if (!authSection) return;
+
+        if (this.state.isAuthenticated && this.state.user && this.authState === 'idle') {
+            authSection.innerHTML = `
+                <label data-i18n="account">${t('account')}</label>
+                <div class="auth-user">
+                    <img class="auth-avatar" src="" alt="" style="display:none;">
+                    <span class="auth-nickname">${this.state.user.nickname}</span>
+                    <button id="logoutBtn" class="auth-btn auth-btn-logout">${t('logout')}</button>
+                </div>
+            `;
+
+            this.loadAvatar(this.state.user.playerId);
+            document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
+        } else {
+            let btnClass = 'auth-btn';
+            if (this.authState === 'loading') btnClass += ' loading';
+            if (this.authState === 'success') btnClass += ' success';
+            if (this.authState === 'error') btnClass += ' error';
+
+            authSection.innerHTML = `
+                <label data-i18n="account">${t('account')}</label>
+                <button id="loginBtn" class="${btnClass}">
+                    <div class="auth-btn-icon">
+                        <img src="icons/faceit.svg" class="faceit-icon" width="16" height="16" alt="">
+                        <img src="icons/loading.svg" class="loading-icon" width="16" height="16" alt="">
+                        <img src="icons/loaded.svg" class="success-icon" width="16" height="16" alt="">
+                        <img src="icons/error.svg" class="error-icon" width="16" height="16" alt="">
+                    </div>
+                    ${t('login')}
+                </button>
+            `;
+
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn && this.authState === 'idle') {
+                loginBtn.addEventListener('click', () => this.login());
+            }
+        }
+    },
+
+    async loadAvatar(playerId) {
+        try {
+            const response = await fetch(`${BASE_API_URL}/v1/faceit/avatar/${playerId}`);
+            if (response.ok) {
+                const data = await response.json();
+                const avatar = data.avatar;
+                if (avatar) {
+                    const img = document.querySelector('.auth-avatar');
+                    if (img) {
+                        img.src = avatar;
+                        img.style.display = 'inline-block';
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load avatar:', e);
+        }
+    }
+};
+
+const MapsConfigManager = {
+    defaultConfig: {
+        version: 1,
+        maps: {
+            de_dust2: {active: true, display: "DUST 2", faceitName: "Dust2", icon: "map_icon_de_dust2.png"},
+            de_mirage: {active: true, display: "MIRAGE", faceitName: "Mirage", icon: "map_icon_de_mirage.png"},
+            de_nuke: {active: true, display: "NUKE", faceitName: "Nuke", icon: "map_icon_de_nuke.png"},
+            de_ancient: {active: true, display: "ANCIENT", faceitName: "Ancient", icon: "map_icon_de_ancient.png"},
+            de_anubis: {active: true, display: "ANUBIS", faceitName: "Anubis", icon: "map_icon_de_anubis.png"},
+            de_train: {active: false, display: "TRAIN", faceitName: "Train", icon: "map_icon_de_train.png"},
+            de_inferno: {active: true, display: "INFERNO", faceitName: "Inferno", icon: "map_icon_de_inferno.png"},
+            de_overpass: {active: true, display: "OVERPASS", faceitName: "Overpass", icon: "map_icon_de_overpass.png"}
+        }
+    },
+
+    async init() {
+        try {
+            mapsConfig = await this.fetchWithCache();
+        } catch (error) {
+            console.error('Failed to load maps config, using default:', error);
+            mapsConfig = this.defaultConfig;
+        }
+        CS2_MAPS = this.getActiveMaps();
+        this.renderMapGrid();
+    },
+
+    async fetchWithCache() {
+        try {
+            const cached = await StorageUtils.get([MAPS_CONFIG_CACHE_KEY, `${MAPS_CONFIG_CACHE_KEY}-time`]);
+            const cachedData = cached[MAPS_CONFIG_CACHE_KEY];
+            const cachedTime = cached[`${MAPS_CONFIG_CACHE_KEY}-time`];
+
+            if (cachedData && cachedTime && (Date.now() - cachedTime < MAPS_CONFIG_CACHE_TTL)) {
+                return cachedData;
+            }
+        } catch (e) {
+        }
+
+        const response = await fetch(`${MAPS_CONFIG_URL}?_=${Date.now()}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const config = await response.json();
+
+        try {
+            await StorageUtils.set({
+                [MAPS_CONFIG_CACHE_KEY]: config,
+                [`${MAPS_CONFIG_CACHE_KEY}-time`]: Date.now()
+            });
+        } catch (e) {
+        }
+
+        return config;
+    },
+
+    getActiveMaps() {
+        if (!mapsConfig || !mapsConfig.maps) return [];
+        return Object.keys(mapsConfig.maps).filter(mapId => mapsConfig.maps[mapId].active);
+    },
+
+    getAllMaps() {
+        if (!mapsConfig || !mapsConfig.maps) return {};
+        return mapsConfig.maps;
+    },
+
+    renderMapGrid() {
+        const mapGrid = document.querySelector('#mapSettings .map-grid');
+        if (!mapGrid) return;
+
+        mapGrid.innerHTML = '';
+
+        const maps = this.getAllMaps();
+        Object.entries(maps).forEach(([mapId, mapData]) => {
+            if (!mapData.active) return;
+
+            const mapCell = document.createElement('div');
+            mapCell.className = 'map-cell';
+            mapCell.innerHTML = `
+                <img class="map-icon" src="${MAPS_ICONS_CDN_URL}/${MAPS_ICONS_SIZE}/${mapData.icon}" alt="${mapData.display}">
+                <span class="map-cell-name">${mapData.display}</span>
+                <input type="text" id="${mapId}Message" placeholder="message"
+                       data-i18n-placeholder="map_message_placeholder" maxlength="16"
+                       aria-label="Message for ${mapData.display}">
+                <label class="switch map-switch">
+                    <input type="checkbox" id="${mapId}Enabled" aria-label="Enable ${mapData.display}">
+                    <span class="slider"></span>
+                </label>
+            `;
+            mapGrid.appendChild(mapCell);
+        });
+
+        mapGrid.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            el.placeholder = t(key, el.placeholder);
         });
     }
 };
@@ -416,21 +768,21 @@ const SettingsManager = {
         matchhistory: true,
         poscatcher: true,
         integrations: true,
-        eloHistoryCalculation: true,
         matchCounter: true,
         coloredStatsKDA: true,
         coloredStatsADR: true,
         coloredStatsKD: true,
         coloredStatsKR: true,
         showFCR: true,
-        coloredStatsFCR: true
+        coloredStatsFCR: true,
+        roundedStats: false
     },
 
     async load() {
         try {
             const keys = ['isEnabled', 'sliderValue', 'matchroom', 'eloranking', 'matchhistory', 'poscatcher',
-                'eloHistoryCalculation', 'matchCounter', 'coloredStatsKDA', 'coloredStatsADR', 'coloredStatsKD',
-                'coloredStatsKR', 'showFCR', 'coloredStatsFCR',
+                'matchCounter', 'coloredStatsKDA', 'coloredStatsADR', 'coloredStatsKD',
+                'coloredStatsKR', 'showFCR', 'coloredStatsFCR', 'roundedStats',
                 ...CS2_MAPS.flatMap(map => [`${map}Enabled`, `${map}Message`]), 'integrations'];
 
             const settings = await StorageUtils.get(keys);
@@ -509,14 +861,14 @@ const SettingsManager = {
         }
 
         const settingsElements = {
-            eloHistoryCalculation: 'eloHistoryCalculation',
             matchCounter: 'matchCounter',
             coloredStatsKDA: 'coloredStatsKDA',
             coloredStatsADR: 'coloredStatsADR',
             coloredStatsKD: 'coloredStatsKD',
             coloredStatsKR: 'coloredStatsKR',
             coloredStatsFCR: 'coloredStatsFCR',
-            showFCR: 'showFCR'
+            showFCR: 'showFCR',
+            roundedStats: 'roundedStats'
         };
 
         Object.entries(settingsElements).forEach(([elementId, settingKey]) => {
@@ -635,11 +987,190 @@ const UIUtils = {
     }
 };
 
+const UIBuilder = {
+    ICON_PATHS: {
+        info: 'icons/info-outline.svg',
+        discord: 'icons/discord.svg',
+        github: 'icons/github.svg',
+        email: 'icons/gmail.svg',
+        coffee: 'icons/buymeacoffee.svg',
+        boosty: 'icons/boosty.svg',
+        chevron: 'icons/chevron-down.svg',
+        website: 'icons/rawlogo.svg',
+        faceit: 'icons/faceit.svg'
+    },
+
+    icon(name, width = 20, height = 20, className = '') {
+        const path = this.ICON_PATHS[name];
+        if (!path) return '';
+        const cls = className ? ` class="${className}"` : '';
+        return `<img src="${path}" width="${width}" height="${height}"${cls} alt="">`;
+    },
+
+    FEATURES_CONFIG: [
+        {
+            id: 'matchhistory',
+            labelKey: 'advanced_match_history',
+            descKey: 'advanced_match_history_desc',
+            nestedId: 'matchHistorySettings',
+            nestedContent: 'matchHistoryGrid'
+        },
+        {
+            id: 'eloranking',
+            labelKey: 'new_elo_rankings',
+            descKey: 'new_elo_rankings_desc'
+        },
+        {
+            id: 'matchroom',
+            labelKey: 'matchroom_stats',
+            descKey: 'matchroom_stats_desc',
+            nestedId: 'analyzeLimit',
+            nestedContent: 'rangeSlider'
+        },
+        {
+            id: 'poscatcher',
+            labelKey: 'quick_position_setup',
+            descKey: 'quick_position_setup_desc',
+            nestedId: 'mapSettings',
+            nestedContent: 'mapGrid'
+        },
+        {
+            id: 'integrations',
+            labelKey: 'integrations',
+            descKey: 'integrations_desc'
+        }
+    ],
+
+    MATCH_HISTORY_SETTINGS: [
+        {id: 'matchCounter', labelKey: 'match_counter', descKey: 'match_counter_desc'},
+        {id: 'coloredStatsKDA', labelKey: 'kda_color', descKey: 'kda_color_desc'},
+        {id: 'coloredStatsADR', labelKey: 'adr_color', descKey: 'adr_color_desc'},
+        {id: 'coloredStatsKD', labelKey: 'kd_color', descKey: 'kd_color_desc'},
+        {id: 'coloredStatsKR', labelKey: 'kr_color', descKey: 'kr_color_desc'},
+        {id: 'showFCR', label: 'FCR', descKey: 'fcr_desc', cellId: 'fcrSettingsCell'},
+        {
+            id: 'coloredStatsFCR',
+            labelKey: 'fcr_color',
+            descKey: 'fcr_color_desc',
+            className: 'hidden-cell',
+            cellId: 'fcrColoredStatsContainer'
+        },
+        {id: 'roundedStats', labelKey: 'rounded_stats', descKey: 'rounded_stats_desc'}
+    ],
+
+    ABOUT_LINKS: [
+        {labelKey: 'discord', href: 'https://discord.gg/5ZPaVzUEXR', icon: 'discord'},
+        {label: 'GitHub', href: 'https://github.com/Faceit-Forecast/Forecast', icon: 'github'}
+    ],
+
+    DONATE_LINKS: [
+        {label: 'Buy Me A Coffee', href: 'https://www.buymeacoffee.com/terraminer', icon: 'coffee'},
+        {label: 'Boosty', href: 'https://boosty.to/terraminer', icon: 'boosty'}
+    ],
+
+    createSwitch(id, checked = true) {
+        return `<label class="switch"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''}><span class="slider"></span></label>`;
+    },
+
+    createInfoTooltip(descKey, small = false) {
+        const size = small ? 12 : 16;
+        const icon = this.icon('info', size, size, 'info-icon');
+        return `<div class="info-tooltip-wrapper"><div class="info-button" aria-label="Info">${icon}</div><div class="info-tooltip"><p data-i18n="${descKey}">${t(descKey)}</p></div></div>`;
+    },
+
+    createSettingsCell(config) {
+        const extraClass = config.className ? ` ${config.className}` : '';
+        const cellId = config.cellId ? ` id="${config.cellId}"` : '';
+        const labelAttr = config.labelKey ? `data-i18n="${config.labelKey}"` : '';
+        const labelText = config.labelKey ? t(config.labelKey, config.label || '') : (config.label || '');
+
+        return `<div class="settings-cell${extraClass}"${cellId}><span class="settings-cell-label" ${labelAttr}>${labelText}</span>${this.createInfoTooltip(config.descKey, true)}${this.createSwitch(config.id)}</div>`;
+    },
+
+    createSettingGroup(config) {
+        let nestedHtml = '';
+        if (config.nestedId) {
+            let nestedContent = '';
+            if (config.nestedContent === 'matchHistoryGrid') {
+                nestedContent = '<div class="settings-grid" id="matchHistorySettingsGrid"></div>';
+            } else if (config.nestedContent === 'rangeSlider') {
+                nestedContent = `<div class="setting-item"><div class="setting-header"><label for="rangeSlider" data-i18n="match_amount">${t('match_amount')}</label></div><div class="slider-controls"><input type="range" id="rangeSlider" class="range-slider" min="5" max="100" value="30"><span id="sliderValue">30</span></div></div>`;
+            } else if (config.nestedContent === 'mapGrid') {
+                nestedContent = '<div class="map-grid"></div>';
+            }
+            nestedHtml = `<div class="nested-setting visible" id="${config.nestedId}">${nestedContent}</div>`;
+        }
+
+        return `<div class="setting-group"><div class="setting-item"><div class="setting-header"><label for="${config.id}" data-i18n="${config.labelKey}">${t(config.labelKey)}</label>${this.createInfoTooltip(config.descKey)}</div>${this.createSwitch(config.id)}</div>${nestedHtml}</div>`;
+    },
+
+    createAboutCell(config) {
+        const labelAttr = config.labelKey ? `data-i18n="${config.labelKey}"` : '';
+        const labelText = config.labelKey ? t(config.labelKey) : config.label;
+        const icon = this.icon(config.icon, 20, 20);
+
+        if (config.href) {
+            return `<div class="about-cell"><span class="about-cell-label" ${labelAttr}>${labelText}</span><a href="${config.href}" target="_blank" class="about-button">${icon}</a></div>`;
+        }
+        return `<div class="about-cell"><span class="about-cell-label" ${labelAttr}>${labelText}</span><span class="${config.badgeClass}" id="${config.id}">${config.value || ''}</span></div>`;
+    },
+
+    createDonateCell(config) {
+        const icon = this.icon(config.icon, 32, 32);
+        return `<div class="donate-cell"><span class="donate-cell-label">${config.label}</span><a href="${config.href}" target="_blank" class="donate-button">${icon}</a></div>`;
+    },
+
+    buildMatchHistorySettings() {
+        const container = document.getElementById('matchHistorySettingsGrid');
+        if (!container) return;
+        container.innerHTML = this.MATCH_HISTORY_SETTINGS.map(s => this.createSettingsCell(s)).join('');
+    },
+
+    buildFeaturesSection() {
+        const container = document.getElementById('featuresContainer');
+        if (!container) return;
+        container.innerHTML = this.FEATURES_CONFIG.map(c => this.createSettingGroup(c)).join('');
+    },
+
+    buildAboutSection() {
+        const grid = document.getElementById('aboutGrid');
+        if (!grid) return;
+
+        const staticCells = [
+            {labelKey: 'version', id: 'version', value: '1.0.0', badgeClass: 'version-badge'},
+            {labelKey: 'author', id: 'author', value: 'TerraMiner', badgeClass: 'author-badge'},
+            {labelKey: 'online', id: 'online', value: '0', badgeClass: 'online-badge'}
+        ];
+
+        let html = staticCells.map(c => this.createAboutCell(c)).join('');
+        html += this.ABOUT_LINKS.map(c => this.createAboutCell(c)).join('');
+
+        html += `<div class="about-cell"><span class="about-cell-label" data-i18n="email">${t('email')}</span><button id="copyButton" class="about-button">${this.icon('email', 20, 20)}</button><div id="notification" class="notification" data-i18n="copied">${t('copied')}</div></div>`;
+
+        html += `<div class="about-cell"><span class="about-cell-label" data-i18n="website">${t('website')}</span><a href="https://fforecast.net" target="_blank" class="about-button"><img src="icons/rawlogo.svg" alt="Website" style="width:30px;height:30px;margin:-2px"></a></div>`;
+
+        grid.innerHTML = html;
+    },
+
+    buildDonateSection() {
+        const grid = document.getElementById('donateGrid');
+        if (!grid) return;
+        grid.innerHTML = this.DONATE_LINKS.map(c => this.createDonateCell(c)).join('');
+    },
+
+    init() {
+        this.buildFeaturesSection();
+        this.buildMatchHistorySettings();
+        this.buildAboutSection();
+        this.buildDonateSection();
+    }
+};
+
 async function updateOnline() {
     let onlineElement = document.getElementById("online");
     if (onlineElement) {
         try {
-            const res = await fetch(`https://api.fforecast.net/session/online`);
+            const res = await fetch(`https://api.fforecast.net/v1/extension/online`);
             if (!res.ok) throw new Error(`Error on fetching online: ${res.statusText}`);
             let online = await res.json();
 
@@ -745,6 +1276,8 @@ const EventHandlers = {
 
                     notificationTimeout = setTimeout(() => {
                         notification.classList.remove('show');
+                        notification.classList.remove('error');
+                        notification.classList.add('success');
                         notificationTimeout = null;
                     }, 2000);
                 });
@@ -798,14 +1331,14 @@ const EventHandlers = {
 
     setupMatchHistoryEventListeners() {
         const settingsToggles = [
-            'eloHistoryCalculation',
             'matchCounter',
             'coloredStatsKDA',
             'coloredStatsADR',
             'coloredStatsKD',
             'coloredStatsKR',
             'showFCR',
-            'coloredStatsFCR'
+            'coloredStatsFCR',
+            'roundedStats'
         ];
 
         settingsToggles.forEach(toggleId => {
@@ -827,7 +1360,7 @@ const EventHandlers = {
 
         infoButtons.forEach(button => {
             const tooltip = button.parentElement?.querySelector('.info-tooltip')
-                         || button.nextElementSibling;
+                || button.nextElementSibling;
             if (!tooltip) return;
 
             const showTooltip = () => {
@@ -874,21 +1407,15 @@ const EventHandlers = {
     }
 };
 
-window.addEventListener('message', (event) => {
-    if (event.origin !== "https://www.faceit.com") return;
-    if (event.data.action === 'setBackgroundColor') {
-        document.body.style.backgroundColor = event.data.color;
-    }
-}, false);
 
 async function initLanguage() {
     return new Promise((resolve) => {
-        CLIENT_STORAGE.get(['language'], async (result) => {
+        CLIENT_STORAGE_SYNC.get(['language'], async (result) => {
             if (result.language && SUPPORTED_LANGUAGES.includes(result.language)) {
                 currentLanguage = result.language;
             } else {
                 currentLanguage = detectBrowserLanguage();
-                CLIENT_STORAGE.set({language: currentLanguage});
+                CLIENT_STORAGE_SYNC.set({language: currentLanguage});
             }
             await loadTranslationsFromFile(currentLanguage);
             resolve(currentLanguage);
@@ -901,10 +1428,11 @@ async function setLanguage(lang) {
         lang = DEFAULT_LANGUAGE;
     }
     currentLanguage = lang;
-    CLIENT_STORAGE.set({language: lang});
+    CLIENT_STORAGE_SYNC.set({language: lang});
     await loadTranslationsFromFile(lang);
     localizeDocument();
     updateTabs();
+    AuthManager.updateUI();
     await PatchNotesManager.loadAndDisplay();
 }
 
@@ -931,15 +1459,22 @@ function setupLanguageSelector() {
 document.addEventListener("DOMContentLoaded", async () => {
     try {
         await initLanguage();
+
+        UIBuilder.init();
+
         localizeDocument();
+
+        await MapsConfigManager.init();
 
         await Promise.all([
             SettingsManager.load(),
             UIUtils.loadManifestInfo(),
-            PatchNotesManager.init()
+            AuthManager.init()
         ]);
 
         UIUtils.setupTabs();
+
+        PatchNotesManager.init().catch(err => console.error('Failed to init patch notes:', err));
         UIUtils.startOnlineUpdater();
 
         EventHandlers.setupMainEventListeners();
@@ -952,3 +1487,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("Error during DOMContentLoaded:", error);
     }
 });
+
+CLIENT_RUNTIME.onMessage.addListener((message) => {
+    if (message.type === 'auth_success') {
+        AuthManager.handleAuthSuccess(message.user);
+    } else if (message.type === 'transparent-bg') {
+        document.body.style.backgroundColor = 'transparent'
+    }
+});
+

@@ -2,29 +2,16 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 const parser = new DOMParser();
-
-const levelIcons = new Map();
 const htmls = new Map();
 const svgDataURIs = new Map();
 
 const logoSVGUrls = [
     "src/visual/icons/logo.svg",
-    "src/visual/icons/rawlogo.svg",
+    "src/visual/icons/rawlogo.svg"
 ];
 
 const htmlUrls = [
-    "src/visual/tables/forecaststyles.css",
-    "src/visual/tables/level-progress-table.html",
-    "src/visual/tables/team.html",
-    "src/visual/tables/player.html",
-    "src/visual/tables/match-counter-arrow.html",
-    "src/visual/tables/match-history-popup.html",
-    "src/visual/tables/elo-progress-bar.html",
-    "src/visual/tables/elo-progress-bar-master.html",
-    "src/visual/tables/skill-levels-info-table.html",
-    "src/visual/tables/levels/challenger.html",
     ...logoSVGUrls,
-    ...Array.from({length: 20}, (_, i) => `src/visual/tables/levels/level${i + 1}.html`)
 ];
 
 let isResourcesLoaded = false;
@@ -32,7 +19,6 @@ let isResourcesLoaded = false;
 const resourcesModule = new Module("resources", async () => {
     if (isResourcesLoaded) return;
     await loadAllHTMLs();
-    await loadLevelIcons();
     await loadSVGDataURIs();
     setupStyles();
     isResourcesLoaded = true;
@@ -76,24 +62,20 @@ function getSVGDataURI(path) {
     return svgDataURIs.get(path);
 }
 
-async function loadLevelIcons() {
-    if (levelIcons.size === 20) return;
-    for (let level = 1; level <= 20; level++) {
-        let lvlResource = getHtmlResource(`src/visual/tables/levels/level${level}.html`);
-        levelIcons.set(level, lvlResource);
-    }
-}
-
 function getHtmlResource(path) {
     return htmls.get(path);
 }
 
-function getLevelIcon(level) {
-    return levelIcons.get(level).cloneNode(true);
+function getLevelIcon(level, width = 32, height = 32) {
+    let icon = LEVEL_TEMPLATES.get(level).cloneNode(true)
+    const span = icon.querySelector('span');
+    span.style.width = `${width}px`
+    span.style.height = `${height}px`
+    return icon;
 }
 
 function setupStyles() {
-    let css = getHtmlResource("src/visual/tables/forecaststyles.css");
+    let css = FORECAST_STYLES_TEMPLATE;
     let style = document.getElementById("forecast-styles");
 
     if (!style) {

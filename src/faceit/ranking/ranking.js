@@ -4,76 +4,53 @@
 
 const gameLevelRanges = {
     cs2: [
-        {min: 100, max: 500},         // Level 1
-        {min: 501, max: 750},       // Level 2
-        {min: 751, max: 900},       // Level 3
-        {min: 901, max: 1050},      // Level 4
-        {min: 1051, max: 1200},     // Level 5
-        {min: 1201, max: 1350},     // Level 6
-        {min: 1351, max: 1530},     // Level 7
-        {min: 1531, max: 1750},     // Level 8
-        {min: 1751, max: 2000},     // Level 9
-        {min: 2001, max: 2250},     // Level 10
-        {min: 2251, max: 2500},     // Level 11
-        {min: 2501, max: 2750},     // Level 12
-        {min: 2751, max: 3000},     // Level 13
-        {min: 3001, max: 3250},     // Level 14
-        {min: 3251, max: 3500},     // Level 15
-        {min: 3501, max: 3750},     // Level 16
-        {min: 3751, max: 4000},     // Level 17
-        {min: 4001, max: 4250},     // Level 18
-        {min: 4251, max: 4500},     // Level 19
-        {min: 4501, max: Infinity}  // Level 20
+        {min: 100, max: 500},
+        {min: 501, max: 750},
+        {min: 751, max: 900},
+        {min: 901, max: 1050},
+        {min: 1051, max: 1200},
+        {min: 1201, max: 1350},
+        {min: 1351, max: 1530},
+        {min: 1531, max: 1750},
+        {min: 1751, max: 2000},
+        {min: 2001, max: 2250},
+        {min: 2251, max: 2500},
+        {min: 2501, max: 2750},
+        {min: 2751, max: 3000},
+        {min: 3001, max: 3250},
+        {min: 3251, max: 3500},
+        {min: 3501, max: 3750},
+        {min: 3751, max: 4000},
+        {min: 4001, max: 4250},
+        {min: 4251, max: 4500},
+        {min: 4501, max: Infinity}
     ],
     csgo: [
-        {min: 100, max: 800},         // Level 1
-        {min: 801, max: 950},       // Level 2
-        {min: 951, max: 1100},      // Level 3
-        {min: 1101, max: 1250},     // Level 4
-        {min: 1251, max: 1400},     // Level 5
-        {min: 1401, max: 1550},     // Level 6
-        {min: 1551, max: 1700},     // Level 7
-        {min: 1701, max: 1850},     // Level 8
-        {min: 1851, max: 2000},     // Level 9
-        {min: 2001, max: 2250},     // Level 10
-        {min: 2251, max: 2500},     // Level 11
-        {min: 2501, max: 2750},     // Level 12
-        {min: 2751, max: 3000},     // Level 13
-        {min: 3001, max: 3250},     // Level 14
-        {min: 3251, max: 3500},     // Level 15
-        {min: 3501, max: 3750},     // Level 16
-        {min: 3751, max: 4000},     // Level 17
-        {min: 4001, max: 4250},     // Level 18
-        {min: 4251, max: 4500},     // Level 19
-        {min: 4501, max: Infinity}  // Level 20
+        {min: 100, max: 800},
+        {min: 801, max: 950},
+        {min: 951, max: 1100},
+        {min: 1101, max: 1250},
+        {min: 1251, max: 1400},
+        {min: 1401, max: 1550},
+        {min: 1551, max: 1700},
+        {min: 1701, max: 1850},
+        {min: 1851, max: 2000},
+        {min: 2001, max: 2250},
+        {min: 2251, max: 2500},
+        {min: 2501, max: 2750},
+        {min: 2751, max: 3000},
+        {min: 3001, max: 3250},
+        {min: 3251, max: 3500},
+        {min: 3501, max: 3750},
+        {min: 3751, max: 4000},
+        {min: 4001, max: 4250},
+        {min: 4251, max: 4500},
+        {min: 4501, max: Infinity}
     ]
 };
 
-const levelColors = {
-    1: '#EEE',
-    2: '#1CE400',
-    3: '#1CE400',
-    4: '#FFC800',
-    5: '#FFC800',
-    6: '#FFC800',
-    7: '#FFC800',
-    8: '#FF6309',
-    9: '#FF6309',
-    10: '#FE1F00',
-    11: '#FE0123',
-    12: '#FD0346',
-    13: '#FE0379',
-    14: '#FF019B',
-    15: '#CC29C8',
-    16: '#4693EC',
-    17: '#1FB2F7',
-    18: '#00CBFF',
-    19: '#4CDBFF',
-    20: '#FFFFFF'
-};
-
 function getLevelColor(level) {
-    return levelColors[level] || '#FFFFFF';
+    return LEVEL_COLORS[level] || '#FFFFFF';
 }
 
 function getEloColor(elo, gameType = 'cs2') {
@@ -82,7 +59,7 @@ function getEloColor(elo, gameType = 'cs2') {
 }
 
 function insertAllLevelsToTable(table, currentLevel) {
-    levelIcons.forEach((icon, level) => {
+    LEVEL_TEMPLATES.forEach((icon, level) => {
         let svgNode = icon.cloneNode(true)
         const node = table.querySelector(`[class*=level-node-${level}]`);
         const span = node.getElementsByTagName("span")[0];
@@ -91,21 +68,21 @@ function insertAllLevelsToTable(table, currentLevel) {
         let svgTitle = svgSpan.getAttribute("title");
         svgSpan.removeAttribute("title");
         svgSpan.setAttribute("styled-title", svgTitle)
-        rankingModule.appendToAndHide(svgNode.cloneNode(true), span);
+        span.appendChild(svgNode.cloneNode(true).firstChild);
         if (level === currentLevel) {
             svgSpan.style.width = "36px";
             svgSpan.style.height = "36px";
-            let currentLevelNode = svgNode.cloneNode(true)
-            rankingModule.appendToAndHide(currentLevelNode, table.querySelector("[class*=current-level]").getElementsByTagName("span")[0])
+            table.querySelector("[class*=current-level]").getElementsByTagName("span")[0].appendChild(svgNode.cloneNode(true).firstChild);
         }
     })
 }
 
 const rankingModule = new Module("eloranking", async () => {
     rankingModule.temporaryFaceitBugFix();
+    hideWithCSS(`[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]):has(+ [class*=forecast-statistic-table])`);
     doAfterStatisticNodeAppear(async (node) => {
         node.parentElement.querySelector(`[class*=forecast-statistic-table]`)?.remove()
-        let newNode = getHtmlResource("src/visual/tables/level-progress-table.html").cloneNode(true)
+        let newNode = LEVEL_PROGRESS_TABLE_TEMPLATE.cloneNode(true)
         localizeHtmlResource(newNode);
         appendTo(newNode, node);
         node.remove();
@@ -141,9 +118,9 @@ async function insertAllStatisticToNewTable(table) {
         const levelNode = table.querySelector(`[class*=level-node-${level}]`);
         const progressBar = table.querySelector(`[class*=progress-bar-${level}]`);
         let currentLevelIcon = getLevelIcon(level)
-        let prevLevelIcon = levelIcons.get(level - 1)
+        let prevLevelIcon = LEVEL_TEMPLATES.get(level - 1)
         if (!prevLevelIcon) prevLevelIcon = currentLevelIcon
-        let nextLevelIcon = levelIcons.get(level + 1)
+        let nextLevelIcon = LEVEL_TEMPLATES.get(level + 1)
         if (!nextLevelIcon) nextLevelIcon = currentLevelIcon
         let prevLevelColor = getLevelColor(level - 1) || getLevelColor(level);
         let currentLevelColor = getLevelColor(level);
@@ -200,11 +177,11 @@ function getBarProgress(elo, gameType) {
 async function doAfterStatisticNodeAppear(callback) {
     let progressTableSelector = '[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])'
 
-    await rankingModule.doAfterNodeAppear(progressTableSelector, async (node) => {
+    rankingModule.doAfterNodeAppear(progressTableSelector, async (node) => {
         if (!node.parentElement?.parentElement?.parentElement?.matches || node.parentElement?.parentElement?.parentElement?.matches("[class*=SpotlightSearch__Content]")) return
         if (node.nodeType === Node.ELEMENT_NODE && !node.querySelector(`[class~="forecast-statistic-table-${rankingModule.sessionId}"]`)) {
             let newNode = document.createElement("div")
-            appendToAndHide(newNode, node);
+            appendTo(newNode, node);
             await callback(newNode);
         }
     });

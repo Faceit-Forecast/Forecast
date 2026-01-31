@@ -33,6 +33,8 @@
   "fcr_desc": "FCR - player's contribution share in the team based on performance. Sum of FCR for all 5 team players = 100%. Ideal is when all 5 players performed at 20%.",
   "fcr_color": "FCR Color",
   "fcr_color_desc": "Colors FCR statistic. (≥20% = green, 15-20% = yellow, <15% = red)",
+  "rounded_stats": "Rounded Stats",
+  "rounded_stats_desc": "Round ADR, K/D and K/R values to one decimal place.",
   "temporarily_unavailable": "Temporarily unavailable",
 
   "new_elo_rankings": "New Elo Rankings",
@@ -61,5 +63,10 @@
   "update_pending_review": "Update is ready but the store is reviewing it. Please wait for approval.",
   "no_patch_notes": "No patch notes available",
   "failed_load_patch_notes": "Failed to load patch notes",
-  "copied": "Copied!"
+  "copied": "Copied!",
+
+  "login": "Login",
+  "logout": "Logout",
+  "account": "Account",
+  "fcUserLogo.tooltip": "Forecast User"
 }

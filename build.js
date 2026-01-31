@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const {minify} = require('terser');
 const {minify: minifyHTML} = require('html-minifier-terser');
-const CleanCSS = require('clean-css');
 const {optimize} = require('svgo');
 const archiver = require('archiver');
+const sharp = require('sharp');
 
 const config = {
     srcDir: './src',
@@ -13,7 +13,13 @@ const config = {
     manifestPath: './manifest.json',
     bundleJS: true,
     bundledFileName: 'forecast.js',
-    excludeFromBundle: ['src/visual/popup.js'],
+    excludeFromBundle: ['src/visual/popup.js', 'src/background/worker.js'],
+    inlinePopup: {
+        enabled: true,
+        htmlPath: 'src/visual/popup.html',
+        cssPath: 'src/visual/styles.css',
+        inlineJS: false
+    },
     additionalIncludes: ['_locales', 'LICENSE'],
     sourceArchive: {
         enabled: true,
@@ -24,36 +30,33 @@ const config = {
         js: {
             compress: {
                 dead_code: true,
-                drop_console: false,
+                drop_console: true,
                 drop_debugger: true,
                 keep_classnames: true,
                 keep_fnames: true,
                 passes: 3,
-                booleans_as_integers: false,
                 collapse_vars: true,
                 comparisons: true,
                 conditionals: true,
                 evaluate: true,
                 hoist_funs: true,
-                hoist_vars: false,
                 if_return: true,
                 join_vars: true,
                 loops: true,
-                negate_iife: true,
                 properties: true,
                 reduce_vars: true,
                 sequences: true,
                 side_effects: true,
                 switches: true,
-                toplevel: false,
-                typeofs: true,
-                unused: true
+                unused: true,
+                toplevel: true
             },
             mangle: {
                 keep_classnames: true,
-                keep_fnames: true,
-                toplevel: false
+                keep_fnames: false,
+                toplevel: true
             },
+            module: true,
             format: {
                 comments: false,
                 ascii_only: true,
@@ -63,58 +66,36 @@ const config = {
         html: {
             collapseWhitespace: true,
             removeComments: true,
-            removeRedundantAttributes: false,
             removeScriptTypeAttributes: true,
             removeStyleLinkTypeAttributes: true,
-            removeEmptyAttributes: false,
-            removeOptionalTags: false,
             minifyCSS: false,
             minifyJS: true,
             collapseBooleanAttributes: true,
-            decodeEntities: true,
-            sortAttributes: true,
-            sortClassName: true
-        },
-        css: {
-            level: 0
+            sortAttributes: true
         },
         svg: {
             plugins: [
                 'removeComments',
                 'removeMetadata',
-                'removeEditorsNSData',
                 'cleanupAttrs',
-                'cleanupEnableBackground',
                 'cleanupIds',
                 'cleanupNumericValues',
                 'collapseGroups',
                 'convertColors',
-                'convertEllipseToCircle',
                 'convertPathData',
-                'convertShapeToPath',
                 'convertTransform',
                 'mergePaths',
-                'removeDesc',
                 'removeDoctype',
                 'removeEmptyAttrs',
                 'removeEmptyContainers',
                 'removeEmptyText',
                 'removeHiddenElems',
-                'removeNonInheritableGroupAttrs',
                 'removeTitle',
                 'removeUnknownsAndDefaults',
-                'removeUnusedNS',
                 'removeUselessDefs',
                 'removeUselessStrokeAndFill',
-                'removeXMLProcInst',
                 'sortAttrs',
-                'minifyStyles',
-                {
-                    name: 'removeAttrs',
-                    params: {
-                        attrs: ['data-name', 'class']
-                    }
-                }
+                {name: 'removeAttrs', params: {attrs: ['data-name', 'class']}}
             ]
         }
     },
@@ -122,14 +103,12 @@ const config = {
 };
 
 function log(msg, type = 'info') {
-    const colors = {info: '\x1b[36m', success: '\x1b[32m', error: '\x1b[31m', warning: '\x1b[33m', reset: '\x1b[0m'};
-    console.log(`${colors[type]}[${new Date().toLocaleTimeString()}] ${msg}${colors.reset}`);
+    const c = {info: '\x1b[36m', success: '\x1b[32m', error: '\x1b[31m', warning: '\x1b[33m', reset: '\x1b[0m'};
+    console.log(`${c[type]}[${new Date().toLocaleTimeString()}] ${msg}${c.reset}`);
 }
 
 function cleanDirectory(dir) {
-    if (fs.existsSync(dir)) {
-        fs.rmSync(dir, {recursive: true, force: true});
-    }
+    if (fs.existsSync(dir)) fs.rmSync(dir, {recursive: true, force: true});
 }
 
 function ensureDirectory(dir) {
@@ -176,50 +155,48 @@ function copyDirectory(src, dest, excludeJS = false) {
     return hasContent;
 }
 
+function minifyTemplateStrings(code) {
+    return code.replace(/(const\s+\w+_HTML\s*=\s*(?:\/\*[^*]*\*\/\s*)?)(`[\s\S]*?`)/g, (match, prefix, templateLiteral) => {
+        let content = templateLiteral.slice(1, -1);
+        content = content.replace(/>\s+</g, '><').replace(/\n\s*/g, '').replace(/\s{2,}/g, ' ').trim();
+        return prefix + '`' + content + '`';
+    });
+}
+
 async function bundleJSFiles(jsFiles, outputPath) {
     let bundledCode = '';
-
     for (const file of jsFiles) {
         const filePath = path.join('.', file);
         if (fs.existsSync(filePath)) {
-            const code = fs.readFileSync(filePath, 'utf8');
+            let code = fs.readFileSync(filePath, 'utf8');
+            if (file.includes('templates.js')) code = minifyTemplateStrings(code);
             bundledCode += `\n// ${file}\n${code}\n`;
         }
     }
-
     const result = await minify(bundledCode, config.minifyOptions.js);
     if (result.error) throw new Error(`Bundle minification error: ${result.error}`);
-
     ensureDirectory(path.dirname(outputPath));
     fs.writeFileSync(outputPath, result.code);
-
-    log(`Bundle created: ${formatBytes(Buffer.byteLength(result.code, 'utf8'))}`, 'success');
+    log(`Bundle: ${formatBytes(Buffer.byteLength(result.code, 'utf8'))}`, 'success');
     return true;
 }
 
 function updateManifestForBundle(manifestPath, bundledFileName) {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-
     if (manifest.content_scripts) {
         for (const script of manifest.content_scripts) {
-            if (script.js && script.js.length > 0) {
-                script.js = [bundledFileName];
-            }
+            if (script.js && script.js.length > 0) script.js = [bundledFileName];
         }
     }
-
     if (manifest.web_accessible_resources) {
         for (const resource of manifest.web_accessible_resources) {
             if (resource.resources) {
                 resource.resources = resource.resources.filter(r => !r.endsWith('.js'));
-                if (!resource.resources.includes(bundledFileName)) {
-                    resource.resources.push(bundledFileName);
-                }
+                if (!resource.resources.includes(bundledFileName)) resource.resources.push(bundledFileName);
             }
         }
     }
-
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
 }
 
 async function minifyJavaScript(filePath) {
@@ -230,7 +207,7 @@ async function minifyJavaScript(filePath) {
         fs.writeFileSync(filePath, result.code);
         return true;
     } catch (error) {
-        log(`Error: ${filePath} - ${error.message}`, 'error');
+        log(`JS error: ${filePath}`, 'error');
         return false;
     }
 }
@@ -242,7 +219,6 @@ async function minifyHTMLFile(filePath) {
         fs.writeFileSync(filePath, result);
         return true;
     } catch (error) {
-        log(`Error: ${filePath} - ${error.message}`, 'error');
         return false;
     }
 }
@@ -250,20 +226,12 @@ async function minifyHTMLFile(filePath) {
 function minifyCSSFile(filePath) {
     try {
         const css = fs.readFileSync(filePath, 'utf8');
-        const minified = css
-            .replace(/\/\*[\s\S]*?\*\//g, '')
-            .replace(/\s+/g, ' ')
-            .replace(/\s*{\s*/g, '{')
-            .replace(/\s*}\s*/g, '}')
-            .replace(/\s*;\s*/g, ';')
-            .replace(/\s*:\s*/g, ':')
-            .replace(/\s*,\s*/g, ',')
-            .replace(/;}/g, '}')
-            .trim();
+        const minified = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*{\s*/g, '{')
+            .replace(/\s*}\s*/g, '}').replace(/\s*;\s*/g, ';').replace(/\s*:\s*/g, ':')
+            .replace(/\s*,\s*/g, ',').replace(/;}/g, '}').trim();
         fs.writeFileSync(filePath, minified);
         return true;
     } catch (error) {
-        log(`Error: ${filePath} - ${error.message}`, 'error');
         return false;
     }
 }
@@ -275,7 +243,6 @@ function minifySVGFile(filePath) {
         fs.writeFileSync(filePath, result.data);
         return true;
     } catch (error) {
-        log(`Error: ${filePath} - ${error.message}`, 'error');
         return false;
     }
 }
@@ -286,32 +253,84 @@ function minifyJSONFile(filePath) {
         fs.writeFileSync(filePath, JSON.stringify(JSON.parse(json)));
         return true;
     } catch (error) {
-        log(`Error: ${filePath} - ${error.message}`, 'error');
         return false;
     }
 }
 
+async function optimizePNGFile(filePath) {
+    try {
+        const originalBuffer = fs.readFileSync(filePath);
+        const originalSize = originalBuffer.length;
+        const strategies = [
+            {compressionLevel: 9, palette: true, effort: 10, colors: 256},
+            {compressionLevel: 9, palette: false, effort: 10},
+            {compressionLevel: 9, adaptiveFiltering: true}
+        ];
+        let bestBuffer = originalBuffer;
+        let bestSize = originalSize;
+        for (const opts of strategies) {
+            try {
+                const buffer = await sharp(filePath).png(opts).toBuffer();
+                if (buffer.length < bestSize) {
+                    bestBuffer = buffer;
+                    bestSize = buffer.length;
+                }
+            } catch (e) {}
+        }
+        if (bestSize < originalSize) {
+            fs.writeFileSync(filePath, bestBuffer);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        return false;
+    }
+}
+
+async function inlinePopupAssets(distDir) {
+    if (!config.inlinePopup.enabled) return false;
+    const htmlPath = path.join(distDir, config.inlinePopup.htmlPath);
+    const cssPath = path.join(distDir, config.inlinePopup.cssPath);
+    if (!fs.existsSync(htmlPath)) return false;
+    let html = fs.readFileSync(htmlPath, 'utf8');
+    if (fs.existsSync(cssPath)) {
+        const css = fs.readFileSync(cssPath, 'utf8');
+        const minifiedCss = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*{\s*/g, '{')
+            .replace(/\s*}\s*/g, '}').replace(/\s*;\s*/g, ';').replace(/\s*:\s*/g, ':')
+            .replace(/\s*,\s*/g, ',').replace(/;}/g, '}').trim();
+        html = html.replace(/<link\s+rel=["']stylesheet["']\s+href=["']styles\.css["']\s*\/?>/i, `<style>${minifiedCss}</style>`);
+        fs.unlinkSync(cssPath);
+        log('CSS inlined', 'success');
+    }
+    try {
+        html = await minifyHTML(html, config.minifyOptions.html);
+    } catch (e) {}
+    fs.writeFileSync(htmlPath, html);
+    log(`Popup: ${formatBytes(Buffer.byteLength(html, 'utf8'))}`, 'success');
+    return true;
+}
+
 async function minifyAllFiles(dir, skipJS = false) {
     const entries = fs.readdirSync(dir, {withFileTypes: true});
-    let stats = {js: 0, html: 0, css: 0, svg: 0, json: 0};
+    let stats = {js: 0, html: 0, css: 0, svg: 0, json: 0, png: 0};
+    const popupFiles = config.inlinePopup.enabled ? ['popup.html', 'styles.css'] : [];
 
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
-
         if (entry.isDirectory()) {
             const dirStats = await minifyAllFiles(fullPath, skipJS);
             Object.keys(stats).forEach(k => stats[k] += dirStats[k]);
         } else {
+            if (popupFiles.includes(entry.name) && fullPath.includes('visual')) continue;
             const ext = path.extname(entry.name).toLowerCase();
-
             if (ext === '.js' && !skipJS && await minifyJavaScript(fullPath)) stats.js++;
             else if (ext === '.html' && await minifyHTMLFile(fullPath)) stats.html++;
             else if (ext === '.css' && minifyCSSFile(fullPath)) stats.css++;
             else if (ext === '.svg' && minifySVGFile(fullPath)) stats.svg++;
             else if (ext === '.json' && entry.name !== 'manifest.json' && minifyJSONFile(fullPath)) stats.json++;
+            else if (ext === '.png' && await optimizePNGFile(fullPath)) stats.png++;
         }
     }
-
     return stats;
 }
 
@@ -330,35 +349,22 @@ function getExtensionName() {
     return 'extension';
 }
 
-function calculateSize(dir, debug = false) {
+function calculateSize(dir) {
     let total = 0;
-
-    const calc = (d, depth = 0) => {
+    const calc = (d) => {
         const entries = fs.readdirSync(d, {withFileTypes: true});
         let localTotal = 0;
-
         for (const entry of entries) {
             const p = path.join(d, entry.name);
-
             if (entry.isDirectory()) {
-                const subTotal = calc(p, depth + 1);
-                localTotal += subTotal;
-                if (debug && depth < 2) {
-                    log(`${'  '.repeat(depth)}📁 ${entry.name}: ${formatBytes(subTotal)}`, 'info');
-                }
+                localTotal += calc(p);
             } else {
-                const size = fs.statSync(p).size;
-                localTotal += size;
-                if (debug && depth < 2 && size > 10000) {
-                    log(`${'  '.repeat(depth)}📄 ${entry.name}: ${formatBytes(size)}`, 'info');
-                }
+                localTotal += fs.statSync(p).size;
             }
         }
-
         total += localTotal;
         return localTotal;
     };
-
     return calc(dir);
 }
 
@@ -388,7 +394,6 @@ async function createSourceArchive(outputPath, includes, rename = {}) {
         output.on('close', () => resolve(archive.pointer()));
         archive.on('error', reject);
         archive.pipe(output);
-
         for (const item of includes) {
             const itemPath = `./${item}`;
             if (fs.existsSync(itemPath)) {
@@ -399,23 +404,18 @@ async function createSourceArchive(outputPath, includes, rename = {}) {
                 }
             }
         }
-
         for (const [srcFile, destName] of Object.entries(rename)) {
             const srcPath = `./${srcFile}`;
-            if (fs.existsSync(srcPath)) {
-                archive.file(srcPath, {name: destName});
-            }
+            if (fs.existsSync(srcPath)) archive.file(srcPath, {name: destName});
         }
-
         archive.finalize();
     });
 }
 
 async function build() {
     const startTime = Date.now();
-
     log('Build started', 'info');
-    log(`Bundle mode: ${config.bundleJS ? 'ENABLED' : 'DISABLED'}`, 'info');
+    log(`Bundle: ${config.bundleJS ? 'ON' : 'OFF'}, Inline: ${config.inlinePopup.enabled ? 'ON' : 'OFF'}`, 'info');
 
     cleanDirectory(config.distDir);
     cleanDirectory(config.outputDir);
@@ -448,15 +448,13 @@ async function build() {
         if (config.bundleJS) {
             const manifest = JSON.parse(fs.readFileSync(config.manifestPath, 'utf8'));
             const jsFiles = [];
-
             if (manifest.content_scripts) {
                 for (const script of manifest.content_scripts) {
                     if (script.js) jsFiles.push(...script.js);
                 }
             }
-
             if (jsFiles.length > 0) {
-                log(`Bundling ${jsFiles.length} JS files`, 'info');
+                log(`Bundling ${jsFiles.length} files`, 'info');
                 await bundleJSFiles(jsFiles, path.join(config.distDir, config.bundledFileName));
                 updateManifestForBundle(distManifest, config.bundledFileName);
             }
@@ -464,15 +462,28 @@ async function build() {
     }
 
     const srcSize = calculateSize(config.distDir);
-
     const stats = await minifyAllFiles(config.distDir, config.bundleJS);
 
+    if (config.bundleJS && config.excludeFromBundle.length > 0) {
+        for (const excluded of config.excludeFromBundle) {
+            const excludedPath = path.join(config.distDir, excluded);
+            if (fs.existsSync(excludedPath) && path.extname(excluded) === '.js') {
+                if (await minifyJavaScript(excludedPath)) {
+                    log(`Minified: ${excluded}`, 'success');
+                    stats.js++;
+                }
+            }
+        }
+    }
+
+    if (config.inlinePopup.enabled) await inlinePopupAssets(config.distDir);
+
     if (!config.bundleJS) log(`JS: ${stats.js}`, 'success');
-    log(`HTML: ${stats.html}, CSS: ${stats.css}, SVG: ${stats.svg}, JSON: ${stats.json}`, 'success');
+    log(`HTML: ${stats.html}, CSS: ${stats.css}, SVG: ${stats.svg}, JSON: ${stats.json}, PNG: ${stats.png}`, 'success');
 
     const distSize = calculateSize(config.distDir);
     const reduction = srcSize > 0 ? ((srcSize - distSize) / srcSize * 100).toFixed(2) : '0.00';
-    log(`Size: ${formatBytes(distSize)} (${reduction}% reduction from ${formatBytes(srcSize)})`, 'success');
+    log(`Size: ${formatBytes(distSize)} (${reduction}% reduction)`, 'success');
 
     const version = getVersion();
     const name = getExtensionName();
@@ -486,10 +497,10 @@ async function build() {
         const sourceZipName = `forecast-source-v${version}.zip`;
         const sourceZipPath = path.join(config.outputDir, sourceZipName);
         const sourceZipSize = await createSourceArchive(sourceZipPath, config.sourceArchive.includes, config.sourceArchive.rename);
-        log(`Source archive: ${sourceZipName} (${formatBytes(sourceZipSize)})`, 'success');
+        log(`Source: ${sourceZipName} (${formatBytes(sourceZipSize)})`, 'success');
     }
 
-    log(`Duration: ${((Date.now() - startTime) / 1000).toFixed(2)}s`, 'info');
+    log(`Done in ${((Date.now() - startTime) / 1000).toFixed(2)}s`, 'info');
 }
 
 build().catch((error) => {

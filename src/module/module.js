@@ -112,8 +112,16 @@ class Module {
         return this.observeHandler.doAfterNodeAppearWithCondition(selector, conditionFn, callback, id)
     }
 
+    async doAfterNodeAppearWhenVisible(selector, callback, id) {
+        return this.observeHandler.doAfterNodeAppearWhenVisible(selector, callback, id)
+    }
+
     async doAfterAllNodeAppear(selector, callback, id) {
         return this.observeHandler.doAfterAllNodeAppear(selector, callback, id)
+    }
+
+    async doAfterAllNodeAppearWhenVisible(selector, callback, id) {
+        return this.observeHandler.doAfterAllNodeAppearWhenVisible(selector, callback, id)
     }
 
     async doAfterAllNodeAppearPack(selector, callback, id) {

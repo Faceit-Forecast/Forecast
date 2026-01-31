@@ -8,7 +8,8 @@ const CHROMIUM = "CHROMIUM"
 const BROWSER_TYPE = typeof browser === 'undefined' ? CHROMIUM : FIREFOX
 const CLIENT_API = BROWSER_TYPE === FIREFOX ? browser : chrome;
 const CLIENT_RUNTIME = CLIENT_API.runtime;
-const CLIENT_STORAGE = CLIENT_API.storage.sync;
+const CLIENT_STORAGE_SYNC = CLIENT_API.storage.sync;
+const CLIENT_STORAGE = CLIENT_API.storage.local;
 const EXTENSION_VERSION = CLIENT_RUNTIME.getManifest().version;
 
 const log_prefix = "%c[%cFORE%cCAST%c]:"
@@ -25,11 +26,9 @@ function setupBrandIcon(htmlResource, width = 28, height = 28) {
     htmlResource.querySelectorAll(".brand-icon").forEach((node) => {
         let brandLogo = getHtmlResource("src/visual/icons/rawlogo.svg").cloneNode(true)
         node.appendChild(brandLogo)
+        node.classList.add("brand-icon-positioned")
         node.style.width = `${width}px`
         node.style.height = `${height}px`
-        node.style.position = "absolute"
-        node.style.right = "8px";
-        node.style.top = "8px";
     })
 }
 
@@ -91,7 +90,7 @@ function getNthParent(el, n) {
 async function getSettingValue(name, def) {
     return new Promise((resolve, reject) => {
 
-        CLIENT_STORAGE.get([name], (result) => {
+        CLIENT_STORAGE_SYNC.get([name], (result) => {
             const errorMessage = CLIENT_RUNTIME.lastError;
             if (errorMessage) {
                 reject(new Error(errorMessage));
@@ -106,7 +105,7 @@ async function getSettingValue(name, def) {
 async function setSettingValue(name, value) {
     return new Promise((resolve, reject) => {
 
-        CLIENT_STORAGE.set({[name]: value}, () => {
+        CLIENT_STORAGE_SYNC.set({[name]: value}, () => {
             const errorMessage = CLIENT_RUNTIME.lastError;
             if (errorMessage) {
                 reject(new Error(errorMessage));
@@ -123,41 +122,34 @@ function parseNumber(text, isFloat = false) {
     return isFloat ? Number.parseFloat(cleaned) : Number.parseInt(cleaned, 10);
 }
 
-function createColoredSpan(text, condition, isSlash = false) {
-    const span = document.createElement("span");
+function createColoredSpan(tagName, text, condition, isSlash = false) {
+    const span = document.createElement(tagName);
     span.style.color = isSlash || text == null ? white : condition == null ? white : (condition ? green : red);
     span.textContent = text ?? "-";
     return span;
 }
 
-function createCompositeCell(items) {
-    const container = document.createElement("div");
-    Object.assign(container.style, {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '2px',
-        flexDirection: 'row',
-        justifyContent: 'flex-start',
-        flex: '1 1 0%'
-    });
+function createCompositeCell(tagName,items) {
+    const container = document.createElement(tagName);
+    container.classList.add('fc-composite-cell')
     items.forEach(({text, condition, isSlash}) =>
-        container.appendChild(createColoredSpan(text, condition, isSlash))
+        container.appendChild(createColoredSpan('div',text, condition, isSlash))
     );
     return container;
 }
 
-function replaceNodeWithColored(node, text, condition) {
+function replaceNodeWithColored(tagName, node, text, condition) {
     if (!node) return;
-    const newNode = createColoredSpan(text, condition);
+    const newNode = createColoredSpan(tagName, text, condition);
     newNode.className = node.className;
     node.replaceWith(newNode);
 }
 
 async function isSettingEnabled(name, def) {
-    const settings = await CLIENT_STORAGE.get([name]);
+    const settings = await CLIENT_STORAGE_SYNC.get([name]);
 
     if (settings[name] === undefined) {
-        await CLIENT_STORAGE.set({ [name]: def });
+        await CLIENT_STORAGE_SYNC.set({ [name]: def });
         return def;
     }
     return settings[name];
@@ -165,7 +157,7 @@ async function isSettingEnabled(name, def) {
 
 async function getSettings(settingsMap) {
     const keys = Object.keys(settingsMap);
-    const storedSettings = await CLIENT_STORAGE.get(keys);
+    const storedSettings = await CLIENT_STORAGE_SYNC.get(keys);
 
     const result = {};
     const toSet = {};
@@ -180,7 +172,7 @@ async function getSettings(settingsMap) {
     });
 
     if (Object.keys(toSet).length > 0) {
-        await CLIENT_STORAGE.set(toSet);
+        await CLIENT_STORAGE_SYNC.set(toSet);
     }
 
     return result;

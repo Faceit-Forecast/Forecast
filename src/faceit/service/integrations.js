@@ -41,7 +41,7 @@ const integrationsModule = new Module("integrations", async () => {
     };
 
     if (lobbyType === "stats") {
-        await integrationsModule.doAfterNodeAppear('[class*=forecast-statistic-table]', async (node) => {
+        integrationsModule.doAfterNodeAppear('[class*=forecast-statistic-table]', async (node) => {
             let lvlpc = node.querySelector("[class*=level-progress-container]");
             if (lvlpc) {
                 const banner = createBanner();
@@ -53,7 +53,7 @@ const integrationsModule = new Module("integrations", async () => {
             }
         });
     } else if (lobbyType === "matchroom") {
-        await integrationsModule.doAfterNodeAppear('[class*=team-table]', async (node) => {
+        integrationsModule.doAfterNodeAppear('[class*=team-table]', async (node) => {
             const banner = createBanner();
             let oldBanner = node.querySelector("[class*='forecast-banner']")
             if (oldBanner) {

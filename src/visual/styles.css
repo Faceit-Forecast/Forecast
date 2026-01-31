@@ -977,7 +977,8 @@ input:checked + .slider:after {
     transform: scale(1.05);
 }
 
-.donate-button svg {
+.donate-button svg,
+.donate-button img {
     width: 32px;
     height: 32px;
 }
@@ -1389,3 +1390,146 @@ input:checked + .slider:after {
     cursor: zoom-out;
 }
 
+.auth-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 15px;
+    min-height: 30px;
+    margin-bottom: 10px;
+    background-color: #0a0a0a;
+    border-radius: 10px;
+    border: 1px solid #242424;
+}
+
+.auth-section-label {
+    font-size: 14px;
+    color: #fff;
+}
+
+.auth-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background-color: #0a0a0a;
+    border: 1px solid #242424;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    position: relative;
+}
+
+.auth-btn:hover:not(.loading) {
+    border-color: #ff7300;
+    background-color: #111;
+}
+
+.auth-btn.loading {
+    cursor: not-allowed;
+    opacity: 0.7;
+    pointer-events: none;
+    border-color: #333;
+}
+
+.auth-btn-icon {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-btn-icon img {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    transition: opacity 0.3s ease;
+}
+
+.auth-btn-icon .faceit-icon {
+    opacity: 1;
+}
+
+.auth-btn-icon .loading-icon {
+    opacity: 0;
+    animation: spin 1s linear infinite;
+}
+
+.auth-btn.loading .auth-btn-icon .faceit-icon {
+    opacity: 0;
+}
+
+.auth-btn.loading .auth-btn-icon .loading-icon {
+    opacity: 1;
+}
+
+.auth-btn .auth-btn-icon .success-icon,
+.auth-btn .auth-btn-icon .error-icon {
+    opacity: 0;
+}
+
+.auth-btn.success .auth-btn-icon .faceit-icon,
+.auth-btn.success .auth-btn-icon .loading-icon,
+.auth-btn.success .auth-btn-icon .error-icon {
+    opacity: 0;
+}
+
+.auth-btn.success .auth-btn-icon .success-icon {
+    opacity: 1;
+}
+
+.auth-btn.error .auth-btn-icon .faceit-icon,
+.auth-btn.error .auth-btn-icon .loading-icon,
+.auth-btn.error .auth-btn-icon .success-icon {
+    opacity: 0;
+}
+
+.auth-btn.error .auth-btn-icon .error-icon {
+    opacity: 1;
+}
+
+.auth-btn.success {
+    border-color: #4caf50;
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.auth-btn.error {
+    border-color: #f44336;
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+.auth-btn-logout {
+    font-size: 11px;
+    padding: 6px 12px;
+    color: #aaa;
+}
+
+.auth-btn-logout:hover {
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+}
+
+.auth-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.auth-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 25%;
+    border: 2px solid #242424;
+}
+
+.auth-nickname {
+    font-weight: 600;
+    color: #fff;
+    font-size: 13px;
+}

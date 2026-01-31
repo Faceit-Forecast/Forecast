@@ -47,22 +47,18 @@ const logoSidebarModule = new Module("logoSidebar", async () => {
         return container;
     };
 
-    await logoSidebarModule.doAfterNodeAppear('[class*=styles__TopContent]', (node) => {
+    logoSidebarModule.doAfterNodeAppear('[class*=styles__TopContent]', (node) => {
         if (document.getElementById("fc-logo-button")) return;
 
         const container = createLogoContainer(true);
         node.appendChild(container);
-
-        addLogoStyles();
     });
 
-    await logoSidebarModule.doAfterNodeAppear('[class*=styles__RightSideContainer]', (node) => {
+    logoSidebarModule.doAfterNodeAppear('[class*=styles__RightSideContainer]', (node) => {
         if (document.getElementById("fc-logo-button")) return;
 
         const container = createLogoContainer();
         node.prepend(container);
-
-        addLogoStyles();
     });
 }, async () => {});
 
@@ -78,7 +74,6 @@ function openExtensionPopup() {
     const popupFrame = popupContainer.querySelector("#forecast-popup-frame");
     setupFrameMessageHandler(popupFrame);
     positionPopup(popupContainer);
-    addPopupStyles();
     setupOutsideClickHandler();
 }
 
@@ -115,7 +110,7 @@ function createPopupStructure(popupURL) {
 
 function setupFrameMessageHandler(popupFrame) {
     popupFrame.onload = () => {
-        popupFrame.contentWindow.postMessage({ action: 'setBackgroundColor', color: 'transparent' }, '*');
+        popupFrame.contentWindow.postMessage({ action: 'transparent-bg' }, '*');
     };
 }
 
@@ -229,121 +224,3 @@ function handleOutsideClick(e) {
     }
 }
 
-function addPopupStyles() {
-    if (document.getElementById('fc-popup-styles')) return;
-
-    const style = document.createElement('style');
-    style.id = 'fc-popup-styles';
-    style.textContent = `
-        #forecast-popup-container {
-            position: fixed;
-            z-index: 9999;
-            filter: drop-shadow(0 4px 20px rgba(0,0,0,0.25));
-        }
-        
-        #forecast-popup-content {
-            position: relative;
-            width: 480px;
-            height: 400px;
-            border-radius: 12px;
-            overflow: hidden;
-            background-color: transparent;
-            animation: fc-popup-appear 0.2s ease forwards;
-        }
-        
-        @keyframes fc-popup-appear {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-        
-        #forecast-popup-frame {
-            border: none;
-            width: 100%;
-            height: 100%;
-        }
-    `;
-
-    document.head.appendChild(style);
-}
-
-function addLogoStyles() {
-    if (document.getElementById('fc-logo-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'fc-logo-styles';
-    style.textContent = `
-        @property --angle {
-            syntax: "<angle>";
-            initial-value: 0deg;
-            inherits: false;
-        }
-        
-        .fc-logo-container {
-            position: relative;
-            width: 44px;
-            height: 44px;
-        }
-        
-        .fc-logo-gradient {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .fc-logo-image {
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            position: relative;
-            z-index: 1;
-            transition: filter 0.2s ease;
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-            -ms-interpolation-mode: bicubic;
-            filter: brightness(1) contrast(1.05);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .fc-logo-container:hover .fc-logo-image {
-            filter: brightness(var(--hover-brightness, 1.2)) contrast(1.05);
-        }
-        
-        .fc-logo-gradient::before,
-        .fc-logo-gradient::after {
-            content: '';
-            position: absolute;
-            height: 40px;
-            width: 40px;
-            border-radius: 8px;
-            z-index: 0;
-            background-image: conic-gradient(from var(--angle), #ff4500, #ff8c00, #ffcc00, #ff4500);
-            animation: var(--animation-speed, 4s) logo-spin linear infinite;
-        }
-        
-        .fc-logo-gradient::before {
-            filter: blur(var(--border-blur, 4px));
-            opacity: var(--border-opacity, 0.8);
-        }
-        
-        @keyframes logo-spin {
-            from { --angle: 0deg; }
-            to { --angle: 360deg; }
-        }
-        
-        #forecast-popup-container {
-            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-    `;
-    document.head.appendChild(style);
-}

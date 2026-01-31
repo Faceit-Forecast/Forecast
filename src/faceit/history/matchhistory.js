@@ -43,7 +43,7 @@ class MatchNodeChain {
 }
 
 class MatchNodeByMatchStats {
-    constructor(node, matchId, index, settings, tableHeader) {
+    constructor(node, matchId, index, settings) {
         this.node = node;
         this.matchId = matchId
         this.matchStats = null;
@@ -51,42 +51,15 @@ class MatchNodeByMatchStats {
         this.index = index
         this.nodeId = `extended-stats-node-${index}`
         this.settings = settings;
-        this.tableHeader = tableHeader;
         this.next = null;
 
         this.elo = null;
-        this.eloDiff = null;
-        this.eloCalculated = false;
 
         this.setupMatchCounterArrow()
     }
 
     isLast() {
         return !this.next;
-    }
-
-    async calculateEloDiff(playerId) {
-        if (this.eloCalculated) return this.eloDiff;
-        if (this.elo === null) return null;
-        if (this.isLast()) {
-            if (this.cachedStats) {
-                const started_at = (await fetchMatchStats(this.matchId)).finished_at * 1000 + 1
-                const nextMatch = await fetchV1MatchRoundStats(playerId, extractGameType("cs2"), 1, "5v5", started_at);
-                const eloDelta = nextMatch[0].elo_delta;
-                if (eloDelta) {
-                    this.eloDiff = eloDelta;
-                    this.eloCalculated = true;
-                }
-            }
-        } else {
-            const nextElo = this.next?.elo;
-            if (nextElo !== null && nextElo !== undefined) {
-                this.eloDiff = this.elo - nextElo;
-                this.eloCalculated = true;
-            }
-        }
-
-        return this.eloDiff;
     }
 
     setElo(eloValue) {
@@ -118,8 +91,7 @@ class MatchNodeByMatchStats {
 
     setupStatsToNode(playerId, cachedStats) {
         if (!this.matchStats) return;
-        const innerNode = this.node?.querySelector("div")?.lastChild
-        const scoreNode = innerNode?.children[1]?.lastChild
+        const scoreNode = this.node?.children[1]
         if (scoreNode) {
 
             scoreNode.parentElement.parentElement.style.overflow = "visible"
@@ -128,7 +100,7 @@ class MatchNodeByMatchStats {
             let tableNotExist = !popup;
 
             if (tableNotExist) {
-                popup = getHtmlResource("src/visual/tables/match-history-popup.html").cloneNode(true)
+                popup = MATCH_HISTORY_POPUP_TEMPLATE.cloneNode(true)
                 popup.id = this.nodeId
             }
 
@@ -138,27 +110,19 @@ class MatchNodeByMatchStats {
             }
 
             if (tableNotExist) {
-                scoreNode.lastChild.style.justifyContent = "center";
-                scoreNode.appendChild(popup);
-                scoreNode.style.width = '100px';
-                innerNode.children[0].lastChild.style.width = '82px';
+                scoreNode.querySelector('div').style.gap = 'unset'
+                scoreNode.querySelector('div').lastChild.style.justifyContent = "center";
+                scoreNode.querySelector('div').appendChild(popup);
                 matchHistoryModule.removalNode(popup)
             }
         }
-        const eloNode = innerNode?.children[2]?.lastChild?.lastChild?.lastChild
-        let eloValue = Number.parseInt(eloNode?.innerText?.replace(/[\s,._]/g, '') ?? '0', 10);
-
-        if (!this.elo && eloValue) {
-            this.setElo(eloValue);
-        }
-        this.eloNode = eloNode;
 
         if (this.settings?.showFCR) {
-            if (innerNode.querySelector('[class*="fcr-fc"]')) return;
+            if (this.node.querySelector('[class*="fcr-fc"]')) return;
             const rating = this.matchStats.Rating;
             const ratingValue = parseFloat(rating);
             let fcrText = rating !== null ? rating + '%' : '-';
-            let fcrNode = document.createElement("span");
+            let fcrNode = document.createElement("td");
             fcrNode.textContent = fcrText;
 
             if (this.settings?.coloredStatsFCR !== false && !isNaN(ratingValue)) {
@@ -173,7 +137,7 @@ class MatchNodeByMatchStats {
                 fcrNode.style.color = white;
             }
 
-            let krNode = innerNode?.children[6];
+            let krNode = this.node?.children[6];
             if (krNode) {
                 fcrNode.className = krNode.className;
                 fcrNode.classList.add('fcr-fc');
@@ -181,53 +145,14 @@ class MatchNodeByMatchStats {
             }
         }
 
-        this.setupStats(innerNode);
+        this.setupStats();
     }
 
-    fixHeaderMax(innerNode) {
-        if (!this.tableHeader || !innerNode) return;
-
-        const headerInner = this.tableHeader.lastElementChild.lastElementChild.lastElementChild
-        if (!headerInner) return;
-
-        const headerChildren = Array.from(headerInner.children);
-        const rowChildren = Array.from(innerNode.children);
-
-        const tableWidths = [
-            '82px',
-            '100px',
-            '100px',
-            '84.5px',
-            '84.5px',
-            '84.5px',
-            '84.5px',
-        ];
-
-        if (this.settings?.showFCR) {
-            tableWidths.push('84.5px');
-        }
-
-        for (let i = 0; i < tableWidths.length; i++) {
-            const width = tableWidths[i];
-            const headerChild = headerChildren[i];
-            const rowChild = rowChildren[i];
-
-            if (headerChild) {
-                headerChild.style.width = width;
-                headerChild.style.minWidth = width;
-            }
-            if (rowChild) {
-                rowChild.style.width = width;
-                rowChild.style.minWidth = width;
-            }
-        }
-    }
-
-    setupStats(innerNode) {
-        const kdaNode = innerNode?.children[3];
-        const adrNode = innerNode?.children[4];
-        const kdNode = innerNode?.children[5];
-        const krNode = innerNode?.children[6];
+    setupStats() {
+        const kdaNode = this.node?.children[3];
+        const adrNode = this.node?.children[4];
+        const kdNode = this.node?.children[5];
+        const krNode = this.node?.children[6];
 
         if (!kdaNode) return;
 
@@ -235,53 +160,37 @@ class MatchNodeByMatchStats {
         const [k, d, a] = kdaValues;
         const kd = d ? k / d : 0;
 
+        const shouldRound = this.settings?.roundedStats !== false;
+
         if (this.settings?.coloredStatsKDA !== false) {
-            const newKdaNode = createCompositeCell([
+            const kdaWrapperNode = document.createElement('td');
+            const newKdaNode = createCompositeCell('div',[
                 {text: k, condition: kd >= 1.0},
                 {text: "/", condition: null, isSlash: true},
                 {text: d, condition: kd >= 1.0},
                 {text: "/", condition: null, isSlash: true},
                 {text: a, condition: null},
             ]);
-            newKdaNode.className = kdaNode.className;
-            kdaNode.replaceWith(newKdaNode);
+            kdaWrapperNode.className = kdaNode.className;
+            kdaWrapperNode.appendChild(newKdaNode)
+            kdaNode.replaceWith(kdaWrapperNode);
         }
 
         if (this.settings?.coloredStatsADR !== false) {
             const adr = parseNumber(adrNode?.innerText, true);
-            replaceNodeWithColored(adrNode, adr.toFixed(1), adr >= 75);
+            const adrDisplay = shouldRound ? adr.toFixed(1) : adrNode?.innerText;
+            replaceNodeWithColored('td', adrNode, adrDisplay, adr >= 75);
         }
 
         if (this.settings?.coloredStatsKD !== false) {
-            replaceNodeWithColored(kdNode, kd.toFixed(1), kd >= 1);
+            const kdDisplay = shouldRound ? kd.toFixed(1) : kdNode?.innerText;
+            replaceNodeWithColored('td', kdNode, kdDisplay, kd >= 1);
         }
 
         if (this.settings?.coloredStatsKR !== false) {
             const kr = parseNumber(krNode?.innerText, true);
-            replaceNodeWithColored(krNode, kr.toFixed(1), kr >= 0.7);
-        }
-
-        this.fixHeaderMax(innerNode);
-    }
-
-    async applyEloDiff(playerId) {
-        if (this.settings?.eloHistoryCalculation === false) return;
-
-        const eloDiff = await this.calculateEloDiff(playerId);
-        if (eloDiff !== null && this.eloNode) {
-            let parentElement = this.eloNode.parentElement;
-            let eloDidId = `elodif`
-            if (parentElement.querySelector(`[class=${eloDidId}]`)) return
-            let eloSummaryNode = document.createElement('span');
-            eloSummaryNode.classList.add(eloDidId)
-            eloSummaryNode.innerText = `${eloDiff > 0 ? '+' : ''}${eloDiff}`;
-            parentElement.style.flexDirection = 'row'
-            parentElement.style.alignItems = 'baseline'
-            parentElement.style.gap = '3px'
-            parentElement.style.width = '60px'
-            eloSummaryNode.style.color = `${eloDiff > 0 ? green : eloDiff < 0 ? red : white}`
-            eloSummaryNode.style.fontSize = 'smaller'
-            parentElement.appendChild(eloSummaryNode);
+            const krDisplay = shouldRound ? kr.toFixed(1) : krNode?.innerText;
+            replaceNodeWithColored('td', krNode, krDisplay, kr >= 0.7);
         }
     }
 
@@ -293,7 +202,7 @@ class MatchNodeByMatchStats {
         let arrowId = `arrow-${matchNumber / 30}`
 
         if (!document.getElementById(arrowId)) {
-            const arrow = getHtmlResource("src/visual/tables/match-counter-arrow.html").cloneNode(true);
+            const arrow = MATCH_COUNTER_ARROW_TEMPLATE.cloneNode(true);
             arrow.id = arrowId;
             arrow.style.position = "relative";
             arrow.style.zIndex = "2";
@@ -331,20 +240,21 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         if (_settings) return _settings
 
         _settings = await getSettings({
-            eloHistoryCalculation: true,
             matchCounter: true,
             coloredStatsKDA: true,
             coloredStatsADR: true,
             coloredStatsKD: true,
             coloredStatsKR: true,
             showFCR: true,
-            coloredStatsFCR: true
+            coloredStatsFCR: true,
+            roundedStats: false
         });
 
         return _settings
     }
 
     let tableElement;
+    let tableBodyElement;
     let tableHeadElement;
 
     const matchChain = new MatchNodeChain();
@@ -358,9 +268,12 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     const matchIdRegex = /\/room\/([^/]+)\/scoreboard/;
 
     await matchHistoryModule.doAfterAllNodeAppearPack(selector, async function callback(nodes, attempt) {
-        if (tableHeadElement && !tableHeadElement.isConnected) {
-            tableHeadElement = null
+        if (tableBodyElement && !tableBodyElement.isConnected
+            || tableHeadElement && !tableHeadElement.isConnected
+        ) {
             tableElement = null
+            tableHeadElement = null
+            tableBodyElement = null
         }
 
         const nodesArr = filterUnmarkedNodes(nodes);
@@ -374,18 +287,18 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
         if (nodeArrays.length === 0) return;
 
-        await processNodeBatches(nodeArrays);
+        await processNodeBatches(nodesArr, nodeArrays);
     });
 
     async function initializeTableElements(nodesArr) {
         if (!tableElement) {
-            tableElement = nodesArr[0].parentNode.children;
+            tableElement = nodesArr[0].parentNode.parentNode;
         }
         if (!tableHeadElement) {
-            tableHeadElement = tableElement[0];
+            tableHeadElement = tableElement.querySelector("thead");
             if ((await settings()).showFCR) {
                 if (tableHeadElement.querySelector('[class*="fcr-fc-header"]')) return
-                let headerKR = tableHeadElement.querySelector('div > div > div:nth-child(7)')
+                let headerKR = tableHeadElement.querySelector('tr > th:nth-child(7)')
                 if (headerKR) {
                     let headerFCR = document.createElement('div')
                     headerFCR.className = headerKR.className
@@ -395,6 +308,9 @@ const matchHistoryModule = new Module("matchhistory", async () => {
                 }
             }
         }
+        if (!tableBodyElement) {
+            tableBodyElement = tableElement.querySelector("tbody");
+        }
     }
 
     function prepareNodeArrays(nodesArr) {
@@ -403,15 +319,23 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     }
 
     function filterAndMarkNode(node) {
-        const shouldInclude = tableHeadElement !== node && !node.hasAttribute(tableRowAttribute);
+        const shouldInclude = !node.hasAttribute(tableRowAttribute);
         if (shouldInclude) {
             node.setAttribute(tableRowAttribute, '');
         }
         return shouldInclude;
     }
 
-    async function processNodeBatches(nodeArrays) {
-        const tableNodesArray = Array.from(tableElement).filter(element => element.tagName === 'A');
+    async function processNodeBatches(nodesArr, nodeArrays, recursive = false) {
+        let tableNodesArray
+        try { // temp fix
+            tableNodesArray = Array.from(tableBodyElement.children).filter(element => element.tagName === 'A');
+        } catch (e) {
+            if (!recursive) {
+                await initializeTableElements(nodesArr);
+                await processNodeBatches(nodesArr, nodeArrays, true)
+            }
+        }
         for (const nodeArray of nodeArrays) {
             const batch = await createBatchFromNodes(nodeArray, tableNodesArray);
             await loadMatchStatsForBatch(batch);
@@ -428,7 +352,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
             const matchId = extractMatchId(node);
 
-            const matchNode = new MatchNodeByMatchStats(node.children[0], matchId, index, _settings, tableHeadElement);
+            const matchNode = new MatchNodeByMatchStats(node.children[0], matchId, index, _settings);
 
             matchChain.append(matchNode);
             batch.push(matchNode);
@@ -457,10 +381,6 @@ const matchHistoryModule = new Module("matchhistory", async () => {
                 }
             }
         ));
-
-        for (const node of batch) {
-            await node.applyEloDiff(id);
-        }
     }
 }, async () => {});
 

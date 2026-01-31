@@ -3,21 +3,17 @@
  */
 const baseUrlFC = "https://api.fforecast.net"
 
-let cachedDeviceId = null;
+const userIdCache = new Map();
 
 async function getDeviceId() {
-    if (cachedDeviceId) return cachedDeviceId;
-
     return new Promise((resolve) => {
-        CLIENT_API.storage.local.get(['deviceId'], async (result) => {
+        CLIENT_STORAGE_SYNC.get(['deviceId'], async (result) => {
             if (result.deviceId) {
-                cachedDeviceId = result.deviceId;
                 resolve(result.deviceId);
             } else {
                 const newDeviceId = await registerDevice();
                 if (newDeviceId) {
-                    cachedDeviceId = newDeviceId;
-                    CLIENT_API.storage.local.set({ deviceId: newDeviceId });
+                    CLIENT_STORAGE_SYNC.set({ deviceId: newDeviceId });
                 }
                 resolve(newDeviceId);
             }
@@ -124,4 +120,34 @@ async function fetchBannerData(language, slot) {
 
 async function sendBannerMetric(bannerId, language, slot) {
     await fetchFC(`${baseUrlFC}/v2/integrations/banner?metricOnly=true&bannerId=${bannerId}&lang=${language}&slot=${slot}`);
+}
+
+async function checkUserRegistered(faceitId) {
+    let response = userIdCache[faceitId];
+
+    if (response === undefined) {
+        response = await fetchFC(`${baseUrlFC}/v1/auth/user?faceit_id=${encodeURIComponent(faceitId)}`);
+        userIdCache[faceitId] = response;
+    }
+
+    return response?.authenticated === true;
+}
+
+async function getFallbackBaseUrl() {
+    try {
+        const res = await fetch(`${baseUrlFC}/v1/faceit/fallback_url`);
+        if (res.ok) {
+            return await res.text();
+        }
+    } catch (e) {}
+    return null;
+}
+
+let fallbackBaseUrl;
+
+async function ensureFallbackBaseUrl() {
+    if (!fallbackBaseUrl) {
+        fallbackBaseUrl = await getFallbackBaseUrl();
+    }
+    return fallbackBaseUrl;
 }

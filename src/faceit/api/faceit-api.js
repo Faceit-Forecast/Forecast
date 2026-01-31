@@ -2,18 +2,37 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const baseUrlV1 = "https://www.faceit.com/api/stats/v1/stats/time/users";
-const baseUrlV2 = "https://www.faceit.com/api/match/v2";
 const baseUrlV3 = "https://www.faceit.com/api/stats/v3";
 const baseUrlV4 = "https://open.faceit.com/data/v4";
 
 const playerDataCache = new Map();
 const playerGamesDataCache = new Map();
 const matchDataCache = new Map();
-const matchDataV1Cache = new Map();
-const matchDataV2Cache = new Map();
 const matchDataV3Cache = new Map();
 const matchDataStatsCache = new Map();
+
+async function getLocalStorageCache(key) {
+    try {
+        const result = await CLIENT_STORAGE.get([key]);
+        const item = result[key];
+        if (!item) return null;
+        if (Date.now() > item.expiry) {
+            await CLIENT_STORAGE.remove([key]);
+            return null;
+        }
+        return item.data;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function setLocalStorageCache(key, data, ttlMinutes) {
+    try {
+        const expiry = Date.now() + (ttlMinutes * 60 * 1000);
+        await CLIENT_STORAGE.set({ [key]: { data, expiry } });
+    } catch (e) {
+    }
+}
 
 async function fetchInternal(url, errorMsg, acceptHeader = 'application/json, text/plain, */*') {
     const res = await fetch(url, {
@@ -51,23 +70,35 @@ async function fetchV4(url, errorMsg) {
 }
 
 const fetchV3 = (url, errorMsg) => fetchInternal(url, errorMsg, 'application/json, text/plain, */*');
-const fetchV2 = (url, errorMsg) => fetchInternal(url, errorMsg, 'application/json, text/plain, */*');
-const fetchV1 = (url, errorMsg) => fetchInternal(url, errorMsg, 'application/json, text/plain, */*');
 
-async function fetchCached(cache, url, errorMsg, fetchFn) {
-    return cache.get(url) || cache.set(url, await fetchFn(url, errorMsg)).get(url);
+async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, fallbackUrl = null) {
+    if (cache.has(url)) {
+        return cache.get(url);
+    }
+
+    const localData = await getLocalStorageCache(localKey);
+    if (localData) {
+        cache.set(url, localData);
+        return localData;
+    }
+
+    const data = fallbackUrl ? await fetchWithFallback(url, errorMsg, fallbackUrl) : await fetchFn(url, errorMsg);
+    cache.set(url, data);
+    await setLocalStorageCache(localKey, data, ttlMinutes);
+    return data;
 }
 
-const fetchV4Cached = (cache, url, errorMsg) => fetchCached(cache, url, errorMsg, fetchV4);
-const fetchV3Cached = (cache, url, errorMsg) => fetchCached(cache, url, errorMsg, fetchV3);
-const fetchV2Cached = (cache, url, errorMsg) => fetchCached(cache, url, errorMsg, fetchV2);
-const fetchV1Cached = (cache, url, errorMsg) => fetchCached(cache, url, errorMsg, fetchV1);
+const fetchV4Cached = (cache, url, errorMsg, localKey, ttlMinutes, fallbackUrl) => fetchCached(cache, url, errorMsg, fetchV4, localKey, ttlMinutes, fallbackUrl);
+const fetchV3Cached = (cache, url, errorMsg, localKey, ttlMinutes) => fetchCached(cache, url, errorMsg, fetchV3, localKey, ttlMinutes);
 
 async function fetchMatchStats(matchId) {
     return fetchV4Cached(
         matchDataCache,
         `${baseUrlV4}/matches/${matchId}`,
-        `Error when retrieving match statistics by ID ${matchId}`
+        `Error when retrieving match statistics by ID ${matchId}`,
+        `match_${matchId}`,
+        2880,
+        `matches/${matchId}`
     );
 }
 
@@ -75,17 +106,24 @@ async function fetchMatchStatsDetailed(matchId) {
     return fetchV4Cached(
         matchDataStatsCache,
         `${baseUrlV4}/matches/${matchId}/stats`,
-        `Error when retrieving detailed match statistics by ID: ${matchId}`
+        `Error when retrieving detailed match statistics by ID: ${matchId}`,
+        `match_stats_${matchId}`,
+        2880,
+        `matches/${matchId}/stats`
     );
 }
 
 async function fetchPlayerInGameStats(playerId, game, matchAmount = 30, to = 0, from = 0) {
     const param = to === 0 ? "" : `&to=${to}`;
     const param1 = from === 0 ? "" : `&from=${to}`;
+    const url = `${baseUrlV4}/players/${playerId}/games/${game}/stats?limit=${matchAmount}${param}${param1}`;
     return fetchV4Cached(
         playerGamesDataCache,
-        `${baseUrlV4}/players/${playerId}/games/${game}/stats?limit=${matchAmount}${param}${param1}`,
-        `Error when requesting player game data by ID: ${playerId}`
+        url,
+        `Error when requesting player game data by ID: ${playerId}`,
+        `player_games_${playerId}_${game}_${matchAmount}_${to}_${from}`,
+        1,
+        `players/${playerId}/games/${game}/stats?limit=${matchAmount}${param}${param1}`
     );
 }
 
@@ -93,30 +131,22 @@ async function fetchPlayerStatsById(playerId) {
     return fetchV4Cached(
         playerDataCache,
         `${baseUrlV4}/players/${playerId}`,
-        `Error when requesting player data by ID: ${playerId}`
+        `Error when requesting player data by ID: ${playerId}`,
+        `player_${playerId}`,
+        5,
+        `players/${playerId}`
     );
 }
 
 async function fetchPlayerStatsByNickName(nickname) {
+    const url = `${baseUrlV4}/players?nickname=${encodeURIComponent(nickname)}`;
     return fetchV4Cached(
         playerDataCache,
-        `${baseUrlV4}/players?nickname=${encodeURIComponent(nickname)}`,
-        `Error when requesting player data by nickname: ${nickname}`
-    );
-}
-async function fetchV1MatchRoundStats(matchId, game, size = 30, gameMode = "5v5", to) {
-    return fetchV1Cached(
-        matchDataV1Cache,
-        `${baseUrlV1}/${matchId}/games/${game}?size=${size}&game_mode=${gameMode}&to=${to}`,
-        `Error when retrieving V1 match round statistics by ID: ${matchId}`
-    );
-}
-
-async function fetchV2MatchStats(matchId) {
-    return fetchV2Cached(
-        matchDataV2Cache,
-        `${baseUrlV2}/match/${matchId}`,
-        `Error when retrieving V2 match statistics by ID: ${matchId}`
+        url,
+        `Error when requesting player data by nickname: ${nickname}`,
+        `player_nick_${nickname}`,
+        1,
+        `players?nickname=${encodeURIComponent(nickname)}`
     );
 }
 
@@ -124,7 +154,9 @@ async function fetchV3MatchStats(matchId) {
     return fetchV3Cached(
         matchDataV3Cache,
         `${baseUrlV3}/matches/${matchId}`,
-        `Error when retrieving V3 match statistics by ID: ${matchId}`
+        `Error when retrieving V3 match statistics by ID: ${matchId}`,
+        `match_v3_${matchId}`,
+        2880
     );
 }
 
@@ -186,4 +218,18 @@ function getCookie(name) {
         }
     }
     return null;
+}
+
+async function fetchWithFallback(url, errorMsg, relativeFallbackUrl) {
+    try {
+        return await fetchV4(url, errorMsg);
+    } catch (e) {
+        console.warn(`Faceit API failed for ${url}, trying fallback`);
+        const base = await ensureFallbackBaseUrl();
+        if (!base) {
+            throw e;
+        }
+        const fallbackUrl = base + relativeFallbackUrl;
+        return await fetchFC(fallbackUrl);
+    }
 }
