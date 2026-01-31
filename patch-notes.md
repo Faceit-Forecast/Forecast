@@ -1,3 +1,15 @@
+[1.7.8] Authorization & Performance
+Added FACEIT account authorization
+Added badges for authenticated users
+Added Anubis to map pool for quick position setup feature
+Added remote map pool control for faster updates
+Improved caching for faster loading and reduced requests to FACEIT data API
+Adapted match history for new FACEIT web structure
+Match history stats rounding is now a feature
+Fixed bug when match history would not load
+Fixed bug when some Forecast elements would appear incorrectly
+Removed ELO calculation in match history, as it's now implemented by FACEIT
+
 [1.7.7] Bug Fixes
 Fixed level icon not appearing on player profiles
 Improved About tab in extension popup
