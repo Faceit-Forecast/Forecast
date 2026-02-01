@@ -99,7 +99,22 @@ const config = {
             ]
         }
     },
-    excludeFromCopy: ['.git', '.gitignore', 'node_modules', 'build.js', 'package.json', 'package-lock.json', 'README.md', '.DS_Store', 'Thumbs.db']
+    excludeFromCopy: ['.git', '.gitignore', 'node_modules', 'build.js', 'package.json', 'package-lock.json', 'README.md', '.DS_Store', 'Thumbs.db'],
+    browsers: {
+        chrome: {
+            suffix: '',
+            manifestMod: (manifest) => {
+                delete manifest.background.scripts;
+                delete manifest.background.type;
+            }
+        },
+        firefox: {
+            suffix: '-firefox',
+            manifestMod: (manifest) => {
+                delete manifest.background.service_worker;
+            }
+        }
+    },
 };
 
 function log(msg, type = 'info') {
@@ -498,6 +513,21 @@ async function build() {
         const sourceZipPath = path.join(config.outputDir, sourceZipName);
         const sourceZipSize = await createSourceArchive(sourceZipPath, config.sourceArchive.includes, config.sourceArchive.rename);
         log(`Source: ${sourceZipName} (${formatBytes(sourceZipSize)})`, 'success');
+    }
+
+    for (const [browser, browserConfig] of Object.entries(config.browsers)) {
+        const browserDistDir = `${config.distDir}-${browser}`;
+        ensureDirectory(browserDistDir);
+        fs.cpSync(config.distDir, browserDistDir, {recursive: true});
+        const manifestPath = path.join(browserDistDir, 'manifest.json');
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        browserConfig.manifestMod(manifest);
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+        const zipName = `${name}${browserConfig.suffix}-v${version}.zip`;
+        const zipPath = path.join(config.outputDir, zipName);
+        const zipSize = await createZipArchive(browserDistDir, zipPath);
+        log(`Archive ${browser}: ${zipName} (${formatBytes(zipSize)})`, 'success');
+        cleanDirectory(browserDistDir);
     }
 
     log(`Done in ${((Date.now() - startTime) / 1000).toFixed(2)}s`, 'info');
