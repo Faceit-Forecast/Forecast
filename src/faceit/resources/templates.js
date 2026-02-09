@@ -12,6 +12,8 @@ let MATCH_COUNTER_ARROW_TEMPLATE;
 let MATCH_HISTORY_POPUP_TEMPLATE;
 let PLAYER_WINRATE_TABLE_TEMPLATE;
 let TEAM_WINRATE_TABLE_TEMPLATE;
+let PLAYER_REPUTATION_BADGE_TEMPLATE;
+let PLAYER_REPUTATION_INLINE_TEMPLATE;
 let SKILL_LEVELS_INFO_TABLE_TEMPLATE;
 let FORECAST_STYLES_TEMPLATE;
 
@@ -28,6 +30,8 @@ function initTemplates() {
     MATCH_HISTORY_POPUP_TEMPLATE = htmlToElement(MATCH_HISTORY_POPUP_HTML);
     PLAYER_WINRATE_TABLE_TEMPLATE = htmlToElement(PLAYER_WINRATE_TABLE_HTML);
     TEAM_WINRATE_TABLE_TEMPLATE = htmlToElement(TEAM_WINRATE_TABLE_HTML);
+    PLAYER_REPUTATION_BADGE_TEMPLATE = htmlToElement(PLAYER_REPUTATION_BADGE_HTML);
+    PLAYER_REPUTATION_INLINE_TEMPLATE = htmlToElement(PLAYER_REPUTATION_INLINE_HTML);
     SKILL_LEVELS_INFO_TABLE_TEMPLATE = htmlToElement(SKILL_LEVELS_INFO_TABLE_HTML);
     FORECAST_STYLES_TEMPLATE = htmlToElement(FORECAST_STYLES_HTML);
 }
@@ -516,6 +520,26 @@ const TEAM_WINRATE_TABLE_HTML = /*language=HTML*/ `
                 <tbody>
                 </tbody>
             </table>
+        </div>
+    </div>`;
+
+const PLAYER_REPUTATION_INLINE_HTML = /*language=HTML*/ `
+<div class="forecast-reputation-inline" style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+  <button type="button" class="reputation-btn reputation-toxic" data-reputation="toxic" title="Mark as Toxic">👎</button>
+  <button type="button" class="reputation-btn reputation-friendly" data-reputation="friendly" title="Mark as Friendly">👍</button>
+</div>`;
+
+const PLAYER_REPUTATION_BADGE_HTML = /*language=HTML*/ `
+    <div class="forecast-reputation-container" data-forecast-reputation-badge>
+        <div class="forecast-reputation-label-wrap">
+            <span class="forecast-reputation-label forecast-reputation-label-toxic" data-label="toxic" title="Toxic">👎 Toxic</span>
+            <span class="forecast-reputation-label forecast-reputation-label-friendly" data-label="friendly" title="Friendly">👍 Friendly</span>
+            <span class="forecast-reputation-label forecast-reputation-label-neutral forecast-reputation-label-current" data-label="neutral" title="Neutral">— Neutral</span>
+        </div>
+        <div class="forecast-reputation-buttons">
+            <button type="button" class="forecast-reputation-btn forecast-reputation-btn-toxic" data-reputation="toxic">👎 Toxic</button>
+            <button type="button" class="forecast-reputation-btn forecast-reputation-btn-friendly" data-reputation="friendly">👍 Friendly</button>
+            <button type="button" class="forecast-reputation-btn forecast-reputation-btn-reset" data-reputation="reset">Reset</button>
         </div>
     </div>`;
 
@@ -1796,6 +1820,134 @@ tr[class*=MatchHistoryTableRow] {
     flex-direction: row;
     justify-content: space-around;
     flex: 1 1 0;
+}
+
+.forecast-reputation-container {
+    margin-top: 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid rgb(36, 36, 36);
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.forecast-reputation-label-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.forecast-reputation-label {
+    font-size: 11px;
+    opacity: 0.5;
+    transition: opacity 0.2s, font-size 0.2s;
+}
+
+.forecast-reputation-label-current {
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 1;
+}
+
+.forecast-reputation-label-toxic.forecast-reputation-label-current { color: #ff4444; }
+.forecast-reputation-label-friendly.forecast-reputation-label-current { color: #44ff44; }
+.forecast-reputation-label-neutral.forecast-reputation-label-current { color: #aaa; }
+
+.forecast-reputation-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.forecast-reputation-btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.2s, border-color 0.2s;
+}
+
+.forecast-reputation-btn:hover {
+    opacity: 1;
+}
+
+.forecast-reputation-btn-toxic {
+    background: rgba(255, 68, 68, 0.25);
+    color: #ff4444;
+}
+
+.forecast-reputation-btn-toxic:hover {
+    border-color: #ff4444;
+}
+
+.forecast-reputation-btn-friendly {
+    background: rgba(68, 255, 68, 0.25);
+    color: #44ff44;
+}
+
+.forecast-reputation-btn-friendly:hover {
+    border-color: #44ff44;
+}
+
+.forecast-reputation-meet-count {
+    font-size: 10px;
+    color: #888;
+    margin-left: auto;
+}
+
+.forecast-reputation-btn-reset {
+    background: rgba(128, 128, 128, 0.25);
+    color: #aaa;
+    font-size: 10px;
+}
+
+.forecast-reputation-btn-reset:hover {
+    border-color: #888;
+}
+
+.forecast-reputation-inline {
+    vertical-align: middle;
+}
+
+.reputation-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0.3;
+    transition: all 0.2s;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.reputation-btn:hover {
+    opacity: 0.6;
+    transform: scale(1.1);
+}
+
+.reputation-btn.active {
+    opacity: 1;
+    transform: scale(1.15);
+    border-width: 2px;
+}
+
+.reputation-toxic.active {
+    border-color: #ff4444;
+    background: rgba(255, 68, 68, 0.2);
+}
+
+.reputation-friendly.active {
+    border-color: #44ff44;
+    background: rgba(68, 255, 68, 0.2);
 }
 </style>`;
 

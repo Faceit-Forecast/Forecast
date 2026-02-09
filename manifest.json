@@ -49,6 +49,7 @@
         "src/faceit/service/service.js",
         "src/faceit/service/profiles.js",
         "src/faceit/service/integrations.js",
+        "src/faceit/reputation/reputation.js",
         "src/module/moduleManager.js"
       ]
     }
