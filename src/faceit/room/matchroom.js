@@ -134,6 +134,72 @@ async function calculateStats(team, playerId, matchAmount) {
 
         const playerStats = teamMap.get(playerId);
         if (playerStats) displayPlayerStats(playerId, playerStats, table);
+
+        try {
+            if (userCardElement.querySelector('.forecast-reputation-container[data-player-id]')) return;
+
+            const rep = await getPlayerReputation(playerId);
+            const currentRating = rep ? rep.rating : REPUTATION_NEUTRAL;
+            const updatedAt = rep && rep.updatedAt ? rep.updatedAt : null;
+
+            const badgeClone = PLAYER_REPUTATION_BADGE_TEMPLATE.cloneNode(true);
+            const container = badgeClone.querySelector('.forecast-reputation-container');
+            if (!container) return;
+            container.setAttribute('data-player-id', playerId);
+
+            const labelToxic = container.querySelector('[data-label="toxic"]');
+            const labelFriendly = container.querySelector('[data-label="friendly"]');
+            const labelNeutral = container.querySelector('[data-label="neutral"]');
+            [labelToxic, labelFriendly, labelNeutral].forEach(el => el.classList.remove('forecast-reputation-label-current'));
+            const currentLabel = container.querySelector(`[data-label="${currentRating}"]`);
+            if (currentLabel) {
+                currentLabel.classList.add('forecast-reputation-label-current');
+                if (updatedAt) {
+                    const d = new Date(updatedAt);
+                    currentLabel.setAttribute('title', 'Rated: ' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                }
+            }
+
+            const btnToxic = container.querySelector('[data-reputation="toxic"]');
+            const btnFriendly = container.querySelector('[data-reputation="friendly"]');
+            const btnReset = container.querySelector('[data-reputation="reset"]');
+
+            function setReputationUI(rating) {
+                [labelToxic, labelFriendly, labelNeutral].forEach(el => el.classList.remove('forecast-reputation-label-current'));
+                const label = container.querySelector(`[data-label="${rating}"]`);
+                if (label) label.classList.add('forecast-reputation-label-current');
+            }
+
+            function setRatedTitle(el) {
+                if (el) el.setAttribute('title', 'Rated: ' + new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            }
+            btnToxic.addEventListener('click', async () => {
+                await setPlayerReputation(playerId, REPUTATION_TOXIC);
+                setReputationUI(REPUTATION_TOXIC);
+                setRatedTitle(labelToxic);
+                console.log('[FORECAST REPUTATION]', playerId, REPUTATION_TOXIC);
+            });
+            btnFriendly.addEventListener('click', async () => {
+                await setPlayerReputation(playerId, REPUTATION_FRIENDLY);
+                setReputationUI(REPUTATION_FRIENDLY);
+                setRatedTitle(labelFriendly);
+                console.log('[FORECAST REPUTATION]', playerId, REPUTATION_FRIENDLY);
+            });
+            if (btnReset) {
+                btnReset.addEventListener('click', async () => {
+                    await resetPlayerReputation(playerId);
+                    setReputationUI(REPUTATION_NEUTRAL);
+                    const cur = container.querySelector(`[data-label="${REPUTATION_NEUTRAL}"]`);
+                    if (cur) cur.removeAttribute('title');
+                    console.log('[FORECAST REPUTATION]', playerId, 'reset');
+                });
+            }
+
+            appendTo(badgeClone, userCardElement);
+            matchRoomModule.removalNode(badgeClone);
+        } catch (err) {
+            error('Reputation badge failed', err);
+        }
     });
 }
 
@@ -177,7 +243,66 @@ async function displayWinRates(matchDetails) {
             const teamMatches = calculateTeamMatches(teamMap);
             displayTeamMatches(htmlResource, teamName, teamMatches);
         });
-    })
+    });
+
+    await setupInlineReputationForLobby(matchDetails);
+}
+
+async function setupInlineReputationForLobby(matchDetails) {
+    const selectorMatchPlayer = 'div[class*=Overview__Grid] div[class*=ListContentPlayer__SlotWrapper] div[class*=styles__NicknameContainer] > div > div';
+
+    const nicknameToIdMap = new Map();
+    [matchDetails.teams.faction1.roster, matchDetails.teams.faction2.roster].forEach(roster => {
+        roster.forEach(player => {
+            nicknameToIdMap.set(player.nickname, player.player_id);
+        });
+    });
+
+    matchRoomModule.doAfterAllNodeAppear(selectorMatchPlayer, async (node) => {
+        const container = node.parentElement;
+        if (container.hasAttribute('data-processed-reputation')) return;
+        container.setAttribute('data-processed-reputation', 'true');
+
+        const nickname = node.textContent.trim();
+        const playerId = nicknameToIdMap.get(nickname);
+        if (!playerId) return;
+
+        try {
+            const reputation = await getPlayerReputation(playerId);
+
+            const template = PLAYER_REPUTATION_INLINE_TEMPLATE.cloneNode(true);
+            const inlineEl = template.firstElementChild || template;
+
+            if (reputation?.rating === REPUTATION_TOXIC || reputation?.rating === REPUTATION_FRIENDLY) {
+                const activeBtn = inlineEl.querySelector(`.reputation-${reputation.rating}`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+
+            const toxicBtn = inlineEl.querySelector('.reputation-toxic');
+            const friendlyBtn = inlineEl.querySelector('.reputation-friendly');
+
+            toxicBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await setPlayerReputation(playerId, REPUTATION_TOXIC);
+                toxicBtn.classList.add('active');
+                friendlyBtn.classList.remove('active');
+                console.log('[REPUTATION INLINE]', playerId, nickname, 'toxic');
+            });
+
+            friendlyBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await setPlayerReputation(playerId, REPUTATION_FRIENDLY);
+                friendlyBtn.classList.add('active');
+                toxicBtn.classList.remove('active');
+                console.log('[REPUTATION INLINE]', playerId, nickname, 'friendly');
+            });
+
+            container.appendChild(inlineEl);
+            matchRoomModule.removalNode(inlineEl);
+        } catch (err) {
+            error('Inline reputation failed', err);
+        }
+    });
 }
 
 function addTableTeamTitle(htmlResource,roster, title) {

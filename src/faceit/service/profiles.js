@@ -21,18 +21,20 @@ const profilesModule = new Module("profiles", () => {
     profilesModule.doAfterNodeAppearWhenVisible(selectorProfileTooltipV2, async (node) => {
         const nickname = node.textContent;
         const logo = await addFCUserLogoIfRegisteredByNick(getNthParent(node, 2), nickname, 20, 20, true);
-        logo.style.display = 'flex'
-        logo.style.alignItems = 'center'
-        logo.style.height = 'unset'
+        if (logo) {
+            logo.style.display = 'flex';
+            logo.style.alignItems = 'center';
+            logo.style.height = 'unset';
+        }
     });
 
     let selectorFriendsList = '[role="dialog"] > div[class*=FriendsMenu__MenuScrollArea] > div[class*=RosterList__FriendsHolder] > div > div > div > div > div[class*=User__UserContainer] > span'
     profilesModule.doAfterNodeAppearWhenVisible(selectorFriendsList, async (node) => {
         const nickname = node.textContent;
-        node.style.display = 'flex'
-        node.style.alignItems = 'center'
+        node.style.display = 'flex';
+        node.style.alignItems = 'center';
         const logo = await addFCUserLogoIfRegisteredByNick(node, nickname, 20, 20, true);
-        logo.style.paddingLeft = '4px'
+        if (logo) logo.style.paddingLeft = '4px';
     });
 
     if (lobby.pageType === "friends") {
