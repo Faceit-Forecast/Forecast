@@ -1,3 +1,17 @@
+[1.7.9] Matchroom Redesign & Reliability
+Redesigned team and player statistics in match room with map icons and average kills display
+Added option to switch between new and classic table views for match room stats
+Added Average ELO column in match history - shows your team's and enemy team's average elo
+Added automatic server switching to mitigate regional network restrictions
+Extension now works on club, team leagues and team stats pages
+Match room data now retries loading if FACEIT servers respond slowly
+Fixed level icons not appearing correctly on updated FACEIT pages
+Fixed duplicate level icons in match history
+Improved overall extension performance and stability
+<img width="812" height="433" alt="image" src="https://github.com/user-attachments/assets/2000dfb0-f2c9-493b-8f4b-935b5dbe2988" />
+<img width="417" height="409" alt="image" src="https://github.com/user-attachments/assets/9c643682-2e88-42c1-977e-84bfefbcc450" />
+<img width="294" height="477" alt="image" src="https://github.com/user-attachments/assets/b0c0c0d3-8c63-4263-8ead-312a9d8618fd" />
+
 [1.7.8] Authorization & Performance
 Added FACEIT account authorization
 Added badges for authenticated users
