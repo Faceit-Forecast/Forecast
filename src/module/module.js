@@ -100,8 +100,26 @@ class Module {
         this.hidedNodes.push(hiddenNode)
     }
 
+    replaceNodeWithColored(tagName, node, text, condition) {
+        if (!node) return;
+        const newNode = createColoredSpan(tagName, text, condition);
+        newNode.className = node.className;
+        this.replaceNodeWith(node,newNode);
+    }
+
+    replaceNodeWith(oldNode, newNode) {
+        this.appendToAndHide(newNode,oldNode);
+        this.doAfterElementDisappear(oldNode, () => {
+            newNode.remove()
+        })
+    }
+
     async doAfterNodeDisappear(selector, callback, id) {
         return this.observeHandler.doAfterNodeDisappear(selector, callback, id)
+    }
+
+    async doAfterElementDisappear(element, callback, id) {
+        return this.observeHandler.doAfterElementDisappear(element, callback, id)
     }
 
     async doAfterNodeAppear(selector, callback, id) {

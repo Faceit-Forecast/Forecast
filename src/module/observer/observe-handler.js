@@ -156,7 +156,17 @@ class ObserveHandler {
         this.observeDisappear(id || selector, async (node) => {
             if (node.matches?.(selector)) {
                 callback(node)
-                this.releaseAppearTask(id || selector)
+                this.releaseDisappearTask(id || selector)
+            }
+        })
+    }
+
+    async doAfterElementDisappear(element, callback, id) {
+        const key = id || element;
+        this.observeDisappear(key, async (node) => {
+            if (node === element || node.contains?.(element)) {
+                callback(node)
+                this.releaseDisappearTask(key)
             }
         })
     }

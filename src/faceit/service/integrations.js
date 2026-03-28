@@ -17,20 +17,31 @@ const integrationsModule = new Module("integrations", async () => {
 
     if (!bannerData) return;
 
-    const sanitizedHtml = sanitizeHtml(bannerData.html);
+    const usingFallback = isUsingFallback();
+
+    let processedHtml = sanitizeHtml(bannerData.html);
+    let processedTargetUrl = bannerData.targetUrl;
+
+    if (usingFallback) {
+        processedHtml = processedHtml.replaceAll('cdn.fforecast.net', 'cdn.fforecast.dev');
+        processedHtml = processedHtml.replaceAll('api.fforecast.net', 'api.fforecast.dev');
+        if (processedTargetUrl) {
+            processedTargetUrl = processedTargetUrl.replaceAll('api.fforecast.net', 'api.fforecast.dev');
+        }
+    }
 
     const createBanner = () => {
         let bannerContainer = document.createElement('div');
-        bannerContainer.innerHTML = sanitizedHtml;
+        bannerContainer.innerHTML = processedHtml;
 
-        if (bannerContainer && bannerData.targetUrl) {
+        if (bannerContainer && processedTargetUrl) {
             bannerContainer.style.cursor = 'pointer';
 
             bannerContainer.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (isValidUrl(bannerData.targetUrl)) {
-                    window.open(bannerData.targetUrl, '_blank', 'noopener,noreferrer');
+                if (isValidUrl(processedTargetUrl)) {
+                    window.open(processedTargetUrl, '_blank', 'noopener,noreferrer');
                 }
             });
         }
@@ -41,25 +52,23 @@ const integrationsModule = new Module("integrations", async () => {
     };
 
     if (lobbyType === "stats") {
-        integrationsModule.doAfterNodeAppear('[class*=forecast-statistic-table]', async (node) => {
-            let lvlpc = node.querySelector("[class*=level-progress-container]");
-            if (lvlpc) {
-                const banner = createBanner();
-                let oldBanner = lvlpc.querySelector("[class*='forecast-banner']")
-                if (oldBanner) {
-                    oldBanner.remove()
-                }
-                appendTo(banner, lvlpc);
+        integrationsModule.doAfterNodeAppear('[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])', async (node) => {
+            const banner = createBanner();
+            banner.style.marginTop = "-12px"
+            let oldBanner = node.parentElement.querySelector("[class*='forecast-banner']")
+            if (oldBanner) {
+                oldBanner.remove();
             }
+            node.after(banner);
         });
     } else if (lobbyType === "matchroom") {
-        integrationsModule.doAfterNodeAppear('[class*=team-table]', async (node) => {
+        integrationsModule.doAfterNodeAppear('div[name="info"][class*=Overview__Column] > div[class*=Overview__Stack]', async (node) => {
             const banner = createBanner();
-            let oldBanner = node.querySelector("[class*='forecast-banner']")
+            let oldBanner = node.parentElement.querySelector("[class*='forecast-banner']")
             if (oldBanner) {
                 oldBanner.remove()
             }
-            preppendTo(banner, node);
+            node.after(banner);
         });
     }
 }, async () => {});

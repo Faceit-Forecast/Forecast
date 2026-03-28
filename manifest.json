@@ -1,11 +1,15 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.7.8",
+  "version": "1.7.9",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",
   "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.fforecast.net/*",
+    "https://*.fforecast.dev/*"
+  ],
   "icons": {
     "128": "src/visual/icons/logo128.png"
   },
@@ -30,6 +34,7 @@
       ],
       "js": [
         "src/utils/utils.js",
+        "src/utils/domain-resolver.js",
         "src/utils/pagetype.js",
         "src/faceit/api/faceit-api.js",
         "src/faceit/api/forecast-api.js",

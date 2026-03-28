@@ -16,16 +16,69 @@ const matchRoomModule = new Module("matchroom", async () => {
     matchRoomModule.teamCache.clear()
 })
 
-async function setupPlayerCardMatchData(playerId, nickname, targetNode) {
+async function getMapIconUrl(mapName) {
+    try {
+        const config = await loadMapsConfig();
+        if (!config || !config.maps) return null;
+
+        let mapData = config.maps[mapName];
+        if (!mapData) {
+            mapData = Object.values(config.maps).find(m => m.faceitName === mapName);
+        }
+
+        const cdnUrl = await getCdnUrl();
+        if (mapData && mapData.icon) {
+            return `${cdnUrl}/web/images/maps/48/${mapData.icon}`;
+        }
+
+        const mapId = mapData ? null : mapName;
+        if (mapId) {
+            return `${cdnUrl}/web/images/maps/48/map_icon_${mapId}.png`;
+        }
+
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+function formatMapName(mapName) {
+    return mapName.replace("de_", "").replace(/(\d)/g, " $1").toUpperCase();
+}
+
+function getKillsColorClass(avgKills) {
+    const k = parseFloat(avgKills);
+    if (isNaN(k)) return '';
+    if (k < 14) return 'fc-stat-red';
+    if (k <= 17) return 'fc-stat-yellow';
+    return 'fc-stat-green';
+}
+
+function getKDColorClass(kd) {
+    const v = parseFloat(kd);
+    if (isNaN(v)) return '';
+    if (v < 0.99) return 'fc-stat-red';
+    if (v <= 1.2) return 'fc-stat-yellow';
+    return 'fc-stat-green';
+}
+
+function formatGamesWR(totalGames, wins) {
+    const wr = Math.round(wins / totalGames * 100);
+    return {wr, games: totalGames};
+}
+
+async function setupPlayerCardMatchData(playerId, targetNode, matchAmount, isClassic) {
     let tableId = `session-${matchRoomModule.sessionId}-player-table-${playerId}`
     if (targetNode.querySelector("[class~=tableId]")) return null
-    let htmlResource = PLAYER_WINRATE_TABLE_TEMPLATE.cloneNode(true);
-    htmlResource.querySelector('[class=player-name]').textContent = t('player_stats', 'Player Stats')
+    let template = isClassic ? CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE : PLAYER_WINRATE_TABLE_TEMPLATE;
+    let htmlResource = template.cloneNode(true);
+    const statsTextEl = htmlResource.querySelector('.fc-panel-stats-text');
+    if (statsTextEl) statsTextEl.textContent = t('stats_last_n_matches', `Stats for last ${matchAmount} matches`).replace('{0}', matchAmount);
     setupBrandIcon(htmlResource, 24, 24)
     appendTo(htmlResource, targetNode)
-    let table = htmlResource.querySelector("[class~=player-table]")
-    table.classList.add(tableId)
-    return table
+    let container = htmlResource.querySelector(".fc-player-panel")
+    if (container) container.classList.add(tableId)
+    return htmlResource
 }
 
 function calculateTeamMatches(teamMap) {
@@ -33,68 +86,235 @@ function calculateTeamMatches(teamMap) {
 
     teamMap.forEach(({maps}) => {
         maps.forEach((data, mapName) => {
-            if (!teamMatches[mapName]) teamMatches[mapName] = {wins: 0, totalGames: 0};
+            if (!teamMatches[mapName]) teamMatches[mapName] = {wins: 0, totalGames: 0, totalKills: 0, totalDeaths: 0};
             teamMatches[mapName].wins += data.wins;
             teamMatches[mapName].totalGames += data.totalGames;
+            teamMatches[mapName].totalKills += data.totalKills;
+            teamMatches[mapName].totalDeaths += data.totalDeaths;
         });
     });
 
     return teamMatches;
 }
 
-function displayTeamMatches(htmlResource,teamNameRaw, teamMatches) {
-    const roster = teamNameRaw.split("$").pop()
-    const teamName = teamNameRaw.split("$")[0]
-    addTableTeamTitle(htmlResource,roster, teamName);
-    Object.entries(teamMatches)
-        .sort(([, dataA], [, dataB]) => dataB.wins / dataB.totalGames - dataA.wins / dataA.totalGames)
-        .forEach(([mapName, data]) => {
-            const winrate = (data.wins / data.totalGames * 100).toFixed(0);
-            addRow(htmlResource.querySelector(`[class~="${roster}"]`), mapName, data.totalGames, winrate)
-        });
+function computeOverallAverages(matchesObj) {
+    let totalWins = 0, totalGames = 0, totalKills = 0, totalDeaths = 0;
+    Object.values(matchesObj).forEach(data => {
+        totalWins += data.wins;
+        totalGames += data.totalGames;
+        totalKills += data.totalKills;
+        totalDeaths += data.totalDeaths;
+    });
+    if (totalGames === 0) return {wr: 0, avgKills: '0.0', avgKD: '0.00', totalGames: 0, totalWins: 0};
+    return {
+        wr: Math.round(totalWins / totalGames * 100),
+        avgKills: (totalKills / totalGames).toFixed(1),
+        avgKD: totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '0.00',
+        totalGames,
+        totalWins
+    };
 }
 
-function displayPlayerStats(playerId, playerStats, table) {
-    const {maps} = playerStats;
+async function displayTeamStats(htmlResource, team1Matches, team2Matches) {
+    const avg1 = computeOverallAverages(team1Matches);
+    const avg2 = computeOverallAverages(team2Matches);
 
-    Array.from(maps.entries())
-        .sort(([, {wins: winsA, totalGames: totalA}], [, {wins: winsB, totalGames: totalB}]) =>
-            (winsB / totalB) - (winsA / totalA))
-        .forEach(([mapName, {totalGames, wins}]) => {
-            const winrate = ((wins / totalGames) * 100).toFixed(0);
-            addRow(table, mapName, totalGames, winrate);
-        });
+    htmlResource.querySelector('.fc-team1-overall-kills').textContent = avg1.avgKills;
+    htmlResource.querySelector('.fc-team2-overall-kills').textContent = avg2.avgKills;
+
+    const allMaps = new Set([...Object.keys(team1Matches), ...Object.keys(team2Matches)]);
+    const tbody = htmlResource.querySelector('.fc-team-table-body');
+
+    for (const mapName of [...allMaps].sort()) {
+        const d1 = team1Matches[mapName];
+        const d2 = team2Matches[mapName];
+        const iconUrl = await getMapIconUrl(mapName);
+        const displayName = formatMapName(mapName);
+
+        const row = tbody.insertRow();
+
+        const wr1 = d1 ? Math.round(d1.wins / d1.totalGames * 100) : null;
+        const wr2 = d2 ? Math.round(d2.wins / d2.totalGames * 100) : null;
+
+        const mapCell = row.insertCell(0);
+        const imgHtml = iconUrl ? `<img src="${iconUrl}" alt="${displayName}">` : '';
+        mapCell.innerHTML = `<div class="fc-table-map">${imgHtml}<span>${displayName}</span></div>`;
+
+        if (d1) {
+            const {games: g1} = formatGamesWR(d1.totalGames, d1.wins);
+            const avgK1 = (d1.totalKills / d1.totalGames).toFixed(1);
+
+            const wrCell = row.insertCell(1);
+            const wrClass = wr2 === null ? 'fc-wr-tie' : wr1 > wr2 ? 'fc-wr-win' : wr1 < wr2 ? 'fc-wr-lose' : 'fc-wr-tie';
+            wrCell.innerHTML = `<span class="fc-val ${wrClass}">${wr1}%</span>`;
+            row.insertCell(2).innerHTML = `<span class="fc-val">${g1}</span>`;
+            row.insertCell(3).innerHTML = `<span class="fc-val ${getKillsColorClass(avgK1)}">${avgK1}</span>`;
+        } else {
+            row.insertCell(1).innerHTML = `<span class="fc-val fc-val-dim">—</span>`;
+            row.insertCell(2).innerHTML = `<span class="fc-val fc-val-dim">—</span>`;
+            row.insertCell(3).innerHTML = `<span class="fc-val fc-val-dim">—</span>`;
+        }
+
+        if (d2) {
+            const {games: g2} = formatGamesWR(d2.totalGames, d2.wins);
+            const avgK2 = (d2.totalKills / d2.totalGames).toFixed(1);
+
+            const wrCell = row.insertCell(4);
+            wrCell.classList.add('fc-sep-t2');
+            const wrClass = wr1 === null ? 'fc-wr-tie' : wr2 > wr1 ? 'fc-wr-win' : wr2 < wr1 ? 'fc-wr-lose' : 'fc-wr-tie';
+            wrCell.innerHTML = `<span class="fc-val ${wrClass}">${wr2}%</span>`;
+            row.insertCell(5).innerHTML = `<span class="fc-val">${g2}</span>`;
+            row.insertCell(6).innerHTML = `<span class="fc-val ${getKillsColorClass(avgK2)}">${avgK2}</span>`;
+        } else {
+            const emptyCell = row.insertCell(4);
+            emptyCell.classList.add('fc-sep-t2');
+            emptyCell.innerHTML = `<span class="fc-val fc-val-dim">—</span>`;
+            row.insertCell(5).innerHTML = `<span class="fc-val fc-val-dim">—</span>`;
+            row.insertCell(6).innerHTML = `<span class="fc-val fc-val-dim">—</span>`;
+        }
+    }
 }
 
+async function displayPlayerStats(htmlResource, playerMaps) {
+    const overall = computeOverallAverages(
+        Object.fromEntries(Array.from(playerMaps.entries()).map(([k, v]) => [k, v]))
+    );
 
-async function getMatchWinRates(matchId) {
+    const killsEl = htmlResource.querySelector('.fc-overall-kills');
+    if (killsEl) killsEl.textContent = overall.avgKills;
+    const kdEl = htmlResource.querySelector('.fc-overall-kd');
+    if (kdEl) kdEl.textContent = overall.avgKD;
+
+    const tbody = htmlResource.querySelector('.fc-ptable tbody');
+
+    const sorted = Array.from(playerMaps.entries())
+        .sort(([, a], [, b]) => (b.wins / b.totalGames) - (a.wins / a.totalGames));
+
+    for (const [mapName, data] of sorted) {
+        const iconUrl = await getMapIconUrl(mapName);
+        const displayName = formatMapName(mapName);
+        const {wr, games} = formatGamesWR(data.totalGames, data.wins);
+        const avgK = (data.totalKills / data.totalGames).toFixed(1);
+
+        const row = tbody.insertRow();
+        const mapCell = row.insertCell(0);
+        const imgHtml = iconUrl ? `<img src="${iconUrl}" alt="${displayName}">` : '';
+        mapCell.innerHTML = `<div class="fc-ptable-map">${imgHtml}<span>${displayName}</span></div>`;
+
+        const wrCell = row.insertCell(1);
+        wrCell.innerHTML = `<span class="fc-val">${wr}%</span>`;
+        setGradientColor(wrCell.querySelector('.fc-val'), wr);
+
+        row.insertCell(2).innerHTML = `<span class="fc-val">${games}</span>`;
+        row.insertCell(3).innerHTML = `<span class="fc-val ${getKillsColorClass(avgK)}">${avgK}</span>`;
+    }
+}
+
+async function displayClassicPlayerStats(htmlResource, playerMaps) {
+    const tbody = htmlResource.querySelector('.fc-classic-table tbody');
+
+    const sorted = Array.from(playerMaps.entries())
+        .sort(([, a], [, b]) => (b.wins / b.totalGames) - (a.wins / a.totalGames));
+
+    for (const [mapName, data] of sorted) {
+        const iconUrl = await getMapIconUrl(mapName);
+        const displayName = formatMapName(mapName);
+        const {wr, games} = formatGamesWR(data.totalGames, data.wins);
+
+        const row = tbody.insertRow();
+        const mapCell = row.insertCell(0);
+        const imgHtml = iconUrl ? `<img src="${iconUrl}" alt="${displayName}" style="width:18px;height:18px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px">` : '';
+        mapCell.innerHTML = `${imgHtml}<span style="font-size:10px;color:#bbb;text-transform:uppercase">${displayName}</span>`;
+
+        row.insertCell(1).textContent = games;
+
+        const wrCell = row.insertCell(2);
+        wrCell.textContent = wr + '%';
+        setGradientColor(wrCell, wr);
+    }
+}
+
+async function displayClassicTeamStats(htmlResource, team1Matches, team2Matches) {
+    const roster1Tbody = htmlResource.querySelector('.roster1 tbody');
+    const roster2Tbody = htmlResource.querySelector('.roster2 tbody');
+
+    const addClassicRow = async (tbody, mapName, data) => {
+        const iconUrl = await getMapIconUrl(mapName);
+        const displayName = formatMapName(mapName);
+        const wr = Math.round(data.wins / data.totalGames * 100);
+
+        const row = tbody.insertRow();
+        const mapCell = row.insertCell(0);
+        const imgHtml = iconUrl ? `<img src="${iconUrl}" alt="${displayName}" style="width:18px;height:18px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px">` : '';
+        mapCell.innerHTML = `${imgHtml}<span style="font-size:10px;color:#bbb;text-transform:uppercase">${displayName}</span>`;
+
+        row.insertCell(1).textContent = data.totalGames;
+
+        const wrCell = row.insertCell(2);
+        wrCell.textContent = wr + '%';
+        setGradientColor(wrCell, wr);
+    };
+
+    const sorted1 = Object.entries(team1Matches)
+        .sort(([, a], [, b]) => (b.wins / b.totalGames) - (a.wins / a.totalGames));
+    for (const [mapName, data] of sorted1) {
+        await addClassicRow(roster1Tbody, mapName, data);
+    }
+
+    const sorted2 = Object.entries(team2Matches)
+        .sort(([, a], [, b]) => (b.wins / b.totalGames) - (a.wins / a.totalGames));
+    for (const [mapName, data] of sorted2) {
+        await addClassicRow(roster2Tbody, mapName, data);
+    }
+}
+
+async function getMatchWinRates(matchId, maxRetries = 5, retryDelay = 3000) {
     if (!matchId) {
         error("Match ID is not provided!");
         return
     }
 
-    const matchStats = await fetchMatchStats(matchId);
-    if (!matchStats) {
+    let matchStats = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        matchStats = await fetchMatchStats(matchId);
+        if (matchStats && matchStats.teams) break;
+
+        if (attempt < maxRetries) {
+            println(`Match ${matchId} not available yet, retrying in ${retryDelay / 1000}s (attempt ${attempt}/${maxRetries})...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+    }
+
+    if (!matchStats || !matchStats.teams) {
         error("Error when retrieving match statistics: Incorrect match structure.");
         return
     }
 
-    await displayWinRates(matchStats);
+    const settings = await getSettings({
+        teamMapWinrate: true,
+        playerMapWinrate: true,
+        classicTeamView: false,
+        classicPlayerView: false,
+        sliderValue: 30
+    });
+
+    displayWinRates(matchStats, settings);
 }
 
 async function findUserCard(nickname, callback) {
     let nickNodeSelector = 'div[class*=styles__PopoverStyled] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5'
     matchRoomModule.doAfterNodeAppearWithCondition(nickNodeSelector, (node) => node.innerText === nickname, (node) => {
-        let parentNode = node.parentElement.parentElement.parentElement.parentElement.querySelector('div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]')
-        if (!matchRoomModule.isProcessedNode(parentNode)) {
-            matchRoomModule.processedNode(parentNode);
-            callback(parentNode);
-        }
+        const parentNode = getNthParent(node, 4)
+        matchRoomModule.doAfter(() => parentNode.querySelector('div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]'), (ratingsNode) => {
+            if (!matchRoomModule.isProcessedNode(ratingsNode)) {
+                matchRoomModule.processedNode(ratingsNode);
+                callback(ratingsNode);
+            }
+        }, 50)
     }, `${nickNodeSelector}-${nickname}`)
 }
 
-
-async function calculateStats(team, playerId, matchAmount) {
+async function calculateStats(team, playerId, matchAmount, settings) {
     let gameType = extractGameType("cs2")
     let data = await fetchPlayerInGameStats(playerId, gameType, matchAmount);
     let nickname = (await fetchPlayerStatsById(playerId))['nickname']
@@ -113,6 +333,8 @@ async function calculateStats(team, playerId, matchAmount) {
 
         const mapName = stats["Map"];
         const result = Number.parseInt(stats["Result"]);
+        const kills = Number.parseInt(stats["Kills"]) || 0;
+        const deaths = Number.parseInt(stats["Deaths"]) || 0;
 
         if (!teamMap.has(playerId)) {
             teamMap.set(playerId, {nickname: stats["Nickname"], maps: new Map()});
@@ -121,81 +343,92 @@ async function calculateStats(team, playerId, matchAmount) {
         const playerData = teamMap.get(playerId).maps;
 
         if (!playerData.has(mapName)) {
-            playerData.set(mapName, {wins: 0, totalGames: 0});
+            playerData.set(mapName, {wins: 0, totalGames: 0, totalKills: 0, totalDeaths: 0});
         }
 
         const mapData = playerData.get(mapName);
         mapData.wins += result;
         mapData.totalGames += 1;
+        mapData.totalKills += kills;
+        mapData.totalDeaths += deaths;
     });
-    await findUserCard(nickname, async userCardElement => {
-        let table = await setupPlayerCardMatchData(playerId, nickname, userCardElement)
-        if (!table) return;
 
-        const playerStats = teamMap.get(playerId);
-        if (playerStats) displayPlayerStats(playerId, playerStats, table);
-    });
+    if (settings.playerMapWinrate) {
+        await findUserCard(nickname, async userCardElement => {
+            let htmlResource = await setupPlayerCardMatchData(playerId, userCardElement, matchAmount, settings.classicPlayerView)
+            if (!htmlResource) return;
+
+            const playerStats = teamMap.get(playerId);
+            if (!playerStats) return;
+
+            if (settings.classicPlayerView) {
+                await displayClassicPlayerStats(htmlResource, playerStats.maps);
+            } else {
+                await displayPlayerStats(htmlResource, playerStats.maps);
+            }
+        });
+    }
 }
 
-
-async function displayWinRates(matchDetails) {
+async function displayWinRates(matchDetails, settings) {
     const team1 = matchDetails["teams"]["faction1"];
     const team2 = matchDetails["teams"]["faction2"];
 
-    const matchAmount = await getSettingValue('sliderValue',30);
+    const matchAmount = settings.sliderValue;
 
     const team1Promises = team1["roster"].map(player =>
-        calculateStats(`${team1.name}$roster1`, player["player_id"], matchAmount)
+        calculateStats(`${team1.name}$roster1`, player["player_id"], matchAmount, settings)
     );
     const team2Promises = team2["roster"].map(player =>
-        calculateStats(`${team2.name}$roster2`, player["player_id"], matchAmount)
+        calculateStats(`${team2.name}$roster2`, player["player_id"], matchAmount, settings)
     );
 
     await Promise.all([...team1Promises, ...team2Promises]);
-    let teamTableNodeId = `team-table-${matchRoomModule.sessionId}`
-    await matchRoomModule.doAfterAllNodeAppear('[name="info"][class*=Overview__Column]', async (node) => {
-        let existingTeamTableNode = node.querySelector(`[class*=team-table]`);
-        if (existingTeamTableNode) {
-            if (existingTeamTableNode.classList.contains(teamTableNodeId)) return
-            else existingTeamTableNode.remove()
-        }
-        const targetNode = node.matches('[name="info"]') ? node : node.querySelector('[name="info"][class*=Overview__Column]');
-        if (!targetNode) return false;
-        if (matchRoomModule.isProcessedNode(targetNode)) return false;
-        matchRoomModule.processedNode(targetNode);
 
-        let innerNode = targetNode.querySelector('[class*=Overview__Stack]')
+    if (settings.teamMapWinrate) {
+        let teamTableNodeId = `team-table-${matchRoomModule.sessionId}`
+        await matchRoomModule.doAfterAllNodeAppear('[name="info"][class*=Overview__Column]', async (node) => {
+            let existingTeamTableNode = node.querySelector(`[class*=fc-team-panel]`);
+            if (existingTeamTableNode) {
+                if (existingTeamTableNode.classList.contains(teamTableNodeId)) return
+                else existingTeamTableNode.remove()
+            }
+            const targetNode = node.matches('[name="info"]') ? node : node.querySelector('[name="info"][class*=Overview__Column]');
+            if (!targetNode) return;
+            if (matchRoomModule.isProcessedNode(targetNode)) return;
+            matchRoomModule.processedNode(targetNode);
 
-        let htmlResource = TEAM_WINRATE_TABLE_TEMPLATE.cloneNode(true)
-        setupBrandIcon(htmlResource, 24, 24)
+            let innerNode = targetNode.querySelector('[class*=forecast-banner]') ?? targetNode.querySelector('[class*=Overview__Stack]')
 
-        node.style.overflowBlock = 'unset';
-        htmlResource.classList.add(teamTableNodeId)
-        innerNode.after(htmlResource);
+            let template = settings.classicTeamView ? CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE : TEAM_WINRATE_TABLE_TEMPLATE;
+            let htmlResource = template.cloneNode(true)
+            setupBrandIcon(htmlResource, 24, 24)
 
-        matchRoomModule.teamCache.forEach((teamMap, teamName) => {
-            const teamMatches = calculateTeamMatches(teamMap);
-            displayTeamMatches(htmlResource, teamName, teamMatches);
-        });
-    })
+            const statsTextEl = htmlResource.querySelector('.fc-panel-stats-text');
+            if (statsTextEl) statsTextEl.textContent = t('stats_last_n_matches', `Stats for last ${matchAmount} matches`).replace('{0}', matchAmount);
+
+            node.style.overflowBlock = 'unset';
+            htmlResource.classList.add(teamTableNodeId)
+            innerNode.after(htmlResource);
+
+            let team1Matches = {}, team2Matches = {};
+            matchRoomModule.teamCache.forEach((teamMap, teamNameRaw) => {
+                const roster = teamNameRaw.split("$").pop();
+                const teamName = teamNameRaw.split("$")[0];
+                const matches = calculateTeamMatches(teamMap);
+
+                if (roster === 'roster1') {
+                    team1Matches = matches;
+                } else {
+                    team2Matches = matches;
+                }
+
+                htmlResource.querySelectorAll(`.${roster}-name`).forEach(el => el.textContent = teamName);
+            });
+
+            await (settings.classicTeamView
+                ? displayClassicTeamStats(htmlResource, team1Matches, team2Matches)
+                : displayTeamStats(htmlResource, team1Matches, team2Matches));
+        })
+    }
 }
-
-function addTableTeamTitle(htmlResource,roster, title) {
-    const titleElement = htmlResource.querySelector(`[class*=${roster}-name]`)
-    titleElement.textContent = title
-}
-
-function addRow(table, map, games, winPercent) {
-    const newRow = table.insertRow();
-
-    const mapCell = newRow.insertCell(0);
-    const gamesCell = newRow.insertCell(1);
-    const winrateCell = newRow.insertCell(2);
-
-    mapCell.innerHTML = map.replace("de_","").replace(/(\d)/g, " $1").toLocaleUpperCase();
-    gamesCell.innerHTML = games;
-    winrateCell.innerHTML = winPercent + "%";
-
-    setGradientColor(winrateCell, winPercent);
-}
-

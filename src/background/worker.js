@@ -4,8 +4,57 @@
 
 const BROWSER_API = typeof browser !== 'undefined' ? browser : chrome;
 
-const AUTH_HOST = 'https://auth.fforecast.net';
+const DOMAIN_STORAGE_KEY = 'active_domain';
+const DOMAIN_NET = 'net';
+const DOMAIN_DEV = 'dev';
 const AUTH_STORAGE_KEY = 'forecast_auth';
+
+const DOMAIN_URLS = {
+    net: {
+        api: 'https://api.fforecast.net',
+        auth: 'https://auth.fforecast.net'
+    },
+    dev: {
+        api: 'https://api.fforecast.dev',
+        auth: 'https://auth.fforecast.dev'
+    }
+};
+
+let _activeDomain = DOMAIN_NET;
+let _domainCheckInterval = null;
+const DOMAIN_CHECK_INTERVAL = 5 * 60 * 1000;
+
+async function resolveDomain() {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(`${DOMAIN_URLS[DOMAIN_NET].api}/v2/extension/ping`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+            await setActiveDomain(DOMAIN_NET);
+            return;
+        }
+    } catch (e) {}
+
+    await setActiveDomain(DOMAIN_DEV);
+}
+
+async function setActiveDomain(domain) {
+    _activeDomain = domain;
+    await new Promise((resolve) => {
+        BROWSER_API.storage.local.set({ [DOMAIN_STORAGE_KEY]: domain }, resolve);
+    });
+}
+
+function getAuthHost() {
+    return DOMAIN_URLS[_activeDomain].auth;
+}
+
+function startDomainChecker() {
+    if (_domainCheckInterval) clearInterval(_domainCheckInterval);
+    resolveDomain();
+    _domainCheckInterval = setInterval(resolveDomain, DOMAIN_CHECK_INTERVAL);
+}
 
 const activeSessions = new Map();
 
@@ -16,6 +65,11 @@ async function setStorage(items) {
 }
 
 BROWSER_API.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'GET_ACTIVE_DOMAIN') {
+        sendResponse({ domain: _activeDomain });
+        return false;
+    }
+
     if (message.type === 'START_AUTH') {
         handleStartAuth(message.data)
             .then(result => sendResponse(result))
@@ -78,7 +132,8 @@ function startPolling(state) {
         }
 
         try {
-            const response = await fetch(`${AUTH_HOST}/verify?state=${state}`);
+            const authHost = getAuthHost();
+            const response = await fetch(`${authHost}/v2/verify?state=${state}`);
 
             if (!response.ok) {
                 return;
@@ -185,9 +240,13 @@ function getAuthStatus() {
 BROWSER_API.runtime.onStartup.addListener(() => {
     activeSessions.clear();
     setStorage({ 'auth_pending': false });
+    startDomainChecker();
 });
 
 BROWSER_API.runtime.onInstalled.addListener(() => {
     activeSessions.clear();
     setStorage({ 'auth_pending': false });
+    startDomainChecker();
 });
+
+startDomainChecker();

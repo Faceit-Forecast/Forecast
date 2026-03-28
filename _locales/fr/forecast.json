@@ -33,14 +33,24 @@
   "fcr_desc": "FCR - part de contribution du joueur dans l'équipe basée sur la performance. Somme des 5 joueurs = 100%. Idéal quand les 5 joueurs ont joué à 20%.",
   "fcr_color": "Couleur FCR",
   "fcr_color_desc": "Colore la statistique FCR. (≥20% = vert, 15-20% = jaune, <15% = rouge)",
+  "avgelo": "Elo moyen",
+  "avgelo_desc": "Affiche l'Elo moyen de votre équipe et de l'équipe adverse (sans compter le joueur dont le profil est consulté).",
   "rounded_stats": "Stats arrondies",
   "rounded_stats_desc": "Arrondit les valeurs ADR, K/D et K/R à une décimale.",
   "temporarily_unavailable": "Temporairement indisponible",
 
   "new_elo_rankings": "Nouveaux rangs Elo",
   "new_elo_rankings_desc": "Remplace les niveaux Faceit standard par de nouvelles icônes basées sur les points elo.",
-  "matchroom_stats": "Stats du matchroom",
-  "matchroom_stats_desc": "Affiche les statistiques de winrate des joueurs et équipes dans le matchroom.",
+  "advanced_matchroom": "Matchroom avancé",
+  "advanced_matchroom_desc": "Fonctionnalités avancées du matchroom incluant les statistiques de winrate des cartes par équipe et par joueur.",
+  "team_map_winrate": "Stats équipe",
+  "team_map_winrate_desc": "Affiche un tableau avec les statistiques des cartes (winrate, parties, kills moyens) pour chaque équipe.",
+  "player_map_winrate": "Stats joueur",
+  "player_map_winrate_desc": "Affiche les statistiques personnelles des cartes pour chaque joueur dans sa carte de profil.",
+  "classic_team_view": "Ancien vue équipe",
+  "classic_team_view_desc": "Utiliser l'ancien tableau simplifié pour les statistiques des cartes d'équipe (Carte, Parties, WR%).",
+  "classic_player_view": "Ancien vue joueur",
+  "classic_player_view_desc": "Utiliser l'ancien tableau simplifié pour les statistiques des cartes du joueur (Carte, Parties, WR%).",
   "match_amount": "Nombre de matchs",
   "match_amount_desc": "Nombre de matchs récents à analyser pour les statistiques.",
   "quick_position_setup": "Config. rapide de position",
@@ -48,6 +58,8 @@
   "map_message_placeholder": "message",
   "integrations": "Intégrations",
   "integrations_desc": "Ajoute des intégrations partenaires avec du contenu promotionnel.",
+
+  "stats_last_n_matches": "Statistiques des {0} derniers matchs",
 
   "version": "Version",
   "author": "Auteur",
@@ -68,5 +80,7 @@
   "login": "Connexion",
   "logout": "Déconnexion",
   "account": "Compte",
-  "fcUserLogo.tooltip": "Utilisateur Forecast"
+  "fcUserLogo.tooltip": "Utilisateur Forecast",
+  "april_fools": "Poisson d'avril \uD83E\uDD21",
+  "april_fools_desc": "Activer les blagues du 1er avril dans le matchroom."
 }

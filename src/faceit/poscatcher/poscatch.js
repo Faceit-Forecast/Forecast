@@ -2,7 +2,7 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const MAPS_CONFIG_URL = 'https://cdn.fforecast.net/config/maps-config.json';
+const MAPS_CONFIG_URL_PATH_PC = '/config/maps-config.json';
 const MAPS_CONFIG_CACHE_KEY = 'maps-config-cache';
 const MAPS_CONFIG_CACHE_TTL = 1000 * 60 * 60 * 6;
 
@@ -37,7 +37,8 @@ async function loadMapsConfig() {
     }
 
     try {
-        const response = await fetch(MAPS_CONFIG_URL);
+        const cdnUrl = await getCdnUrl();
+        const response = await fetch(cdnUrl + MAPS_CONFIG_URL_PATH_PC);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         mapsConfig = await response.json();
 
@@ -50,9 +51,23 @@ async function loadMapsConfig() {
 
         return mapsConfig;
     } catch (error) {
-        console.error('Failed to load maps config, using default:', error);
-        mapsConfig = defaultMapsConfig;
-        return mapsConfig;
+        try {
+            const fallbackCdnUrl = isUsingFallback() ? 'https://cdn.fforecast.net' : 'https://cdn.fforecast.dev';
+            const response = await fetch(fallbackCdnUrl + MAPS_CONFIG_URL_PATH_PC);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            mapsConfig = await response.json();
+
+            try {
+                await setSettingValue(MAPS_CONFIG_CACHE_KEY, mapsConfig);
+                await setSettingValue(`${MAPS_CONFIG_CACHE_KEY}-time`, Date.now());
+            } catch (e) {}
+
+            return mapsConfig;
+        } catch (fallbackError) {
+            console.error('Failed to load maps config, using default:', fallbackError);
+            mapsConfig = defaultMapsConfig;
+            return mapsConfig;
+        }
     }
 }
 

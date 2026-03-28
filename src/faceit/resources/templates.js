@@ -12,6 +12,8 @@ let MATCH_COUNTER_ARROW_TEMPLATE;
 let MATCH_HISTORY_POPUP_TEMPLATE;
 let PLAYER_WINRATE_TABLE_TEMPLATE;
 let TEAM_WINRATE_TABLE_TEMPLATE;
+let CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE;
+let CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE;
 let SKILL_LEVELS_INFO_TABLE_TEMPLATE;
 let FORECAST_STYLES_TEMPLATE;
 
@@ -28,6 +30,8 @@ function initTemplates() {
     MATCH_HISTORY_POPUP_TEMPLATE = htmlToElement(MATCH_HISTORY_POPUP_HTML);
     PLAYER_WINRATE_TABLE_TEMPLATE = htmlToElement(PLAYER_WINRATE_TABLE_HTML);
     TEAM_WINRATE_TABLE_TEMPLATE = htmlToElement(TEAM_WINRATE_TABLE_HTML);
+    CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_PLAYER_WINRATE_TABLE_HTML);
+    CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_TEAM_WINRATE_TABLE_HTML);
     SKILL_LEVELS_INFO_TABLE_TEMPLATE = htmlToElement(SKILL_LEVELS_INFO_TABLE_HTML);
     FORECAST_STYLES_TEMPLATE = htmlToElement(FORECAST_STYLES_HTML);
 }
@@ -466,56 +470,84 @@ const MATCH_HISTORY_POPUP_HTML = /*language=HTML*/ `
     </div>`;
 
 const PLAYER_WINRATE_TABLE_HTML = /*language=HTML*/ `
-    <div class="player-background-table">
-        <div class="player-container">
-            <div class="brand-icon" data-tooltip="FORECAST"></div>
-            <div class="player-name"></div>
-            <table class="player-table">
-                <thead>
-                <tr>
-                    <th>Map</th>
-                    <th>Num</th>
-                    <th>WR%</th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+    <div class="fc-player-panel">
+        <div class="fc-panel-header">
+            <span class="fc-panel-info fc-panel-stats-text"></span>
+            <div class="brand-icon fc-brand-icon-inline" data-tooltip="FORECAST"></div>
         </div>
+        <div class="fc-player-summary">
+            <div class="fc-psummary-item"><span class="fc-psummary-val fc-overall-kills"></span><span class="fc-psummary-label">Avg Kills</span></div>
+            <div class="fc-psummary-item"><span class="fc-psummary-val fc-overall-kd"></span><span class="fc-psummary-label">Avg K/D</span></div>
+        </div>
+        <table class="fc-ptable player-table">
+            <thead><tr><th>Map</th><th>WR</th><th>Games</th><th>Avg</th></tr></thead>
+            <tbody></tbody>
+        </table>
     </div>`;
 
 const TEAM_WINRATE_TABLE_HTML = /*language=HTML*/ `
-    <div class="team-background-table">
-        <div class="team-container">
-            <div class="brand-icon" data-tooltip="FORECAST"></div>
-            <div class="team-name roster1-name"></div>
-            <table class="roster1">
-                <thead>
-                <tr>
-                    <th>Map</th>
-                    <th>Num</th>
-                    <th>WR%</th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+    <div class="fc-team-panel">
+        <div class="fc-panel-header">
+            <span class="fc-panel-info fc-panel-stats-text"></span>
+            <div class="brand-icon fc-brand-icon-inline" data-tooltip="FORECAST"></div>
         </div>
-
-        <div class="team-container">
-            <div class="brand-icon" data-tooltip="FORECAST"></div>
-            <div class="team-name roster2-name"></div>
-            <table class="roster2">
-                <thead>
+        <table class="fc-team-table">
+            <thead>
                 <tr>
-                    <th>Map</th>
-                    <th>Num</th>
-                    <th>WR%</th>
+                    <th rowspan="3" class="fc-th-map-col">Map</th>
+                    <th colspan="3" class="fc-th-team roster1-name"></th>
+                    <th colspan="3" class="fc-th-team fc-sep-t2 roster2-name"></th>
                 </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+                <tr class="fc-avg-row">
+                    <td colspan="3" class="fc-avg-cell">
+                        <span class="fc-avg-item"><span class="fc-avg-lbl">AVG</span> <span class="fc-team1-overall-kills"></span></span>
+                    </td>
+                    <td colspan="3" class="fc-avg-cell fc-sep-t2">
+                        <span class="fc-avg-item"><span class="fc-avg-lbl">AVG</span> <span class="fc-team2-overall-kills"></span></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>WR</th><th>Games</th><th>Avg</th>
+                    <th class="fc-sep-t2">WR</th><th>Games</th><th>Avg</th>
+                </tr>
+            </thead>
+            <tbody class="fc-team-table-body"></tbody>
+        </table>
+    </div>`;
+
+const CLASSIC_PLAYER_WINRATE_TABLE_HTML = /*language=HTML*/ `
+    <div class="fc-player-panel fc-classic">
+        <div class="fc-panel-header">
+            <span class="fc-panel-info fc-panel-stats-text"></span>
+            <div class="brand-icon fc-brand-icon-inline" data-tooltip="FORECAST"></div>
+        </div>
+        <table class="fc-classic-table player-table">
+            <thead><tr><th>Map</th><th>Games</th><th>WR%</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>`;
+
+const CLASSIC_TEAM_WINRATE_TABLE_HTML = /*language=HTML*/ `
+    <div class="fc-team-panel fc-classic">
+        <div class="fc-panel-header">
+            <span class="fc-panel-info fc-panel-stats-text"></span>
+            <div class="brand-icon fc-brand-icon-inline" data-tooltip="FORECAST"></div>
+        </div>
+        <div class="fc-classic-team-wrap">
+            <div class="fc-classic-team-container">
+                <div class="fc-classic-team-name roster1-name"></div>
+                <table class="fc-classic-table roster1">
+                    <thead><tr><th>Map</th><th>Games</th><th>WR%</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="fc-classic-team-container">
+                <div class="fc-classic-team-name roster2-name"></div>
+                <table class="fc-classic-table roster2">
+                    <thead><tr><th>Map</th><th>Games</th><th>WR%</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>`;
 
@@ -1174,6 +1206,10 @@ tr[class*=MatchHistoryTableRow] {
     display: block;
 }
 
+[hided] {
+  display: none;
+}
+
 .popup-wrapper {
     position: relative !important;
     z-index: 3 !important;
@@ -1242,185 +1278,295 @@ tr[class*=MatchHistoryTableRow] {
     min-width: 110px;
 }
 
-.player-background-table {
-    display: flex;
-    justify-content: center;
+.fc-team-panel, .fc-player-panel {
+    background: #000;
+    border: 1px solid #242424;
+    border-radius: 12px;
+    overflow: hidden;
     width: 100%;
-    box-sizing: border-box;
+    position: relative;
+}
+.fc-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-bottom: 1px solid #1a1a1a;
+}
+.fc-panel-info {
+    font-size: 10px;
+    font-weight: 600;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.fc-match-count {
+    color: #999;
+    font-weight: 700;
+}
+.fc-brand-icon-inline {
+    width: 24px !important;
+    height: 24px !important;
+}
+.fc-brand-icon-inline.brand-icon-positioned {
+    position: static;
+    flex-shrink: 0;
+}
+.fc-val-dim { color: #333; }
+
+.fc-team-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.fc-team-table th,
+.fc-team-table td {
+    font-size: 8px;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 4px 4px 3px;
+    text-align: center;
+    border: none;
 }
 
-.player-background-table .player-name {
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
+.fc-th-map-col {
+    text-align: center !important;
+    vertical-align: middle;
+    font-size: 11px !important;
+    color: #666 !important;
+    letter-spacing: 0.5px !important;
+    border-right: 1px solid #1a1a1a !important;
+    border-bottom: none !important;
+}
+
+.fc-th-team {
+    color: #999 !important;
+    font-size: 9px !important;
+    font-weight: 600 !important;
+    padding: 5px 4px 2px !important;
+}
+
+.fc-avg-cell {
+    padding: 2px 4px 4px;
     text-align: center;
-    color: white;
-    padding: 10px 15px;
-    font-weight: bold;
-    margin: 0;
-    z-index: 2;
-    position: relative;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 16px;
+    border-bottom: 1px solid #1a1a1a !important;
+}
+.fc-avg-item {
+    margin: 0 2px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ccc;
+}
+.fc-avg-lbl {
+    font-size: 7px;
+    font-weight: 700;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.fc-sep-t2 {
+    border-left: 1px solid #1a1a1a !important;
+}
+
+.fc-team-table tbody td {
+    padding: 4px 4px;
+    text-align: center;
+    font-size: 11px;
+    vertical-align: middle;
+    color: #fff;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.fc-team-table tbody td:first-child {
+    text-align: left;
+    padding-left: 8px;
+    border-right: 1px solid #1a1a1a;
+}
+
+.fc-table-map {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.fc-table-map img {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.fc-table-map span {
+    font-weight: 600;
+    font-size: 10px;
+    color: #bbb;
     text-transform: uppercase;
 }
 
-.player-background-table .player-container {
+.fc-val {
+    font-weight: 700;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.fc-stat-green { color: rgb(61,255,108); }
+.fc-stat-yellow { color: rgb(255,200,0); }
+.fc-stat-red { color: rgb(255,0,43); }
+.fc-wr-win { color: rgb(61,255,108); }
+.fc-wr-lose { color: rgb(255,0,43); }
+.fc-wr-tie { color: #ccc; }
+
+.fc-player-summary {
+    display: flex;
+    justify-content: space-around;
+    padding: 6px 8px;
+    border-bottom: 1px solid #1a1a1a;
+    background: #000;
+}
+.fc-psummary-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    position: relative;
-    border-radius: 12px;
-    background: #030303;
-    border: 1px solid rgb(36, 36, 36);
-    max-width: 600px;
-    width: 100%;
+    gap: 0;
+}
+.fc-psummary-val {
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1.2;
+    color: #ccc;
+}
+.fc-psummary-label {
+    font-size: 7px;
+    font-weight: 700;
+    color: #444;
+    text-transform: uppercase;
 }
 
-.player-background-table .player-table {
+.fc-ptable {
     width: 100%;
-    background: transparent;
-    border-radius: 12px;
     border-collapse: collapse;
-    overflow: hidden;
-    margin: 0;
-    border: 1px solid rgb(36, 36, 36);
 }
-
-.player-background-table th,
-.player-background-table td {
-    border: none;
+.fc-ptable th {
+    font-size: 8px;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    padding: 4px 3px 3px;
     text-align: center;
-    color: white;
-    padding: 1px 8px;
-    background: transparent;
-    box-shadow: none;
-    height: 34px;
-    box-sizing: border-box;
+    border: none;
 }
-
-.player-background-table th {
-    font-weight: 600;
-    position: sticky;
-    top: 0;
-    font-size: 15px;
+.fc-ptable th:first-child {
+    text-align: left;
+    padding-left: 8px;
 }
-
-.player-background-table tr td {
+.fc-ptable td {
+    padding: 3px 3px;
+    text-align: center;
+    font-size: 11px;
     vertical-align: middle;
-    transition: background-color 0.2s ease;
+    color: #fff;
+    border: none;
+}
+.fc-ptable td:first-child {
+    text-align: left;
+    padding-left: 4px;
+}
+.fc-ptable-map {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.fc-ptable-map img {
+    width: 18px;
+    height: 18px;
+    border-radius: 2px;
+    object-fit: cover;
+}
+.fc-ptable-map span {
+    font-weight: 600;
+    font-size: 9px;
+    color: #bbb;
+    text-transform: uppercase;
 }
 
-.player-background-table tbody tr:hover td {
-    background-color: rgba(255, 255, 255, 0.05);
+
+.fc-team-panel {
+    margin: 15px 0 10px;
 }
 
-.player-background-table tbody tr:last-child td,
-.player-background-table tr:last-child td {
-    border-bottom: none;
-}
-
-.player-background-table td:nth-child(3) {
-    font-weight: bold;
-}
-
-.player-background-table tbody tr:nth-child(even) td {
-    background-color: rgba(255, 255, 255, 0.02);
-}
-
-@media (max-width: 768px) {
-    .player-background-table {
-        padding: 10px 0;
-    }
-}
-
-.team-background-table {
+.fc-classic-team-wrap {
     display: flex;
     justify-content: space-between;
-    padding: 15px 0 10px;
-    background: transparent;
-    gap: 24px;
-    max-width: 1200px;
-    margin: 0 auto;
+    gap: 16px;
 }
 
-.team-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    border-radius: 12px;
-}
-
-.team-background-table .roster1, .team-background-table .roster2 {
-    width: 100%;
-    border-radius: 0 0 12px 12px;
+.fc-classic-team-container {
+    flex: 1;
+    border-radius: 8px;
     overflow: hidden;
-    position: relative;
-    border: 1px solid rgb(36, 36, 36);
-    border-top-style: none;
 }
 
-.team-name {
+.fc-classic-team-name {
     display: block;
     width: 100%;
     box-sizing: border-box;
     text-align: center;
     color: white;
-    border-radius: 12px 12px 0 0;
-    padding: 10px 15px;
+    padding: 8px 12px;
     font-weight: bold;
-    margin: 0;
-    z-index: 2;
-    position: relative;
-    font-size: 14px;
+    font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    border: 1px solid rgb(36, 36, 36);
-    border-bottom-style: none;
 }
 
-.team-background-table th, .team-background-table td {
-    border: none;
+.fc-classic-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.fc-classic-table th {
+    font-size: 10px;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    padding: 5px 8px;
     text-align: center;
-    color: white;
-    padding: 1px 8px;
-    background: transparent;
-    box-shadow: none;
-    height: 34px;
-    box-sizing: border-box;
+    border: none;
 }
 
-.team-background-table th {
-    font-weight: 600;
-    position: sticky;
-    top: 0;
+.fc-classic-table th:first-child {
+    text-align: left;
+    padding-left: 8px;
 }
 
-.team-background-table tr td {
+.fc-classic-table td {
+    padding: 4px 8px;
+    text-align: center;
+    font-size: 12px;
     vertical-align: middle;
-    transition: background-color 0.2s ease;
+    color: #fff;
+    border: none;
+    height: 28px;
 }
 
-.team-background-table tbody tr:hover td {
-    background-color: rgba(255, 255, 255, 0.05);
+.fc-classic-table td:first-child {
+    text-align: left;
 }
 
-.team-background-table tbody tr:last-child td, .team-background-table tr:last-child td {
-    border-bottom: none;
-}
-
-.team-background-table td:nth-child(3) {
+.fc-classic-table td:last-child {
     font-weight: bold;
 }
 
-.team-background-table tbody tr:nth-child(even) td {
+.fc-classic-table tbody tr:nth-child(even) td {
     background-color: rgba(255, 255, 255, 0.02);
 }
+
 
 .modalinfos-content {
     max-width: 680px;
@@ -1796,6 +1942,60 @@ tr[class*=MatchHistoryTableRow] {
     flex-direction: row;
     justify-content: space-around;
     flex: 1 1 0;
+}
+
+.avg-elo-cell {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.avg-elo-badges {
+    display: flex;
+    flex-direction: column;
+}
+
+.avg-elo-badge {
+    inline-size: 18px;
+    block-size: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 10px;
+    line-height: 1;
+    color: rgb(6, 6, 6);
+}
+
+.avg-elo-badge-team {
+    background-color: #55aaff;
+    border-radius: 4px 4px 0 0;
+}
+
+.avg-elo-badge-enemy {
+    background-color: #ff5555;
+    border-radius: 0 0 4px 4px;
+}
+
+.avg-elo-values {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.avg-elo-value {
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.avg-elo-value-team {
+    color: #55aaff;
+}
+
+.avg-elo-value-enemy {
+    color: #ff5555;
 }
 </style>`;
 

@@ -17,42 +17,29 @@ const profilesModule = new Module("profiles", () => {
         await addFCUserLogoIfRegisteredByNick(node.parentElement, nickname, 24, 24, true);
     });
 
-    let selectorProfileTooltipV2 = '[role="dialog"][id*="radix"] > div.styles__FixedContainer-sc-71072efc-2.jleWwN > div > a > h5'
+    let selectorProfileTooltipV2 = '[role="dialog"][id*="radix"] > div[class*=styles__FixedContainer] > div > a > h5'
     profilesModule.doAfterNodeAppearWhenVisible(selectorProfileTooltipV2, async (node) => {
         const nickname = node.textContent;
         const logo = await addFCUserLogoIfRegisteredByNick(getNthParent(node, 2), nickname, 20, 20, true);
+        if (!logo) return;
         logo.style.display = 'flex'
         logo.style.alignItems = 'center'
         logo.style.height = 'unset'
     });
 
-    let selectorFriendsList = '[role="dialog"] > div[class*=FriendsMenu__MenuScrollArea] > div[class*=RosterList__FriendsHolder] > div > div > div > div > div[class*=User__UserContainer] > span'
-    profilesModule.doAfterNodeAppearWhenVisible(selectorFriendsList, async (node) => {
-        const nickname = node.textContent;
-        node.style.display = 'flex'
-        node.style.alignItems = 'center'
-        const logo = await addFCUserLogoIfRegisteredByNick(node, nickname, 20, 20, true);
-        logo.style.paddingLeft = '4px'
-    });
-
-    if (lobby.pageType === "friends") {
-        let selectorFriends = "#canvas-body > div > div > div > div[class*=styles__Flex] > div > div[class*=Friends__FriendsGrid] > a > div > div > div[class*=styles__SlotWrapper] > div > div[class*=styles__Flex] > span[class*=Text-sc]";
-        profilesModule.doAfterNodeAppearWhenVisible(selectorFriends, async (node) => {
-            const nickname = node.textContent;
-            await addFCUserLogoIfRegisteredByNick(node.parentElement, nickname, 24, 24, true);
-        });
-    }
-
     if (lobby.pageType === "matchroom") {
-        let selectorStatsMVP = '#canvas-body > div > div > div > div > div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpWrapper] > div > div[class*=styles__MvpCardHolder] > div > div[class*=styles__Container] > span[class*=styles__Nickname]'
-        profilesModule.doAfterNodeAppearWhenVisible(selectorStatsMVP, (node) => {
-            profilesModule.doAfter(() => node.textContent, async () => {
-                const nickname = node.textContent;
-                await addFCUserLogoIfRegisteredByNick(node.parentElement, nickname, 20, 20, true);
-            }, 10)
-        });
+        let selectorStatsMVP = 'div > div > div > div > div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div > div[class*=Draggable__DraggableStyled] > div > [class*=styles__Nickname]'
+        const statsMVPHandler = (selector) => {
+            profilesModule.doAfterNodeAppearWhenVisible(selector, (node) => {
+                profilesModule.doAfter(() => node.textContent, async () => {
+                    const nickname = node.textContent;
+                    await addFCUserLogoIfRegisteredByNick(node.parentElement, nickname, 20, 20, true);
+                }, 10)
+            });
+        }
+        statsMVPHandler(selectorStatsMVP);
 
-        let selectorMatchPlayer = '#canvas-body > div > div[class*=styles__MainHolder] > div > div > div[class*=Overview__Grid] > div[class*=Overview__Column] > div > div > div > div > div > div > div > div > div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div'
+        let selectorMatchPlayer = 'div > div[class*=styles__MainHolder] > div > div > div[class*=Overview__Grid] > div[class*=Overview__Column] > div > div > div > div > div > div > div > div > div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div'
         const matchId = extractMatchId();
         fetchMatchStats(matchId).then((matchDetails) => {
             const team1 = matchDetails["teams"]["faction1"];

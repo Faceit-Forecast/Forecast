@@ -8,6 +8,16 @@ const green = 'rgb(61,255,108)';
 const red = 'rgb(255, 0, 43)';
 const white = 'rgb(255, 255, 255)';
 
+const COLUMNS = {
+    map:   0,
+    score: 1,
+    elo:   2,
+    kda:   3,
+    adr:   4,
+    kd:    5,
+    kr:    6
+};
+
 class MatchNodeChain {
     constructor() {
         this.nodes = new Map();
@@ -54,6 +64,8 @@ class MatchNodeByMatchStats {
         this.next = null;
 
         this.elo = null;
+        this.teamAvgElo = null;
+        this.enemyAvgElo = null;
 
         this.setupMatchCounterArrow()
     }
@@ -82,19 +94,39 @@ class MatchNodeByMatchStats {
         this.matchStats = player.player_stats;
         this.rounds = Number.parseInt(cachedStats.rounds[0].round_stats.Rounds, 10) || 0;
 
+        const teams = cachedStats.rounds[0].teams;
+        const myTeam = findTeamByPlayerId(teams, playerId);
+        const enemyTeam = teams.find(t => t !== myTeam);
+
+        const teammates = myTeam.players.filter(p => p.player_id !== playerId);
+        const teamAvgElo = teammates.length > 0
+            ? Math.round(teammates.reduce((sum, p) => sum + p.elo, 0) / teammates.length)
+            : null;
+        const enemyAvgElo = enemyTeam && enemyTeam.players.length > 0
+            ? Math.round(enemyTeam.players.reduce((sum, p) => sum + p.elo, 0) / enemyTeam.players.length)
+            : null;
+
         if (player.elo) {
             this.setElo(player.elo);
         }
+
+        this.teamAvgElo = teamAvgElo;
+        this.enemyAvgElo = enemyAvgElo;
 
         this.setupStatsToNode(playerId, cachedStats);
     }
 
     setupStatsToNode(playerId, cachedStats) {
         if (!this.matchStats) return;
-        const scoreNode = this.node?.children[1]
-        if (scoreNode) {
 
-            scoreNode.parentElement.parentElement.style.overflow = "visible"
+        this.col = {};
+        for (const [name, index] of Object.entries(COLUMNS)) {
+            this.col[name] = this.node?.children[index] ?? null;
+        }
+
+        if (this.col.score) {
+
+            this.col.score.parentElement.parentElement.style.overflow = "visible"
 
             let popup = this.node.querySelector("[id*=extended-stats-node-]");
             let tableNotExist = !popup;
@@ -110,9 +142,9 @@ class MatchNodeByMatchStats {
             }
 
             if (tableNotExist) {
-                scoreNode.querySelector('div').style.gap = 'unset'
-                scoreNode.querySelector('div').lastChild.style.justifyContent = "center";
-                scoreNode.querySelector('div').appendChild(popup);
+                this.col.score.querySelector('div').style.gap = 'unset'
+                this.col.score.querySelector('div').lastChild.style.justifyContent = "center";
+                this.col.score.querySelector('div').appendChild(popup);
                 matchHistoryModule.removalNode(popup)
             }
         }
@@ -137,11 +169,58 @@ class MatchNodeByMatchStats {
                 fcrNode.style.color = white;
             }
 
-            let krNode = this.node?.children[6];
-            if (krNode) {
-                fcrNode.className = krNode.className;
+            if (this.col.kr) {
+                fcrNode.className = this.col.kr.className;
                 fcrNode.classList.add('fcr-fc');
-                krNode.after(fcrNode);
+                this.col.kr.after(fcrNode);
+            }
+        }
+
+        if (this.settings?.showAVGElo) {
+            if (this.node.querySelector('[class*="avg-elo-fc"]')) return;
+
+            let avgEloNode = document.createElement("td");
+            avgEloNode.classList.add('avg-elo-fc');
+
+            const cell = document.createElement("div");
+            cell.className = "avg-elo-cell";
+
+            const badges = document.createElement("div");
+            badges.className = "avg-elo-badges";
+
+            const badgeT = document.createElement("div");
+            badgeT.className = "avg-elo-badge avg-elo-badge-team";
+            badgeT.textContent = "T";
+
+            const badgeE = document.createElement("div");
+            badgeE.className = "avg-elo-badge avg-elo-badge-enemy";
+            badgeE.textContent = "E";
+
+            badges.appendChild(badgeT);
+            badges.appendChild(badgeE);
+
+            const values = document.createElement("div");
+            values.className = "avg-elo-values";
+
+            const teamVal = document.createElement("span");
+            teamVal.className = "avg-elo-value avg-elo-value-team";
+            teamVal.textContent = this.teamAvgElo != null ? formatElo(this.teamAvgElo) : '-';
+
+            const enemyVal = document.createElement("span");
+            enemyVal.className = "avg-elo-value avg-elo-value-enemy";
+            enemyVal.textContent = this.enemyAvgElo != null ? formatElo(this.enemyAvgElo) : '-';
+
+            values.appendChild(teamVal);
+            values.appendChild(enemyVal);
+
+            cell.appendChild(badges);
+            cell.appendChild(values);
+            avgEloNode.appendChild(cell);
+
+            if (this.col.elo) {
+                avgEloNode.className += ' ' + this.col.elo.className;
+                avgEloNode.classList.add('avg-elo-fc');
+                this.col.elo.after(avgEloNode);
             }
         }
 
@@ -149,10 +228,10 @@ class MatchNodeByMatchStats {
     }
 
     setupStats() {
-        const kdaNode = this.node?.children[3];
-        const adrNode = this.node?.children[4];
-        const kdNode = this.node?.children[5];
-        const krNode = this.node?.children[6];
+        const kdaNode = this.col.kda;
+        const adrNode = this.col.adr;
+        const kdNode = this.col.kd;
+        const krNode = this.col.kr;
 
         if (!kdaNode) return;
 
@@ -173,24 +252,25 @@ class MatchNodeByMatchStats {
             ]);
             kdaWrapperNode.className = kdaNode.className;
             kdaWrapperNode.appendChild(newKdaNode)
-            kdaNode.replaceWith(kdaWrapperNode);
+
+            matchHistoryModule.replaceNodeWith(kdaNode, kdaWrapperNode)
         }
 
         if (this.settings?.coloredStatsADR !== false) {
             const adr = parseNumber(adrNode?.innerText, true);
             const adrDisplay = shouldRound ? adr.toFixed(1) : adrNode?.innerText;
-            replaceNodeWithColored('td', adrNode, adrDisplay, adr >= 75);
+            matchHistoryModule.replaceNodeWithColored('td', adrNode, adrDisplay, adr >= 75);
         }
 
         if (this.settings?.coloredStatsKD !== false) {
             const kdDisplay = shouldRound ? kd.toFixed(1) : kdNode?.innerText;
-            replaceNodeWithColored('td', kdNode, kdDisplay, kd >= 1);
+            matchHistoryModule.replaceNodeWithColored('td', kdNode, kdDisplay, kd >= 1);
         }
 
         if (this.settings?.coloredStatsKR !== false) {
             const kr = parseNumber(krNode?.innerText, true);
             const krDisplay = shouldRound ? kr.toFixed(1) : krNode?.innerText;
-            replaceNodeWithColored('td', krNode, krDisplay, kr >= 0.7);
+            matchHistoryModule.replaceNodeWithColored('td', krNode, krDisplay, kr >= 0.7);
         }
     }
 
@@ -247,6 +327,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
             coloredStatsKR: true,
             showFCR: true,
             coloredStatsFCR: true,
+            showAVGElo: true,
             roundedStats: false
         });
 
@@ -264,7 +345,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     let gameType = extractGameType("cs2");
     let prefix = `/${langKey}/${gameType}/room/`;
     let suffix = `/scoreboard`;
-    let selector = `a[href^="${prefix}"][href$="${suffix}"]:not([${tableRowAttribute}]):not(:has([id*=extended-stats-node]))`;
+    let selector = `tbody > a[href^="${prefix}"][href$="${suffix}"]:not([${tableRowAttribute}]):not(:has([id*=extended-stats-node]))`;
     const matchIdRegex = /\/room\/([^/]+)\/scoreboard/;
 
     await matchHistoryModule.doAfterAllNodeAppearPack(selector, async function callback(nodes, attempt) {
@@ -291,20 +372,37 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     });
 
     async function initializeTableElements(nodesArr) {
-        if (!tableElement) {
-            tableElement = nodesArr[0].parentNode.parentNode;
+        if (!tableElement || !tableElement.isConnected) {
+            tableElement = getNthParent(nodesArr[0],2);
         }
+        if (!tableElement) return;
         if (!tableHeadElement) {
             tableHeadElement = tableElement.querySelector("thead");
-            if ((await settings()).showFCR) {
-                if (tableHeadElement.querySelector('[class*="fcr-fc-header"]')) return
-                let headerKR = tableHeadElement.querySelector('tr > th:nth-child(7)')
-                if (headerKR) {
-                    let headerFCR = document.createElement('div')
-                    headerFCR.className = headerKR.className
-                    headerFCR.classList.add('fcr-fc-header')
-                    headerFCR.appendChild(document.createTextNode('FCR'))
-                    headerKR.after(headerFCR)
+            if (tableHeadElement) {
+                const headerRow = tableHeadElement.querySelector('tr');
+                if (headerRow) {
+                    const headerElo = headerRow.children[COLUMNS.elo];
+                    const headerKR = headerRow.children[COLUMNS.kr];
+
+                    if ((await settings()).showAVGElo && headerElo) {
+                        if (!tableHeadElement.querySelector('[class*="avg-elo-fc-header"]')) {
+                            let headerAVGElo = document.createElement('div')
+                            headerAVGElo.className = headerElo.className
+                            headerAVGElo.classList.add('avg-elo-fc-header')
+                            headerAVGElo.appendChild(document.createTextNode('AVG ELO'))
+                            headerElo.after(headerAVGElo)
+                        }
+                    }
+
+                    if ((await settings()).showFCR && headerKR) {
+                        if (!tableHeadElement.querySelector('[class*="fcr-fc-header"]')) {
+                            let headerFCR = document.createElement('div')
+                            headerFCR.className = headerKR.className
+                            headerFCR.classList.add('fcr-fc-header')
+                            headerFCR.appendChild(document.createTextNode('FCR'))
+                            headerKR.after(headerFCR)
+                        }
+                    }
                 }
             }
         }
@@ -328,13 +426,14 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
     async function processNodeBatches(nodesArr, nodeArrays, recursive = false) {
         let tableNodesArray
-        try { // temp fix
+        try {
             tableNodesArray = Array.from(tableBodyElement.children).filter(element => element.tagName === 'A');
         } catch (e) {
             if (!recursive) {
                 await initializeTableElements(nodesArr);
                 await processNodeBatches(nodesArr, nodeArrays, true)
             }
+            return;
         }
         for (const nodeArray of nodeArrays) {
             const batch = await createBatchFromNodes(nodeArray, tableNodesArray);
@@ -347,6 +446,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         let _settings = await settings();
 
         for (let node of nodeArray) {
+            if (!node.isConnected) continue;
             const index = tableNodesArray.indexOf(node);
             if (index === -1) continue;
 
@@ -386,7 +486,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
 function filterUnmarkedNodes(nodes) {
     return [...nodes].filter((e) =>
-        !e.parentNode.parentNode.parentNode.parentNode.parentNode.parentElement.hasAttribute("marked-as-bug")
+        !getNthParent(e,9).hasAttribute("marked-as-bug")
     );
 }
 
@@ -407,3 +507,16 @@ function findPlayerInTeamsById(teams, playerId) {
     }
     return null;
 }
+
+function findTeamByPlayerId(teams, playerId) {
+    for (const team of teams) {
+        const player = team.players.find(player => player.player_id === playerId);
+        if (player) return team;
+    }
+    return null;
+}
+
+function formatElo(value) {
+    return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
+}
+

@@ -33,14 +33,24 @@
   "fcr_desc": "FCR - player's contribution share in the team based on performance. Sum of FCR for all 5 team players = 100%. Ideal is when all 5 players performed at 20%.",
   "fcr_color": "FCR Color",
   "fcr_color_desc": "Colors FCR statistic. (≥20% = green, 15-20% = yellow, <15% = red)",
+  "avgelo": "Average Elo",
+  "avgelo_desc": "Displays the average Elo of your team and the enemy team (excluding the player whose profile is being viewed).",
   "rounded_stats": "Rounded Stats",
   "rounded_stats_desc": "Round ADR, K/D and K/R values to one decimal place.",
   "temporarily_unavailable": "Temporarily unavailable",
 
   "new_elo_rankings": "New Elo Rankings",
   "new_elo_rankings_desc": "Replaces standard Faceit levels with new ranking icons that reflect your actual skill level based on elo points.",
-  "matchroom_stats": "Matchroom Stats",
-  "matchroom_stats_desc": "Displays player and team winrate statistics in the match room.",
+  "advanced_matchroom": "Advanced Matchroom",
+  "advanced_matchroom_desc": "Advanced matchroom features including team and player map winrate statistics.",
+  "team_map_winrate": "Team Stats",
+  "team_map_winrate_desc": "Displays a table with map statistics (winrate, games, avg kills) for each team.",
+  "player_map_winrate": "Player Stats",
+  "player_map_winrate_desc": "Displays personal map statistics for each player in their profile card.",
+  "classic_team_view": "Old Team View",
+  "classic_team_view_desc": "Use the old simplified table layout for team map statistics (Map, Games, WR%).",
+  "classic_player_view": "Old Player View",
+  "classic_player_view_desc": "Use the old simplified table layout for player map statistics (Map, Games, WR%).",
   "match_amount": "Match Amount",
   "match_amount_desc": "Number of recent matches to analyze for statistics.",
   "quick_position_setup": "Quick Position Setup",
@@ -48,6 +58,8 @@
   "map_message_placeholder": "message",
   "integrations": "Integrations",
   "integrations_desc": "Adds partner integrations that may include promotional content. These integrations help the project grow and stay free for everyone.",
+
+  "stats_last_n_matches": "Stats for last {0} matches",
 
   "version": "Version",
   "author": "Author",
@@ -68,5 +80,7 @@
   "login": "Login",
   "logout": "Logout",
   "account": "Account",
-  "fcUserLogo.tooltip": "Forecast User"
+  "fcUserLogo.tooltip": "Forecast User",
+  "april_fools": "April Fools \uD83E\uDD21",
+  "april_fools_desc": "Enable April Fools fun in the matchroom."
 }

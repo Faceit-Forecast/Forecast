@@ -110,7 +110,7 @@ function createPopupStructure(popupURL) {
 
 function setupFrameMessageHandler(popupFrame) {
     popupFrame.onload = () => {
-        popupFrame.contentWindow.postMessage({ action: 'transparent-bg' }, '*');
+        CLIENT_RUNTIME.sendMessage({ type: 'transparent-bg' });
     };
 }
 

@@ -37,7 +37,6 @@ class MatchroomPopup {
             sortByADR(stats.rounds[0].teams[1].players),
         ];
 
-
         const createRow = (playerStats) => {
             const row = document.createElement("tr");
             row.className = "popup-table-row"

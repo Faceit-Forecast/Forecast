@@ -33,8 +33,7 @@ function setupBrandIcon(htmlResource, width = 28, height = 28) {
 }
 
 function hideNode(node) {
-    node.style.display = 'none';
-    node.setAttribute("hided", "true");
+    node.setAttribute("hided", "");
 }
 
 function hideWithCSS(selector) {
@@ -136,13 +135,6 @@ function createCompositeCell(tagName,items) {
         container.appendChild(createColoredSpan('div',text, condition, isSlash))
     );
     return container;
-}
-
-function replaceNodeWithColored(tagName, node, text, condition) {
-    if (!node) return;
-    const newNode = createColoredSpan(tagName, text, condition);
-    newNode.className = node.className;
-    node.replaceWith(newNode);
 }
 
 async function isSettingEnabled(name, def) {

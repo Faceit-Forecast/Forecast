@@ -1,19 +1,22 @@
 /*
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
-const baseUrlFC = "https://api.fforecast.net"
+
+async function getBaseUrlFC() {
+    return await getApiUrl();
+}
 
 const userIdCache = new Map();
 
 async function getDeviceId() {
     return new Promise((resolve) => {
-        CLIENT_STORAGE_SYNC.get(['deviceId'], async (result) => {
+        CLIENT_STORAGE.get(['deviceId'], async (result) => {
             if (result.deviceId) {
                 resolve(result.deviceId);
             } else {
                 const newDeviceId = await registerDevice();
                 if (newDeviceId) {
-                    CLIENT_STORAGE_SYNC.set({ deviceId: newDeviceId });
+                    CLIENT_STORAGE.set({ deviceId: newDeviceId });
                 }
                 resolve(newDeviceId);
             }
@@ -23,7 +26,8 @@ async function getDeviceId() {
 
 async function registerDevice() {
     try {
-        const res = await fetch(`${baseUrlFC}/v2/extension/register`, {
+        const baseUrl = await getBaseUrlFC();
+        const res = await fetch(`${baseUrl}/v2/extension/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -68,7 +72,8 @@ async function fetchFC(url, options = {}) {
 }
 
 async function fetchPing() {
-    await fetchFC(`${baseUrlFC}/v2/extension/ping`);
+    const baseUrl = await getBaseUrlFC();
+    await fetchFC(`${baseUrl}/v2/extension/ping`);
 }
 
 function sanitizeHtml(html) {
@@ -98,35 +103,50 @@ function isValidUrl(url) {
 }
 
 async function fetchBannerData(language, slot) {
-    const cachedData = getCookie(`forecast-banner-cache-${language}-${slot}`);
-    if (cachedData) {
-        try {
-            const parsed = JSON.parse(cachedData);
-            sendBannerMetric(parsed.bannerId, language, slot);
-            return parsed;
-        } catch (e) {
-            error("Failed to parse cached banner data:", e);
+    const cacheKey = `forecast-banner-cache-${language}-${slot}`;
+
+
+    const cached = await new Promise((resolve) => {
+        CLIENT_STORAGE.get([cacheKey], (result) => {
+            resolve(result[cacheKey]);
+        });
+    });
+
+    if (cached && cached.data && cached.timestamp) {
+
+        if (Date.now() - cached.timestamp < 5 * 60 * 1000) {
+            sendBannerMetric(cached.data.bannerId, language, slot);
+            return cached.data;
         }
     }
 
-    const bannerData = await fetchFC(`${baseUrlFC}/v2/integrations/banner?lang=${language}&slot=${slot}`);
+    const baseUrl = await getBaseUrlFC();
+    const bannerData = await fetchFC(`${baseUrl}/v2/integrations/banner?lang=${language}&slot=${slot}`);
 
     if (bannerData) {
-        setCookie("forecast-banner-cache", JSON.stringify(bannerData), 5);
+
+        CLIENT_STORAGE.set({
+            [cacheKey]: {
+                data: bannerData,
+                timestamp: Date.now()
+            }
+        });
     }
 
     return bannerData;
 }
 
 async function sendBannerMetric(bannerId, language, slot) {
-    await fetchFC(`${baseUrlFC}/v2/integrations/banner?metricOnly=true&bannerId=${bannerId}&lang=${language}&slot=${slot}`);
+    const baseUrl = await getBaseUrlFC();
+    await fetchFC(`${baseUrl}/v2/integrations/banner?metricOnly=true&bannerId=${bannerId}&lang=${language}&slot=${slot}`);
 }
 
 async function checkUserRegistered(faceitId) {
     let response = userIdCache[faceitId];
 
     if (response === undefined) {
-        response = await fetchFC(`${baseUrlFC}/v1/auth/user?faceit_id=${encodeURIComponent(faceitId)}`);
+        const baseUrl = await getBaseUrlFC();
+        response = await fetchFC(`${baseUrl}/v1/auth/user?faceit_id=${encodeURIComponent(faceitId)}`);
         userIdCache[faceitId] = response;
     }
 
@@ -135,7 +155,8 @@ async function checkUserRegistered(faceitId) {
 
 async function getFallbackBaseUrl() {
     try {
-        const res = await fetch(`${baseUrlFC}/v1/faceit/fallback_url`);
+        const baseUrl = await getBaseUrlFC();
+        const res = await fetch(`${baseUrl}/v1/faceit/fallback_url`);
         if (res.ok) {
             return await res.text();
         }

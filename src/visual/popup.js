@@ -12,11 +12,14 @@ const CLIENT_API = BROWSER_TYPE === FIREFOX ? browser : chrome;
 const CLIENT_RUNTIME = CLIENT_API.runtime;
 const CLIENT_STORAGE_SYNC = CLIENT_API.storage.sync;
 
-const MAPS_CONFIG_URL = 'https://cdn.fforecast.net/config/maps-config.json';
+const PRIMARY_CDN_URL = 'https://cdn.fforecast.net';
+const FALLBACK_CDN_URL = 'https://cdn.fforecast.dev';
+const MAPS_CONFIG_URL_PATH = '/config/maps-config.json';
+const MAPS_CONFIG_URL = PRIMARY_CDN_URL + MAPS_CONFIG_URL_PATH;
 const MAPS_CONFIG_CACHE_KEY = 'maps-config-cache';
 const MAPS_CONFIG_CACHE_TTL = 1000 * 60 * 60 * 6;
 
-const MAPS_ICONS_CDN_URL = 'https://cdn.fforecast.net/web/images/maps';
+let activeCdnUrl = PRIMARY_CDN_URL;
 const MAPS_ICONS_SIZE = 48;
 
 let mapsConfig = null;
@@ -407,10 +410,62 @@ const StorageUtils = {
     }
 };
 
-const AUTH_HOST = 'https://auth.fforecast.net';
-const BASE_API_URL = 'https://api.fforecast.net';
+const DOMAIN_STORAGE_KEY_POPUP = 'active_domain';
 const AUTH_STORAGE_KEY = 'forecast_auth';
 const DEVICE_ID_KEY = 'deviceId';
+
+const POPUP_DOMAIN_URLS = {
+    net: { api: 'https://api.fforecast.net', auth: 'https://auth.fforecast.net', cdn: 'https://cdn.fforecast.net', site: 'https://fforecast.net' },
+    dev: { api: 'https://api.fforecast.dev', auth: 'https://auth.fforecast.dev', cdn: 'https://cdn.fforecast.dev', site: 'https://fforecast.dev' }
+};
+
+let _popupDomain = null;
+
+async function _ensurePopupDomain() {
+    if (_popupDomain) return _popupDomain;
+    try {
+        const data = await new Promise((resolve) => {
+            CLIENT_API.storage.local.get([DOMAIN_STORAGE_KEY_POPUP], resolve);
+        });
+        if (data[DOMAIN_STORAGE_KEY_POPUP]) {
+            _popupDomain = data[DOMAIN_STORAGE_KEY_POPUP];
+            activeCdnUrl = POPUP_DOMAIN_URLS[_popupDomain].cdn;
+            return _popupDomain;
+        }
+    } catch (e) {}
+    try {
+        const response = await CLIENT_RUNTIME.sendMessage({ type: 'GET_ACTIVE_DOMAIN' });
+        if (response && response.domain) {
+            _popupDomain = response.domain;
+            activeCdnUrl = POPUP_DOMAIN_URLS[_popupDomain].cdn;
+            return _popupDomain;
+        }
+    } catch (e) {}
+    _popupDomain = 'net';
+    return _popupDomain;
+}
+
+async function getPopupApiUrl() {
+    const domain = await _ensurePopupDomain();
+    return POPUP_DOMAIN_URLS[domain].api;
+}
+
+async function getPopupAuthHost() {
+    const domain = await _ensurePopupDomain();
+    return POPUP_DOMAIN_URLS[domain].auth;
+}
+
+async function getPopupSiteUrl() {
+    const domain = await _ensurePopupDomain();
+    return POPUP_DOMAIN_URLS[domain].site;
+}
+
+CLIENT_API.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes[DOMAIN_STORAGE_KEY_POPUP]) {
+        _popupDomain = changes[DOMAIN_STORAGE_KEY_POPUP].newValue;
+        activeCdnUrl = POPUP_DOMAIN_URLS[_popupDomain].cdn;
+    }
+});
 
 const AuthManager = {
     state: {
@@ -467,7 +522,8 @@ const AuthManager = {
     async registerDevice() {
         try {
             const version = CLIENT_RUNTIME.getManifest().version;
-            const res = await fetch('https://api.fforecast.net/v2/extension/register', {
+            const apiUrl = await getPopupApiUrl();
+            const res = await fetch(`${apiUrl}/v2/extension/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -513,7 +569,8 @@ const AuthManager = {
                 'auth_pending_timestamp': Date.now()
             });
 
-            const startUrl = `${AUTH_HOST}/faceit/start?device_id=${encodeURIComponent(this.deviceId)}&state=${stateParam}&json=true`;
+            const authHost = await getPopupAuthHost();
+            const startUrl = `${authHost}/v2/faceit/start?device_id=${encodeURIComponent(this.deviceId)}&state=${stateParam}&json=true`;
 
             let authUrl;
             try {
@@ -526,7 +583,7 @@ const AuthManager = {
                 authUrl = payload.authUrl;
             } catch (err) {
                 console.warn('[Auth] Failed to fetch authUrl, falling back', err);
-                authUrl = `${AUTH_HOST}/faceit/start?state=${stateParam}&device_id=${encodeURIComponent(this.deviceId)}`;
+                authUrl = `${authHost}/v2/faceit/start?state=${stateParam}&device_id=${encodeURIComponent(this.deviceId)}`;
             }
 
             const response = await CLIENT_RUNTIME.sendMessage({
@@ -584,7 +641,8 @@ const AuthManager = {
     async logout() {
         try {
             if (this.deviceId) {
-                await fetch(`${BASE_API_URL}/v1/auth/unlink?faceit_id=${this.state.user.playerId}`, {
+                const apiUrl = await getPopupApiUrl();
+                await fetch(`${apiUrl}/v1/auth/unlink?faceit_id=${this.state.user.playerId}`, {
                     method: 'POST',
                     headers: {'X-Device-ID': this.deviceId}
                 });
@@ -645,7 +703,8 @@ const AuthManager = {
 
     async loadAvatar(playerId) {
         try {
-            const response = await fetch(`${BASE_API_URL}/v1/faceit/avatar/${playerId}`);
+            const apiUrl = await getPopupApiUrl();
+            const response = await fetch(`${apiUrl}/v1/faceit/avatar/${playerId}`);
             if (response.ok) {
                 const data = await response.json();
                 const avatar = data.avatar;
@@ -696,13 +755,23 @@ const MapsConfigManager = {
             const cachedTime = cached[`${MAPS_CONFIG_CACHE_KEY}-time`];
 
             if (cachedData && cachedTime && (Date.now() - cachedTime < MAPS_CONFIG_CACHE_TTL)) {
+                await _ensurePopupDomain();
                 return cachedData;
             }
         } catch (e) {
         }
 
-        const response = await fetch(`${MAPS_CONFIG_URL}?_=${Date.now()}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await _ensurePopupDomain();
+        const cdnUrl = activeCdnUrl;
+        let response;
+        try {
+            response = await fetch(`${cdnUrl}${MAPS_CONFIG_URL_PATH}?_=${Date.now()}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        } catch (e) {
+            const fallbackCdn = cdnUrl === PRIMARY_CDN_URL ? FALLBACK_CDN_URL : PRIMARY_CDN_URL;
+            response = await fetch(`${fallbackCdn}${MAPS_CONFIG_URL_PATH}?_=${Date.now()}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        }
         const config = await response.json();
 
         try {
@@ -739,7 +808,7 @@ const MapsConfigManager = {
             const mapCell = document.createElement('div');
             mapCell.className = 'map-cell';
             mapCell.innerHTML = `
-                <img class="map-icon" src="${MAPS_ICONS_CDN_URL}/${MAPS_ICONS_SIZE}/${mapData.icon}" alt="${mapData.display}">
+                <img class="map-icon" src="${activeCdnUrl}/web/images/maps/${MAPS_ICONS_SIZE}/${mapData.icon}" alt="${mapData.display}">
                 <span class="map-cell-name">${mapData.display}</span>
                 <input type="text" id="${mapId}Message" placeholder="message"
                        data-i18n-placeholder="map_message_placeholder" maxlength="16"
@@ -762,8 +831,13 @@ const MapsConfigManager = {
 const SettingsManager = {
     defaults: {
         isEnabled: true,
+        aprilFools: true,
         sliderValue: 30,
         matchroom: true,
+        teamMapWinrate: true,
+        playerMapWinrate: true,
+        classicTeamView: false,
+        classicPlayerView: false,
         eloranking: true,
         matchhistory: true,
         poscatcher: true,
@@ -775,14 +849,17 @@ const SettingsManager = {
         coloredStatsKR: true,
         showFCR: true,
         coloredStatsFCR: true,
+        showAVGElo: true,
         roundedStats: false
     },
 
     async load() {
         try {
-            const keys = ['isEnabled', 'sliderValue', 'matchroom', 'eloranking', 'matchhistory', 'poscatcher',
+            const keys = ['isEnabled', 'aprilFools', 'sliderValue', 'matchroom', 'teamMapWinrate', 'playerMapWinrate',
+                'classicTeamView', 'classicPlayerView',
+                'eloranking', 'matchhistory', 'poscatcher',
                 'matchCounter', 'coloredStatsKDA', 'coloredStatsADR', 'coloredStatsKD',
-                'coloredStatsKR', 'showFCR', 'coloredStatsFCR', 'roundedStats',
+                'coloredStatsKR', 'showFCR', 'coloredStatsFCR', 'showAVGElo', 'roundedStats',
                 ...CS2_MAPS.flatMap(map => [`${map}Enabled`, `${map}Message`]), 'integrations'];
 
             const settings = await StorageUtils.get(keys);
@@ -793,6 +870,8 @@ const SettingsManager = {
 
             this.loadMatchHistorySettings(settings);
 
+            this.loadMatchroomSettings(settings);
+
         } catch (error) {
             console.error("Error loading settings:", error);
         }
@@ -801,6 +880,7 @@ const SettingsManager = {
     applySettings(settings) {
         const elements = {
             toggleExtension: 'isEnabled',
+            aprilFools: 'aprilFools',
             rangeSlider: 'sliderValue',
             matchroom: 'matchroom',
             eloranking: 'eloranking',
@@ -824,7 +904,7 @@ const SettingsManager = {
         });
 
         const matchroomEnabled = settings.matchroom ?? this.defaults.matchroom;
-        this.updateDependentSettings('matchroom', ['#analyzeLimit'], matchroomEnabled);
+        this.updateDependentSettings('matchroom', ['#matchroomSettings'], matchroomEnabled);
     },
 
     loadQuickPositionSettings(settings) {
@@ -868,6 +948,7 @@ const SettingsManager = {
             coloredStatsKR: 'coloredStatsKR',
             coloredStatsFCR: 'coloredStatsFCR',
             showFCR: 'showFCR',
+            showAVGElo: 'showAVGElo',
             roundedStats: 'roundedStats'
         };
 
@@ -883,6 +964,30 @@ const SettingsManager = {
 
         const matchHistoryEnabled = settings.matchhistory ?? this.defaults.matchhistory;
         this.updateDependentSettings('matchhistory', ['#matchHistorySettings'], matchHistoryEnabled);
+    },
+
+    loadMatchroomSettings(settings) {
+        const matchroomToggle = document.getElementById('matchroom');
+        if (matchroomToggle) {
+            matchroomToggle.checked = settings.matchroom ?? this.defaults.matchroom;
+        }
+
+        const settingsElements = {
+            teamMapWinrate: 'teamMapWinrate',
+            playerMapWinrate: 'playerMapWinrate',
+            classicTeamView: 'classicTeamView',
+            classicPlayerView: 'classicPlayerView'
+        };
+
+        Object.entries(settingsElements).forEach(([elementId, settingKey]) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.checked = settings[settingKey] ?? this.defaults[settingKey];
+            }
+        });
+
+        const matchroomEnabled = settings.matchroom ?? this.defaults.matchroom;
+        this.updateDependentSettings('matchroom', ['#matchroomSettings'], matchroomEnabled);
     },
 
     updateFCRColoredStatsVisibility(isEnabled) {
@@ -1022,10 +1127,10 @@ const UIBuilder = {
         },
         {
             id: 'matchroom',
-            labelKey: 'matchroom_stats',
-            descKey: 'matchroom_stats_desc',
-            nestedId: 'analyzeLimit',
-            nestedContent: 'rangeSlider'
+            labelKey: 'advanced_matchroom',
+            descKey: 'advanced_matchroom_desc',
+            nestedId: 'matchroomSettings',
+            nestedContent: 'matchroomGrid'
         },
         {
             id: 'poscatcher',
@@ -1055,7 +1160,15 @@ const UIBuilder = {
             className: 'hidden-cell',
             cellId: 'fcrColoredStatsContainer'
         },
+        {id: 'showAVGElo', labelKey: 'avgelo', descKey: 'avgelo_desc', cellId: 'avgEloSettingsCell'},
         {id: 'roundedStats', labelKey: 'rounded_stats', descKey: 'rounded_stats_desc'}
+    ],
+
+    MATCHROOM_SETTINGS: [
+        {id: 'teamMapWinrate', labelKey: 'team_map_winrate', descKey: 'team_map_winrate_desc'},
+        {id: 'classicTeamView', labelKey: 'classic_team_view', descKey: 'classic_team_view_desc'},
+        {id: 'playerMapWinrate', labelKey: 'player_map_winrate', descKey: 'player_map_winrate_desc'},
+        {id: 'classicPlayerView', labelKey: 'classic_player_view', descKey: 'classic_player_view_desc'}
     ],
 
     ABOUT_LINKS: [
@@ -1093,8 +1206,9 @@ const UIBuilder = {
             let nestedContent = '';
             if (config.nestedContent === 'matchHistoryGrid') {
                 nestedContent = '<div class="settings-grid" id="matchHistorySettingsGrid"></div>';
-            } else if (config.nestedContent === 'rangeSlider') {
-                nestedContent = `<div class="setting-item"><div class="setting-header"><label for="rangeSlider" data-i18n="match_amount">${t('match_amount')}</label></div><div class="slider-controls"><input type="range" id="rangeSlider" class="range-slider" min="5" max="100" value="30"><span id="sliderValue">30</span></div></div>`;
+            } else if (config.nestedContent === 'matchroomGrid') {
+                nestedContent = '<div class="settings-grid" id="matchroomSettingsGrid"></div>'
+                    + `<div class="setting-item"><div class="setting-header"><label for="rangeSlider" data-i18n="match_amount">${t('match_amount')}</label>${this.createInfoTooltip('match_amount_desc', true)}</div><div class="slider-controls"><input type="range" id="rangeSlider" class="range-slider" min="5" max="100" value="30"><span id="sliderValue">30</span></div></div>`;
             } else if (config.nestedContent === 'mapGrid') {
                 nestedContent = '<div class="map-grid"></div>';
             }
@@ -1126,6 +1240,12 @@ const UIBuilder = {
         container.innerHTML = this.MATCH_HISTORY_SETTINGS.map(s => this.createSettingsCell(s)).join('');
     },
 
+    buildMatchroomSettings() {
+        const container = document.getElementById('matchroomSettingsGrid');
+        if (!container) return;
+        container.innerHTML = this.MATCHROOM_SETTINGS.map(s => this.createSettingsCell(s)).join('');
+    },
+
     buildFeaturesSection() {
         const container = document.getElementById('featuresContainer');
         if (!container) return;
@@ -1147,7 +1267,8 @@ const UIBuilder = {
 
         html += `<div class="about-cell"><span class="about-cell-label" data-i18n="email">${t('email')}</span><button id="copyButton" class="about-button">${this.icon('email', 20, 20)}</button><div id="notification" class="notification" data-i18n="copied">${t('copied')}</div></div>`;
 
-        html += `<div class="about-cell"><span class="about-cell-label" data-i18n="website">${t('website')}</span><a href="https://fforecast.net" target="_blank" class="about-button"><img src="icons/rawlogo.svg" alt="Website" style="width:30px;height:30px;margin:-2px"></a></div>`;
+        const websiteUrl = _popupDomain === 'dev' ? 'https://fforecast.dev' : 'https://fforecast.net';
+        html += `<div class="about-cell"><span class="about-cell-label" data-i18n="website">${t('website')}</span><a href="${websiteUrl}" target="_blank" class="about-button"><img src="icons/rawlogo.svg" alt="Website" style="width:30px;height:30px;margin:-2px"></a></div>`;
 
         grid.innerHTML = html;
     },
@@ -1161,6 +1282,7 @@ const UIBuilder = {
     init() {
         this.buildFeaturesSection();
         this.buildMatchHistorySettings();
+        this.buildMatchroomSettings();
         this.buildAboutSection();
         this.buildDonateSection();
     }
@@ -1170,7 +1292,8 @@ async function updateOnline() {
     let onlineElement = document.getElementById("online");
     if (onlineElement) {
         try {
-            const res = await fetch(`https://api.fforecast.net/v1/extension/online`);
+            const apiUrl = await getPopupApiUrl();
+            const res = await fetch(`${apiUrl}/v1/extension/online`);
             if (!res.ok) throw new Error(`Error on fetching online: ${res.statusText}`);
             let online = await res.json();
 
@@ -1227,7 +1350,7 @@ const EventHandlers = {
                 await SettingsManager.save({[key]: this.checked});
 
                 if (toggleId === 'matchroom') {
-                    SettingsManager.updateDependentSettings('matchroom', ['#analyzeLimit'], this.checked);
+                    SettingsManager.updateDependentSettings('matchroom', ['#matchroomSettings'], this.checked);
                 }
 
                 if (toggleId === 'matchhistory') {
@@ -1338,6 +1461,7 @@ const EventHandlers = {
             'coloredStatsKR',
             'showFCR',
             'coloredStatsFCR',
+            'showAVGElo',
             'roundedStats'
         ];
 
@@ -1351,6 +1475,24 @@ const EventHandlers = {
                 if (toggleId === 'showFCR') {
                     SettingsManager.updateFCRColoredStatsVisibility(this.checked);
                 }
+            });
+        });
+    },
+
+    setupMatchroomEventListeners() {
+        const settingsToggles = [
+            'teamMapWinrate',
+            'playerMapWinrate',
+            'classicTeamView',
+            'classicPlayerView'
+        ];
+
+        settingsToggles.forEach(toggleId => {
+            const element = document.getElementById(toggleId);
+            if (!element) return;
+
+            element.addEventListener('change', async function () {
+                await SettingsManager.save({[toggleId]: this.checked});
             });
         });
     },
@@ -1456,6 +1598,51 @@ function setupLanguageSelector() {
     });
 }
 
+function initDebugBadge() {
+    if (!isTest) return;
+
+    const badge = document.createElement('div');
+    badge.id = 'debug-domain-badge';
+    badge.style.cssText = 'position:fixed;bottom:4px;left:4px;z-index:99999;font-size:10px;font-family:monospace;background:rgba(0,0,0,0.75);color:#0f0;padding:3px 6px;border-radius:4px;pointer-events:none;line-height:1.3;white-space:pre;';
+
+    const update = async () => {
+        const domain = _popupDomain || '(not resolved)';
+        const urls = POPUP_DOMAIN_URLS[domain] || {};
+        const api = urls.api || '(not resolved)';
+        const auth = urls.auth || '(not resolved)';
+        const cdn = activeCdnUrl || '(not resolved)';
+        const isNet = domain === 'net';
+        badge.style.color = isNet ? '#0f0' : '#ff0';
+        badge.textContent = `API:  ${api}\nAUTH: ${auth}\nCDN:  ${cdn}`;
+    };
+
+    document.body.appendChild(badge);
+    update();
+    setInterval(update, 2000);
+}
+
+function setupAprilFools() {
+    const container = document.getElementById('aprilFoolsContainer');
+    if (!container) return;
+
+    const toggle = document.getElementById('aprilFools');
+
+    const updateVisibility = () => {
+        const now = new Date();
+        const isAprilFirst = now.getMonth() === 3 && now.getDate() === 1;
+        container.style.display = isAprilFirst ? '' : 'none';
+    };
+
+    updateVisibility();
+    setInterval(updateVisibility, 60000);
+
+    if (toggle) {
+        toggle.addEventListener('change', async function () {
+            await SettingsManager.save({aprilFools: this.checked});
+        });
+    }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     try {
         await initLanguage();
@@ -1464,13 +1651,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         localizeDocument();
 
-        await MapsConfigManager.init();
-
         await Promise.all([
-            SettingsManager.load(),
-            UIUtils.loadManifestInfo(),
-            AuthManager.init()
+            MapsConfigManager.init(),
+            AuthManager.init(),
+            UIUtils.loadManifestInfo()
         ]);
+
+        await SettingsManager.load();
 
         UIUtils.setupTabs();
 
@@ -1480,8 +1667,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         EventHandlers.setupMainEventListeners();
         EventHandlers.setupQuickPositionEventListeners();
         EventHandlers.setupMatchHistoryEventListeners();
+        EventHandlers.setupMatchroomEventListeners();
         EventHandlers.setupTooltips();
         setupLanguageSelector();
+        setupAprilFools();
+
+        initDebugBadge();
 
     } catch (error) {
         console.error("Error during DOMContentLoaded:", error);

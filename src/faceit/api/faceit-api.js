@@ -50,6 +50,7 @@ async function fetchInternal(url, errorMsg, acceptHeader = 'application/json, te
     if (!res.ok) {
         const errorText = await res.text();
         error(`${errorMsg}: ${res.status} ${res.statusText}. Response: ${errorText}`);
+        return null;
     }
 
     return res.json();
@@ -65,7 +66,10 @@ async function fetchV4(url, errorMsg) {
         credentials: 'include'
     });
 
-    if (!res.ok) error(`${errorMsg}: ${res.statusText}`);
+    if (!res.ok) {
+        error(`${errorMsg}: ${res.statusText}`);
+        return null;
+    }
     return res.json();
 }
 
@@ -83,8 +87,10 @@ async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, 
     }
 
     const data = fallbackUrl ? await fetchWithFallback(url, errorMsg, fallbackUrl) : await fetchFn(url, errorMsg);
-    cache.set(url, data);
-    await setLocalStorageCache(localKey, data, ttlMinutes);
+    if (data != null) {
+        cache.set(url, data);
+        await setLocalStorageCache(localKey, data, ttlMinutes);
+    }
     return data;
 }
 

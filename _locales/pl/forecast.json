@@ -33,14 +33,24 @@
   "fcr_desc": "FCR - udział wkładu gracza w drużynie na podstawie wydajności. Suma wszystkich 5 graczy = 100%. Ideał to gdy wszyscy 5 graczy zagrali na 20%.",
   "fcr_color": "Kolor FCR",
   "fcr_color_desc": "Koloruje statystykę FCR. (≥20% = zielony, 15-20% = żółty, <15% = czerwony)",
+  "avgelo": "Średnie Elo",
+  "avgelo_desc": "Wyświetla średnie Elo twojej drużyny i drużyny przeciwnej (bez uwzględnienia gracza, którego profil jest przeglądany).",
   "rounded_stats": "Zaokrąglone staty",
   "rounded_stats_desc": "Zaokrągla wartości ADR, K/D i K/R do jednego miejsca po przecinku.",
   "temporarily_unavailable": "Tymczasowo niedostępne",
 
   "new_elo_rankings": "Nowe rangi Elo",
   "new_elo_rankings_desc": "Zastępuje standardowe poziomy Faceit nowymi ikonami rang opartymi na punktach elo.",
-  "matchroom_stats": "Statystyki pokoju",
-  "matchroom_stats_desc": "Wyświetla statystyki winrate graczy i drużyn w pokoju meczowym.",
+  "advanced_matchroom": "Zaawansowany matchroom",
+  "advanced_matchroom_desc": "Zaawansowane funkcje matchroomu, w tym statystyki winrate map drużyn i graczy.",
+  "team_map_winrate": "Staty drużyny",
+  "team_map_winrate_desc": "Wyświetla tabelę ze statystykami map (winrate, gry, średnie kille) dla każdej drużyny.",
+  "player_map_winrate": "Staty gracza",
+  "player_map_winrate_desc": "Wyświetla osobiste statystyki map dla każdego gracza w karcie profilu.",
+  "classic_team_view": "Stary widok drużyny",
+  "classic_team_view_desc": "Używa starego uproszczonego układu tabeli dla statystyk map drużyn (Mapa, Gry, WR%).",
+  "classic_player_view": "Stary widok gracza",
+  "classic_player_view_desc": "Używa starego uproszczonego układu tabeli dla statystyk map gracza (Mapa, Gry, WR%).",
   "match_amount": "Liczba meczów",
   "match_amount_desc": "Liczba ostatnich meczów do analizy statystyk.",
   "quick_position_setup": "Szybka konfiguracja pozycji",
@@ -48,6 +58,8 @@
   "map_message_placeholder": "wiadomość",
   "integrations": "Integracje",
   "integrations_desc": "Dodaje integracje partnerskie z treściami promocyjnymi.",
+
+  "stats_last_n_matches": "Statystyki z ostatnich {0} meczów",
 
   "version": "Wersja",
   "author": "Autor",
@@ -68,5 +80,7 @@
   "login": "Zaloguj",
   "logout": "Wyloguj",
   "account": "Konto",
-  "fcUserLogo.tooltip": "Użytkownik Forecast"
+  "fcUserLogo.tooltip": "Użytkownik Forecast",
+  "april_fools": "Prima Aprilis \uD83E\uDD21",
+  "april_fools_desc": "Włącz żarty primaaprilisowe w matchroomie."
 }

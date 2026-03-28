@@ -33,14 +33,24 @@
   "fcr_desc": "FCR - Beitragsanteil des Spielers im Team basierend auf der Leistung. Summe aller 5 Spieler = 100%. Ideal ist, wenn alle 5 Spieler auf 20% gespielt haben.",
   "fcr_color": "FCR Farbe",
   "fcr_color_desc": "Färbt FCR-Statistik. (≥20% = grün, 15-20% = gelb, <15% = rot)",
+  "avgelo": "Durchschnittliches Elo",
+  "avgelo_desc": "Zeigt das durchschnittliche Elo deines Teams und des gegnerischen Teams (ohne den Spieler, dessen Profil angezeigt wird).",
   "rounded_stats": "Gerundete Statistiken",
   "rounded_stats_desc": "Rundet ADR, K/D und K/R Werte auf eine Dezimalstelle.",
   "temporarily_unavailable": "Vorübergehend nicht verfügbar",
 
   "new_elo_rankings": "Neue Elo-Ränge",
   "new_elo_rankings_desc": "Ersetzt Standard-Faceit-Level durch neue Rang-Icons basierend auf Elo-Punkten.",
-  "matchroom_stats": "Matchroom-Statistiken",
-  "matchroom_stats_desc": "Zeigt Spieler- und Team-Winrate-Statistiken im Matchroom.",
+  "advanced_matchroom": "Erweiterter Matchroom",
+  "advanced_matchroom_desc": "Erweiterte Matchroom-Funktionen inkl. Team- und Spieler-Karten-Winrate-Statistiken.",
+  "team_map_winrate": "Team-Stats",
+  "team_map_winrate_desc": "Zeigt eine Tabelle mit Kartenstatistiken (Winrate, Spiele, Avg Kills) für jedes Team.",
+  "player_map_winrate": "Spieler-Stats",
+  "player_map_winrate_desc": "Zeigt persönliche Kartenstatistiken für jeden Spieler in der Profilkarte.",
+  "classic_team_view": "Alte Teamansicht",
+  "classic_team_view_desc": "Verwendet das alte vereinfachte Tabellenlayout für Team-Kartenstatistiken (Karte, Spiele, WR%).",
+  "classic_player_view": "Alte Spieleransicht",
+  "classic_player_view_desc": "Verwendet das alte vereinfachte Tabellenlayout für Spieler-Kartenstatistiken (Karte, Spiele, WR%).",
   "match_amount": "Spielanzahl",
   "match_amount_desc": "Anzahl der letzten Spiele für die Statistikanalyse.",
   "quick_position_setup": "Schnelle Positionseinrichtung",
@@ -48,6 +58,8 @@
   "map_message_placeholder": "nachricht",
   "integrations": "Integrationen",
   "integrations_desc": "Fügt Partner-Integrationen mit Werbeinhalten hinzu. Diese helfen dem Projekt zu wachsen.",
+
+  "stats_last_n_matches": "Statistik der letzten {0} Spiele",
 
   "version": "Version",
   "author": "Autor",
@@ -68,5 +80,7 @@
   "login": "Anmelden",
   "logout": "Abmelden",
   "account": "Konto",
-  "fcUserLogo.tooltip": "Forecast-Nutzer"
+  "fcUserLogo.tooltip": "Forecast-Nutzer",
+  "april_fools": "Aprilscherz \uD83E\uDD21",
+  "april_fools_desc": "Aprilscherze im Matchroom aktivieren."
 }

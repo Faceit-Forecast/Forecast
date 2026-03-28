@@ -31,7 +31,7 @@ class Lobby {
 
         const fullInfo = ['stats', 'history', 'leagues', 'profile_game', 'tournaments'];
         const cs2Default = ['friends', 'videos', 'inventory', 'clubs', 'profile', 'teams'];
-        const langOnly = ['home', 'matchroom', 'matchmaking', 'parties'];
+        const langOnly = ['home', 'matchroom', 'matchmaking', 'parties', 'club', 'team_leagues', 'team_stats', 'team_overview'];
 
         if (fullInfo.includes(pageType)) {
             this.lang = match[1];
@@ -119,12 +119,37 @@ const MATCHMAKING = new PageType(
 
 const PARTIES = new PageType(
     "parties",
-    /^https:\/\/www\.faceit\.com\/([^/]+)\/(parties|club).*/
+    /^https:\/\/www\.faceit\.com\/([^/]+)\/parties.*/
+);
+
+const CLUB = new PageType(
+    "club",
+    /^https:\/\/www\.faceit\.com\/([^/]+)\/club.*/
+);
+
+const TEAM_LEAGUES = new PageType(
+    "team_leagues",
+    /^https:\/\/www\.faceit\.com\/([^/]+)\/teams\/([^/]+)\/leagues.*/
+);
+
+const TEAM_STATS = new PageType(
+    "team_stats",
+    /^https:\/\/www\.faceit\.com\/([^/]+)\/teams\/([^/]+)\/stats.*/
+);
+
+const TEAM_OVERVIEW = new PageType(
+    "team_overview",
+    /^https:\/\/www\.faceit\.com\/([^/]+)\/teams\/([^/]+)\/overview.*/
 );
 
 const HOME = new PageType(
     "home",
     /^https:\/\/www\.faceit\.com\/([^/]+)\/home.*/
+);
+
+const UNKNOWN = new PageType(
+    "unknown",
+    /^https:\/\/www\.faceit\.com\/.*/
 );
 
 
@@ -143,14 +168,20 @@ const pageTypes = [
     MATCHROOM,
     MATCHMAKING,
     PARTIES,
+    CLUB,
+    TEAM_LEAGUES,
+    TEAM_STATS,
+    TEAM_OVERVIEW,
     PROFILE,
-    HOME
+    HOME,
+    UNKNOWN
 ];
 
 function defineLobby(url) {
+    const cleanUrl = url.split('?')[0].split('#')[0];
     for (const pageType of pageTypes) {
-        if (pageType.test(url)) {
-            const match = pageType.extract(url);
+        if (pageType.test(cleanUrl)) {
+            const match = pageType.extract(cleanUrl);
             return new Lobby(pageType.name, match);
         }
     }
