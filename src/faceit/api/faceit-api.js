@@ -75,13 +75,15 @@ async function fetchV4(url, errorMsg) {
 
 const fetchV3 = (url, errorMsg) => fetchInternal(url, errorMsg, 'application/json, text/plain, */*');
 
-async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, fallbackUrl = null) {
+async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, fallbackUrl = null, validator = null) {
     if (cache.has(url)) {
-        return cache.get(url);
+        const memData = cache.get(url);
+        if (!validator || validator(memData)) return memData;
+        cache.delete(url);
     }
 
     const localData = await getLocalStorageCache(localKey);
-    if (localData) {
+    if (localData && (!validator || validator(localData))) {
         cache.set(url, localData);
         return localData;
     }
@@ -89,13 +91,15 @@ async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, 
     const data = fallbackUrl ? await fetchWithFallback(url, errorMsg, fallbackUrl) : await fetchFn(url, errorMsg);
     if (data != null) {
         cache.set(url, data);
-        await setLocalStorageCache(localKey, data, ttlMinutes);
+        if (!validator || validator(data)) {
+            await setLocalStorageCache(localKey, data, ttlMinutes);
+        }
     }
     return data;
 }
 
 const fetchV4Cached = (cache, url, errorMsg, localKey, ttlMinutes, fallbackUrl) => fetchCached(cache, url, errorMsg, fetchV4, localKey, ttlMinutes, fallbackUrl);
-const fetchV3Cached = (cache, url, errorMsg, localKey, ttlMinutes) => fetchCached(cache, url, errorMsg, fetchV3, localKey, ttlMinutes);
+const fetchV3Cached = (cache, url, errorMsg, localKey, ttlMinutes, validator = null) => fetchCached(cache, url, errorMsg, fetchV3, localKey, ttlMinutes, null, validator);
 
 async function fetchMatchStats(matchId) {
     return fetchV4Cached(
@@ -156,13 +160,21 @@ async function fetchPlayerStatsByNickName(nickname) {
     );
 }
 
+function v3EloValidator(data) {
+    if (!data?.[0]?.teams) return false;
+    return data[0].teams.some(team =>
+        team.players.some(p => p.elo != null && p.elo > 0)
+    );
+}
+
 async function fetchV3MatchStats(matchId) {
     return fetchV3Cached(
         matchDataV3Cache,
         `${baseUrlV3}/matches/${matchId}`,
         `Error when retrieving V3 match statistics by ID: ${matchId}`,
         `match_v3_${matchId}`,
-        2880
+        2880,
+        v3EloValidator
     );
 }
 

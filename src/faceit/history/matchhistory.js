@@ -99,11 +99,13 @@ class MatchNodeByMatchStats {
         const enemyTeam = teams.find(t => t !== myTeam);
 
         const teammates = myTeam.players.filter(p => p.player_id !== playerId);
-        const teamAvgElo = teammates.length > 0
-            ? Math.round(teammates.reduce((sum, p) => sum + p.elo, 0) / teammates.length)
+        const teammatesWithElo = teammates.filter(p => p.elo != null && p.elo > 0);
+        const teamAvgElo = teammatesWithElo.length > 0
+            ? Math.round(teammatesWithElo.reduce((sum, p) => sum + p.elo, 0) / teammatesWithElo.length)
             : null;
-        const enemyAvgElo = enemyTeam && enemyTeam.players.length > 0
-            ? Math.round(enemyTeam.players.reduce((sum, p) => sum + p.elo, 0) / enemyTeam.players.length)
+        const enemyPlayersWithElo = enemyTeam ? enemyTeam.players.filter(p => p.elo != null && p.elo > 0) : [];
+        const enemyAvgElo = enemyPlayersWithElo.length > 0
+            ? Math.round(enemyPlayersWithElo.reduce((sum, p) => sum + p.elo, 0) / enemyPlayersWithElo.length)
             : null;
 
         if (player.elo) {

@@ -39,7 +39,7 @@ const profilesModule = new Module("profiles", () => {
         }
         statsMVPHandler(selectorStatsMVP);
 
-        let selectorMatchPlayer = 'div > div[class*=styles__MainHolder] > div > div > div[class*=Overview__Grid] > div[class*=Overview__Column] > div > div > div > div > div > div > div > div > div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div'
+        let selectorMatchPlayer = 'div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div'
         const matchId = extractMatchId();
         fetchMatchStats(matchId).then((matchDetails) => {
             const team1 = matchDetails["teams"]["faction1"];
@@ -56,7 +56,7 @@ const profilesModule = new Module("profiles", () => {
                     }))
                 ].map(p => [p.nickname, p.playerId])
             );
-            profilesModule.doAfterNodeAppearWhenVisible(selectorMatchPlayer, async (node) => {
+            profilesModule.doAfterAllNodeAppearWhenVisible(selectorMatchPlayer, async (node) => {
                 const nickname = node.textContent;
                 const playerId = nicknameToIdMap.get(nickname);
                 await addFCUserLogoIfRegisteredById(node.parentElement, playerId, 16, 16, true);

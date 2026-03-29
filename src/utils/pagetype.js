@@ -31,7 +31,7 @@ class Lobby {
 
         const fullInfo = ['stats', 'history', 'leagues', 'profile_game', 'tournaments'];
         const cs2Default = ['friends', 'videos', 'inventory', 'clubs', 'profile', 'teams'];
-        const langOnly = ['home', 'matchroom', 'matchmaking', 'parties', 'club', 'team_leagues', 'team_stats', 'team_overview'];
+        const langOnly = ['home', 'matchroom', 'matchmaking', 'parties', 'club', 'team_leagues', 'team_stats', 'team_overview', 'settings_profile'];
 
         if (fullInfo.includes(pageType)) {
             this.lang = match[1];
@@ -147,6 +147,11 @@ const HOME = new PageType(
     /^https:\/\/www\.faceit\.com\/([^/]+)\/home.*/
 );
 
+const SETTINGS_PROFILE = new PageType(
+    "settings_profile",
+    /^https:\/\/www\.faceit\.com\/([^/]+)\/settings\/profile.*/
+);
+
 const UNKNOWN = new PageType(
     "unknown",
     /^https:\/\/www\.faceit\.com\/.*/
@@ -174,6 +179,7 @@ const pageTypes = [
     TEAM_OVERVIEW,
     PROFILE,
     HOME,
+    SETTINGS_PROFILE,
     UNKNOWN
 ];
 

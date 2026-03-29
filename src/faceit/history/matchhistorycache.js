@@ -46,21 +46,34 @@ async function initDB() {
     });
 }
 
+function hasValidElo(entry) {
+    return entry.data?.rounds?.[0]?.teams?.every(team =>
+        team.players.every(p => p.elo != null && p.elo > 0)
+    );
+}
+
 async function loadMatchHistoryCache() {
     if (!db) await initDB();
 
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
         const request = store.getAll();
 
         request.onsuccess = () => {
             const matches = request.result;
+            let invalidated = 0;
             matches.forEach(match => {
-                if (match.version === CACHE_VERSION) {
+                if (match.version === CACHE_VERSION && hasValidElo(match)) {
                     cacheMap.set(`${forecastCacheKeyPrefix}::${match.matchId}`, match);
+                } else if (match.version === CACHE_VERSION && !hasValidElo(match)) {
+                    store.delete(match.matchId);
+                    invalidated++;
                 }
             });
+            if (invalidated > 0) {
+                println(`Invalidated ${invalidated} cached matches with missing elo data`);
+            }
             resolve();
         };
 
@@ -181,33 +194,24 @@ async function getFromCacheOrFetch(key, fetchDetailedStats, fetchV3Stats = null)
 
     if (cacheMap.has(cacheKey)) {
         const cachedData = cacheMap.get(cacheKey);
-        if (cachedData.version === CACHE_VERSION) {
-            const hasValidData = cachedData.data.rounds?.[0]?.teams?.every(team =>
-                team.players.every(p => p.player_stats !== undefined && p.elo !== null)
-            );
-            if (hasValidData) {
-                cachedData.lastUsed = Date.now();
-                await updateLastUsed(key, cachedData.lastUsed);
-                return cachedData.data;
-            }
-            cacheMap.delete(cacheKey);
-        } else {
-            cacheMap.delete(cacheKey);
+        if (cachedData.version === CACHE_VERSION && hasValidElo(cachedData)) {
+            cachedData.lastUsed = Date.now();
+            await updateLastUsed(key, cachedData.lastUsed);
+            return cachedData.data;
         }
+        cacheMap.delete(cacheKey);
     }
 
     try {
         const cached = await getFromDB(key);
-        if (cached?.version === CACHE_VERSION) {
-            const hasValidData = cached.data.rounds?.[0]?.teams?.every(team =>
-                team.players.every(p => p.player_stats !== undefined && p.elo !== null)
-            );
-            if (hasValidData) {
-                cached.lastUsed = Date.now();
-                cacheMap.set(cacheKey, cached);
-                await updateLastUsed(key, cached.lastUsed);
-                return cached.data;
-            }
+        if (cached?.version === CACHE_VERSION && hasValidElo(cached)) {
+            cached.lastUsed = Date.now();
+            cacheMap.set(cacheKey, cached);
+            await updateLastUsed(key, cached.lastUsed);
+            return cached.data;
+        }
+        if (cached) {
+            deleteFromDB(key).catch(() => {});
         }
     } catch (err) {
         error('Error reading from IndexedDB:', err);
@@ -359,8 +363,11 @@ async function getFromCacheOrFetch(key, fetchDetailedStats, fetchV3Stats = null)
         version: CACHE_VERSION
     };
 
-    saveToDb(cachedValue).catch(err => error('Error saving to IndexedDB:', err));
-    cacheMap.set(cacheKey, cachedValue);
+    if (hasValidElo(cachedValue)) {
+        saveToDb(cachedValue).catch(err => error('Error saving to IndexedDB:', err));
+        cacheMap.set(cacheKey, cachedValue);
+    }
+
     return cachedValue.data;
 }
 
@@ -382,6 +389,17 @@ async function getFromDB(key) {
         const request = store.get(key);
 
         request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function deleteFromDB(key) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(key);
+
+        request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 }
@@ -424,7 +442,8 @@ async function cleanCache() {
 
                 if ((currentTime - value.lastUsed) > unusedTimeout ||
                     value.version === undefined ||
-                    value.version < CACHE_VERSION) {
+                    value.version < CACHE_VERSION ||
+                    !hasValidElo(value)) {
                     store.delete(cursor.primaryKey);
                     cacheMap.delete(`${forecastCacheKeyPrefix}::${value.matchId}`);
                     deleteCount++;

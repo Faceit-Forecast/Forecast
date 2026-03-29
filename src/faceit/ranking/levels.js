@@ -664,7 +664,7 @@ const newLevelsModule = new Module("eloranking", async () => {
         })
     }
 
-    const lobbiesToHandleCards = ["profile","stats","parties","club","team_leagues"];
+    const lobbiesToHandleCards = ["profile","stats","parties","club","team_leagues","settings_profile"];
 
     if (lobbiesToHandleCards.includes(lobby.pageType)) {
         let selector = '[class*=styles__EloText]';
