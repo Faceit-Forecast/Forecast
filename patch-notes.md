@@ -1,3 +1,8 @@
+[1.7.10] Caching & Bug Fixes
+Fixed AVG ELO showing 0 or "-" for recent matches - incomplete data is no longer cached
+Fixed user badges not appearing for all players in match room
+Added level icons on settings profile page
+
 [1.7.9] Matchroom Redesign & Reliability
 Redesigned team and player statistics in match room with map icons and average kills display
 Added option to switch between new and classic table views for match room stats
