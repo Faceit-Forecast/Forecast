@@ -1,3 +1,6 @@
+[1.7.11] Minor Fixes
+Revoked unused permissions
+
 [1.7.10] Caching & Bug Fixes
 Fixed AVG ELO showing 0 or "-" for recent matches - incomplete data is no longer cached
 Fixed user badges not appearing for all players in match room
