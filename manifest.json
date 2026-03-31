@@ -6,10 +6,6 @@
   "default_locale": "en",
   "author": "TerraMiner",
   "permissions": ["storage"],
-  "host_permissions": [
-    "https://*.fforecast.net/*",
-    "https://*.fforecast.dev/*"
-  ],
   "icons": {
     "128": "src/visual/icons/logo128.png"
   },
