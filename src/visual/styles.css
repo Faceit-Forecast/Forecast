@@ -1202,6 +1202,34 @@ input:checked + .slider:after {
     margin-bottom: 3px;
 }
 
+.discord-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    background-color: rgba(88, 101, 242, 0.12);
+    border: 1px solid rgba(88, 101, 242, 0.25);
+    border-radius: 8px;
+    color: #8b9fff;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.discord-banner:hover {
+    background-color: rgba(88, 101, 242, 0.2);
+    border-color: rgba(88, 101, 242, 0.4);
+    color: #a8b6ff;
+}
+
+.discord-banner img {
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
 .patch-notes-collapsible {
     padding: 0;
 }
@@ -1248,6 +1276,8 @@ input:checked + .slider:after {
 
 .patch-notes-content {
     padding: 15px;
+    max-height: 200px;
+    overflow-y: auto;
     transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
 }
 
@@ -1533,3 +1563,21 @@ input:checked + .slider:after {
     color: #fff;
     font-size: 13px;
 }
+
+.auth-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.auth-controls .info-tooltip {
+    width: 140px;
+    text-align: center;
+}
+
+.auth-tooltip-badge {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 6px;
+}
+

@@ -81,6 +81,7 @@
   "logout": "Logout",
   "account": "Account",
   "fcUserLogo.tooltip": "Forecast User",
-  "april_fools": "April Fools \uD83E\uDD21",
-  "april_fools_desc": "Enable April Fools fun in the matchroom."
+  "loading": "Loading...",
+  "discord_cta": "Join our Discord",
+  "auth_hint": "Get your badge"
 }

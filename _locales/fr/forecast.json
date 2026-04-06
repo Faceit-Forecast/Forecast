@@ -81,6 +81,7 @@
   "logout": "Déconnexion",
   "account": "Compte",
   "fcUserLogo.tooltip": "Utilisateur Forecast",
-  "april_fools": "Poisson d'avril \uD83E\uDD21",
-  "april_fools_desc": "Activer les blagues du 1er avril dans le matchroom."
+  "loading": "Chargement...",
+  "discord_cta": "Rejoignez notre Discord",
+"auth_hint": "Obtenez votre badge"
 }

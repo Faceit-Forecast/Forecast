@@ -4,42 +4,6 @@
 
 let partySlots = new Map();
 
-const APRIL_FOOLS_SVG = `<span style="display:inline-block"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><g clip-path="url(#af)"><path fill="#111111" d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12"/><path fill="#cdcdcd" fill-opacity=".1" fill-rule="evenodd" d="M16.686 17.467a7.2 7.2 0 1 0-9.371 0l-1.563 1.822A9.58 9.58 0 0 1 2.4 12a9.6 9.6 0 1 1 19.2 0 9.58 9.58 0 0 1-3.352 7.29z" clip-rule="evenodd"/><path class="af-accent" fill-rule="evenodd" d="M16.686 17.467a7.2 7.2 0 1 0-9.371 0l-1.563 1.822A9.58 9.58 0 0 1 2.4 12a9.6 9.6 0 1 1 19.2 0 9.58 9.58 0 0 1-3.352 7.29z" clip-rule="evenodd"/><path class="af-accent" d="M11.299 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-1.304 3.081c.236-.369.192-.29.49-.526v-.764c-.49.209-.96.676-1.149 1a2.856 2.856 0 0 0 2.072 4.273c.75.104 1.891-.064 2.34-.792l-.449-.527c-.271.343-.46.414-.88.54a2.142 2.142 0 0 1-2.424-3.204"/><path class="af-accent-stroke" stroke-width=".75" fill="none" d="M11.299 14V9m2.5 3h-2.5m0 1.65h2l1 2 1-.5"/></g><defs><clipPath id="af"><path fill="#fff" d="M0 0h24v24H0z"/></clipPath></defs></svg></span>`;
-
-function isAprilFoolsDay() {
-    const now = new Date();
-    return now.getMonth() === 3 && now.getDate() === 1;
-}
-
-function getAprilFoolsTargetIndex(matchId) {
-    let hash = 0;
-    for (let i = 0; i < matchId.length; i++) {
-        hash = ((hash << 5) - hash) + matchId.charCodeAt(i);
-        hash |= 0;
-    }
-    return Math.abs(hash) % 10;
-}
-
-function createAprilFoolsIcon(width, height, color) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = APRIL_FOOLS_SVG.trim();
-    const span = tmp.firstChild;
-    span.style.width = `${width}px`;
-    span.style.height = `${height}px`;
-    const svg = span.querySelector('svg');
-    if (svg) {
-        svg.setAttribute('width', `${width}`);
-        svg.setAttribute('height', `${height}`);
-    }
-    if (color) {
-        span.querySelectorAll('.af-accent').forEach(el => el.setAttribute('fill', color));
-        span.querySelectorAll('.af-accent-stroke').forEach(el => el.setAttribute('stroke', color));
-    }
-    return span;
-}
-
-let aprilFoolsPlayerIndex = -1;
-let aprilFoolsTargetNick = null;
 
 class PartySlot {
     nick = null
@@ -244,28 +208,6 @@ const newLevelsModule = new Module("eloranking", async () => {
     if (lobby.pageType === "matchroom") {
         let matchId = extractMatchId();
 
-        if (matchId && isAprilFoolsDay()) {
-            const afEnabled = await isSettingEnabled('aprilFools', true);
-            if (afEnabled) {
-                const afMatchData = await fetchMatchStats(matchId);
-                if (afMatchData && afMatchData.teams) {
-                    const allNicks = [
-                        ...(afMatchData.teams.faction1?.roster || []).map(p => p.nickname),
-                        ...(afMatchData.teams.faction2?.roster || []).map(p => p.nickname)
-                    ];
-                    if (allNicks.length > 0) {
-                        aprilFoolsPlayerIndex = getAprilFoolsTargetIndex(matchId) % allNicks.length;
-                        aprilFoolsTargetNick = allNicks[aprilFoolsPlayerIndex];
-                    }
-                }
-            } else {
-                aprilFoolsPlayerIndex = -1;
-                aprilFoolsTargetNick = null;
-            }
-        } else {
-            aprilFoolsPlayerIndex = -1;
-            aprilFoolsTargetNick = null;
-        }
 
         let selector = '[class*=Subtitle__Holder]';
         let selector3 = 'div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div[class*=styles__MvpCardHolder] > div > div[class*=Tag__Container] > span'
@@ -296,15 +238,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             let elo = Number.parseInt(eloNode.innerText, 10);
             let currentLevel = getLevel(elo, gameType);
 
-            let newIcon;
-            if (aprilFoolsTargetNick) {
-                const holder = eloNode.closest('[class*=styles__Holder]');
-                const nickEl = holder?.querySelector('[class*=Nickname__Name]');
-                if (nickEl && nickEl.textContent.trim() === aprilFoolsTargetNick) {
-                    newIcon = createAprilFoolsIcon(32, 32, getLevelColor(currentLevel));
-                }
-            }
-            if (!newIcon) newIcon = getLevelIcon(currentLevel).firstChild;
+            let newIcon = getLevelIcon(currentLevel).firstChild;
 
             newIcon.id = `${levelIconId}${currentLevel}`;
             appendTo(newIcon, eloNodeParent);
@@ -371,7 +305,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             new MutationObserver(updateIcon).observe(node, observeOptions);
         });
 
-        let selector2 = '[class*=styles__MainSection] > div:nth-child(3) > table > tbody > a > tr > td:nth-child(3) > div > div:nth-child(2) > span';
+        let selector2 = '[class*=styles__MainSection] > table > tbody > a > tr > td:nth-child(3) > div > div:nth-child(2) > span';
         newLevelsModule.doAfterAllNodeAppear(selector2, async (node) => {
             let levelContainer = node.parentElement.parentElement
             let elo = Number.parseInt(node.textContent.replace(/[\s,._]/g, ''), 10);
@@ -391,7 +325,7 @@ const newLevelsModule = new Module("eloranking", async () => {
 
             const chart = getNthParent(node, 4);
             const chartParent = chart.parentElement;
-            if (Array.from(chartParent.children)[2] !== chart) return;
+            if (Array.from(chartParent.children)[1] !== chart) return;
             const nick = extractPlayerNick();
             const playerStatistic = await fetchPlayerStatsByNickName(nick);
             const {gameStats, gameType} = getStatistic(playerStatistic);
@@ -450,7 +384,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             let rowParent = row.parentElement
             let chart = getNthParent(row, 4)
             let chartParent = chart.parentElement
-            if (Array.from(chartParent.children)[2] !== chart) return
+            if (Array.from(chartParent.children)[1] !== chart) return
             let rowArray = Array.from(rowParent.children)
             if (rowArray[0] !== row && rowArray[2] !== row) return
 
@@ -509,7 +443,7 @@ const newLevelsModule = new Module("eloranking", async () => {
         });
     } else if (lobby.pageType === "matchmaking") {
         let selector = '[class*=Matchmaking__PlayHolder]';
-        let selectorMidLevel = 'main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > div:nth-child(1) > button > div > div:nth-child(1)'
+        let selectorMidLevel = 'main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > button > div > div:nth-child(1)'
         let selectorMidLevelLowerThanTen = 'main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div[class*=LevelWidget__IconWrapper]'
         newLevelsModule.doAfterNodeAppear(selectorMidLevel, (node) => {
             if (node.querySelector("[class*=elowidgeticon]")) return
@@ -589,7 +523,7 @@ const newLevelsModule = new Module("eloranking", async () => {
         function startPartySlotUpdater(table) {
             let isUpdating = false;
 
-            newLevelsModule.every(100, async () => {
+            newLevelsModule.every(250, async () => {
                 if (isUpdating) return;
 
                 isUpdating = true;

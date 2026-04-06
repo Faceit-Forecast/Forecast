@@ -28,7 +28,7 @@ async function resolveDomain() {
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 3000);
-        const res = await fetch(`${DOMAIN_URLS[DOMAIN_NET].api}/v2/extension/ping`, { signal: controller.signal });
+        const res = await fetch(`${DOMAIN_URLS[DOMAIN_NET].api}/v2/extension/resolve`, { signal: controller.signal });
         clearTimeout(timeout);
         if (res.ok) {
             await setActiveDomain(DOMAIN_NET);
@@ -179,7 +179,8 @@ async function handleAuthSuccess(state, user) {
     try {
         await BROWSER_API.runtime.sendMessage({
             type: 'auth_success',
-            user: user
+            user: user,
+            state: state
         });
     } catch (e) {
         console.debug('[Background] Could not notify popup (probably closed):', e.message);

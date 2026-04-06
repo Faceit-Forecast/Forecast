@@ -5,11 +5,72 @@
 const baseUrlV3 = "https://www.faceit.com/api/stats/v3";
 const baseUrlV4 = "https://open.faceit.com/data/v4";
 
+class ApiQueue {
+    constructor(rps) {
+        this.interval = 1000 / rps;
+        this.queues = new Map();
+    }
+
+    getEndpointKey(url) {
+        try {
+            const u = new URL(url);
+            const path = u.pathname
+                .replace(/\/1-[a-f0-9-]{36}/g, '/{id}')
+                .replace(/\/[a-f0-9-]{36}/g, '/{id}')
+                .replace(/\/[a-f0-9]{20,}/g, '/{id}');
+            return u.host + path;
+        } catch {
+            return 'default';
+        }
+    }
+
+    getQueue(key) {
+        if (!this.queues.has(key)) {
+            this.queues.set(key, { pending: [], lastCall: 0, running: false });
+        }
+        return this.queues.get(key);
+    }
+
+    enqueue(url, fn) {
+        const key = this.getEndpointKey(url);
+        const queue = this.getQueue(key);
+
+        return new Promise((resolve, reject) => {
+            queue.pending.push({ fn, resolve, reject });
+            this.process(key);
+        });
+    }
+
+    async process(key) {
+        const queue = this.getQueue(key);
+        if (queue.running || queue.pending.length === 0) return;
+
+        queue.running = true;
+
+        while (queue.pending.length > 0) {
+            const now = Date.now();
+            const wait = Math.max(0, queue.lastCall + this.interval - now);
+
+            if (wait > 0) await new Promise(r => setTimeout(r, wait));
+
+            const { fn, resolve, reject } = queue.pending.shift();
+            queue.lastCall = Date.now();
+
+            fn().then(resolve, reject);
+        }
+
+        queue.running = false;
+    }
+}
+
+const apiQueue = new ApiQueue(5);
+
 const playerDataCache = new Map();
 const playerGamesDataCache = new Map();
 const matchDataCache = new Map();
 const matchDataV3Cache = new Map();
 const matchDataStatsCache = new Map();
+const fetchInFlight = new Map();
 
 async function getLocalStorageCache(key) {
     try {
@@ -35,45 +96,63 @@ async function setLocalStorageCache(key, data, ttlMinutes) {
 }
 
 async function fetchInternal(url, errorMsg, acceptHeader = 'application/json, text/plain, */*') {
-    const res = await fetch(url, {
-        headers: {
-            'accept': acceptHeader,
-            'accept-language': 'ru,en-US;q=0.9,en;q=0.8',
-            'faceit-referer': 'web-next',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-origin',
-        },
-        credentials: 'include'
+    return apiQueue.enqueue(url, async () => {
+        const res = await fetch(url, {
+            headers: {
+                'accept': acceptHeader,
+                'accept-language': 'ru,en-US;q=0.9,en;q=0.8',
+                'faceit-referer': 'web-next',
+                'sec-fetch-dest': 'empty',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-site': 'same-origin',
+            },
+            credentials: 'include'
+        });
+
+        if (!res.ok) {
+            const errorText = await res.text();
+            error(`${errorMsg}: ${res.status} ${res.statusText}. Response: ${errorText}`);
+            return null;
+        }
+
+        return res.json();
     });
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        error(`${errorMsg}: ${res.status} ${res.statusText}. Response: ${errorText}`);
-        return null;
-    }
-
-    return res.json();
 }
 
 async function fetchV4(url, errorMsg) {
-    const apiKey = await getApiKey();
-    const res = await fetch(url, {
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-    });
+    return apiQueue.enqueue(url, async () => {
+        const apiKey = await getApiKey();
+        const res = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include'
+        });
 
-    if (!res.ok) {
-        error(`${errorMsg}: ${res.statusText}`);
-        return null;
-    }
-    return res.json();
+        if (!res.ok) {
+            error(`${errorMsg}: ${res.statusText}`);
+            return null;
+        }
+        return res.json();
+    });
 }
 
 const fetchV3 = (url, errorMsg) => fetchInternal(url, errorMsg, 'application/json, text/plain, */*');
+
+async function fetchWithFallback(url, errorMsg, relativeFallbackUrl) {
+    try {
+        return await fetchV4(url, errorMsg);
+    } catch (e) {
+        console.warn(`Faceit API failed for ${url}, trying fallback`);
+        const base = await ensureFallbackBaseUrl();
+        if (!base) {
+            throw e;
+        }
+        const fallbackUrl = base + relativeFallbackUrl;
+        return await fetchFC(fallbackUrl);
+    }
+}
 
 async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, fallbackUrl = null, validator = null) {
     if (cache.has(url)) {
@@ -88,18 +167,36 @@ async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, 
         return localData;
     }
 
-    const data = fallbackUrl ? await fetchWithFallback(url, errorMsg, fallbackUrl) : await fetchFn(url, errorMsg);
-    if (data != null) {
-        cache.set(url, data);
-        if (!validator || validator(data)) {
-            await setLocalStorageCache(localKey, data, ttlMinutes);
-        }
+    if (fetchInFlight.has(url)) {
+        return fetchInFlight.get(url);
     }
-    return data;
+
+    const promise = (async () => {
+        const data = fallbackUrl ? await fetchWithFallback(url, errorMsg, fallbackUrl) : await fetchFn(url, errorMsg);
+        if (data != null) {
+            cache.set(url, data);
+            if (!validator || validator(data)) {
+                await setLocalStorageCache(localKey, data, ttlMinutes);
+            }
+        }
+        return data;
+    })();
+
+    fetchInFlight.set(url, promise);
+    promise.finally(() => fetchInFlight.delete(url));
+
+    return promise;
 }
 
 const fetchV4Cached = (cache, url, errorMsg, localKey, ttlMinutes, fallbackUrl) => fetchCached(cache, url, errorMsg, fetchV4, localKey, ttlMinutes, fallbackUrl);
 const fetchV3Cached = (cache, url, errorMsg, localKey, ttlMinutes, validator = null) => fetchCached(cache, url, errorMsg, fetchV3, localKey, ttlMinutes, null, validator);
+
+function v3EloValidator(data) {
+    if (!data?.[0]?.teams) return false;
+    return data[0].teams.some(team =>
+        team.players.some(p => p.elo != null && p.elo > 0)
+    );
+}
 
 async function fetchMatchStats(matchId) {
     return fetchV4Cached(
@@ -107,7 +204,7 @@ async function fetchMatchStats(matchId) {
         `${baseUrlV4}/matches/${matchId}`,
         `Error when retrieving match statistics by ID ${matchId}`,
         `match_${matchId}`,
-        2880,
+        4320,
         `matches/${matchId}`
     );
 }
@@ -118,7 +215,7 @@ async function fetchMatchStatsDetailed(matchId) {
         `${baseUrlV4}/matches/${matchId}/stats`,
         `Error when retrieving detailed match statistics by ID: ${matchId}`,
         `match_stats_${matchId}`,
-        2880,
+        4320,
         `matches/${matchId}/stats`
     );
 }
@@ -132,7 +229,7 @@ async function fetchPlayerInGameStats(playerId, game, matchAmount = 30, to = 0, 
         url,
         `Error when requesting player game data by ID: ${playerId}`,
         `player_games_${playerId}_${game}_${matchAmount}_${to}_${from}`,
-        1,
+        5,
         `players/${playerId}/games/${game}/stats?limit=${matchAmount}${param}${param1}`
     );
 }
@@ -150,7 +247,7 @@ async function fetchPlayerStatsById(playerId) {
 
 async function fetchPlayerStatsByNickName(nickname) {
     const url = `${baseUrlV4}/players?nickname=${encodeURIComponent(nickname)}`;
-    return fetchV4Cached(
+    const data = await fetchV4Cached(
         playerDataCache,
         url,
         `Error when requesting player data by nickname: ${nickname}`,
@@ -158,13 +255,13 @@ async function fetchPlayerStatsByNickName(nickname) {
         1,
         `players?nickname=${encodeURIComponent(nickname)}`
     );
-}
-
-function v3EloValidator(data) {
-    if (!data?.[0]?.teams) return false;
-    return data[0].teams.some(team =>
-        team.players.some(p => p.elo != null && p.elo > 0)
-    );
+    if (data && data.player_id) {
+        const idUrl = `${baseUrlV4}/players/${data.player_id}`;
+        if (!playerDataCache.has(idUrl)) {
+            playerDataCache.set(idUrl, data);
+        }
+    }
+    return data;
 }
 
 async function fetchV3MatchStats(matchId) {
@@ -173,7 +270,7 @@ async function fetchV3MatchStats(matchId) {
         `${baseUrlV3}/matches/${matchId}`,
         `Error when retrieving V3 match statistics by ID: ${matchId}`,
         `match_v3_${matchId}`,
-        2880,
+        4320,
         v3EloValidator
     );
 }
@@ -209,16 +306,6 @@ function extractLanguage() {
     return match ? match[1] : null;
 }
 
-async function getApiKey() {
-    let apiKey = getCookie("forecast-api-key");
-    if (!apiKey) {
-        const data = await fetch("https://raw.githubusercontent.com/Faceit-Forecast/Forecast/refs/heads/master/api-key");
-        apiKey = await data.text();
-        setCookie("forecast-api-key", apiKey, 5);
-    }
-    return apiKey;
-}
-
 function setCookie(name, value, minutes) {
     const date = new Date();
     date.setTime(date.getTime() + (minutes * 60 * 1000));
@@ -238,16 +325,11 @@ function getCookie(name) {
     return null;
 }
 
-async function fetchWithFallback(url, errorMsg, relativeFallbackUrl) {
-    try {
-        return await fetchV4(url, errorMsg);
-    } catch (e) {
-        console.warn(`Faceit API failed for ${url}, trying fallback`);
-        const base = await ensureFallbackBaseUrl();
-        if (!base) {
-            throw e;
-        }
-        const fallbackUrl = base + relativeFallbackUrl;
-        return await fetchFC(fallbackUrl);
-    }
+async function getApiKey() {
+    const cached = await getLocalStorageCache('forecast-api-key');
+    if (cached) return cached;
+    const data = await fetch("https://raw.githubusercontent.com/Faceit-Forecast/Forecast/refs/heads/master/api-key");
+    const apiKey = (await data.text()).trim();
+    await setLocalStorageCache('forecast-api-key', apiKey, 5);
+    return apiKey;
 }

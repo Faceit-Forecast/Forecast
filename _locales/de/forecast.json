@@ -1,4 +1,4 @@
-{
+﻿{
   "player_stats": "Spieler-Stats",
   "level": "Level",
   "level_progress": "Level-Fortschritt",
@@ -81,6 +81,7 @@
   "logout": "Abmelden",
   "account": "Konto",
   "fcUserLogo.tooltip": "Forecast-Nutzer",
-  "april_fools": "Aprilscherz \uD83E\uDD21",
-  "april_fools_desc": "Aprilscherze im Matchroom aktivieren."
+  "loading": "Laden...",
+  "discord_cta": "Unserem Discord beitreten",
+  "auth_hint": "Verknüpfe dein FACEIT-Konto, um ein personalisiertes Abzeichen zu erhalten"
 }

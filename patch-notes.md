@@ -1,3 +1,14 @@
+[1.7.12] Stability & Auth Improvements
+Added API rate limiting to prevent FACEIT request throttling
+Added Discord community link in settings
+Added tooltip hint for FACEIT authorization
+Improved match history to automatically detect column layout changes
+Improved match history cache lifetime and cleanup logic
+Improved authorization session handling and reliability
+Improved server connection checks for faster domain switching
+Adapted selectors for latest FACEIT website updates
+Removed April Fools feature
+
 [1.7.11] Minor Fixes
 Revoked unused permissions
 

@@ -314,10 +314,9 @@ async function findUserCard(nickname, callback) {
     }, `${nickNodeSelector}-${nickname}`)
 }
 
-async function calculateStats(team, playerId, matchAmount, settings) {
+async function calculateStats(team, playerId, nickname, matchAmount, settings) {
     let gameType = extractGameType("cs2")
     let data = await fetchPlayerInGameStats(playerId, gameType, matchAmount);
-    let nickname = (await fetchPlayerStatsById(playerId))['nickname']
 
     if (!data.items || data.items.length === 0) {
         return;
@@ -377,10 +376,10 @@ async function displayWinRates(matchDetails, settings) {
     const matchAmount = settings.sliderValue;
 
     const team1Promises = team1["roster"].map(player =>
-        calculateStats(`${team1.name}$roster1`, player["player_id"], matchAmount, settings)
+        calculateStats(`${team1.name}$roster1`, player["player_id"], player["nickname"], matchAmount, settings)
     );
     const team2Promises = team2["roster"].map(player =>
-        calculateStats(`${team2.name}$roster2`, player["player_id"], matchAmount, settings)
+        calculateStats(`${team2.name}$roster2`, player["player_id"], player["nickname"], matchAmount, settings)
     );
 
     await Promise.all([...team1Promises, ...team2Promises]);

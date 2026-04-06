@@ -80,6 +80,7 @@
   "logout": "Выйти",
   "account": "Аккаунт",
   "fcUserLogo.tooltip": "Пользователь Forecast",
-  "april_fools": "1 Апреля \uD83E\uDD21",
-  "april_fools_desc": "Включить первоапрельские шутки в матчруме."
+  "loading": "Загрузка...",
+  "discord_cta": "Наш Discord сервер",
+  "auth_hint": "Получи свой значок"
 }

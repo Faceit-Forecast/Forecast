@@ -81,6 +81,7 @@
   "logout": "Вийти",
   "account": "Акаунт",
   "fcUserLogo.tooltip": "Користувач Forecast",
-  "april_fools": "1 Квітня \uD83E\uDD21",
-  "april_fools_desc": "Увімкнути першоквітневі жарти в матчрумі."
+  "loading": "Завантаження...",
+  "discord_cta": "Наш Discord сервер",
+  "auth_hint": "Отримай свій значок"
 }

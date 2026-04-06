@@ -6,7 +6,6 @@ let previousUrl = "";
 let previousLobby = null;
 
 const lobbyModules = [
-    { pages: ['*'], module: serviceModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['*'], module: integrationsModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['*'], module: newLevelsModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['*'], module: logoSidebarModule, isEnabled: null, isEnabledByDefault: true },
@@ -20,7 +19,6 @@ const lobbyModules = [
 async function initExtension() {
     if (!(await isExtensionEnabled())) return
     await initializeMatchHistoryCache();
-    await loadMatchHistoryCache();
     initTemplates();
     await resourcesModule.produceOf("load");
     await i18nModule.produceOf("load");
@@ -28,6 +26,8 @@ async function initExtension() {
     for (let lobbyModule of lobbyModules) {
         lobbyModule.isEnabled = await isSettingEnabled(lobbyModule.module.id, lobbyModule.isEnabledByDefault);
     }
+
+    startPingService();
 
     setInterval(async function () {
         try {

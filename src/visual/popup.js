@@ -479,6 +479,7 @@ const AuthManager = {
     authWindow: null,
     authWindowCheckInterval: null,
     authState: 'idle',
+    pendingState: null,
 
     async init() {
         try {
@@ -492,9 +493,11 @@ const AuthManager = {
                         isAuthenticated: true,
                         user: authData.user
                     };
+
+                    authData.expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000);
+                    await StorageUtils.set({[AUTH_STORAGE_KEY]: authData});
                 }
             }
-
 
         } catch (e) {
             console.warn('[Auth] Init failed:', e);
@@ -505,13 +508,13 @@ const AuthManager = {
 
     async getDeviceId() {
         return new Promise((resolve) => {
-            CLIENT_STORAGE_SYNC.get([DEVICE_ID_KEY], async (result) => {
+            CLIENT_API.storage.local.get([DEVICE_ID_KEY], async (result) => {
                 if (result[DEVICE_ID_KEY]) {
                     resolve(result[DEVICE_ID_KEY]);
                 } else {
                     const newDeviceId = await this.registerDevice();
                     if (newDeviceId) {
-                        CLIENT_STORAGE_SYNC.set({[DEVICE_ID_KEY]: newDeviceId});
+                        CLIENT_API.storage.local.set({[DEVICE_ID_KEY]: newDeviceId});
                     }
                     resolve(newDeviceId);
                 }
@@ -563,10 +566,10 @@ const AuthManager = {
             }
 
             const stateParam = this.generateState();
+            this.pendingState = stateParam;
             await StorageUtils.set({
                 'oauth_state': stateParam,
-                'auth_pending': true,
-                'auth_pending_timestamp': Date.now()
+                'auth_pending': true
             });
 
             const authHost = await getPopupAuthHost();
@@ -647,7 +650,12 @@ const AuthManager = {
                     headers: {'X-Device-ID': this.deviceId}
                 });
             }
-            await StorageUtils.set({[AUTH_STORAGE_KEY]: null});
+            await StorageUtils.set({
+                [AUTH_STORAGE_KEY]: null,
+                'auth_pending': false,
+                'oauth_state': null,
+                'auth_pending_timestamp': null
+            });
             this.state = {isAuthenticated: false, user: null};
             this.isLoggingIn = false;
             this.authState = 'idle';
@@ -683,21 +691,34 @@ const AuthManager = {
 
             authSection.innerHTML = `
                 <label data-i18n="account">${t('account')}</label>
-                <button id="loginBtn" class="${btnClass}">
-                    <div class="auth-btn-icon">
-                        <img src="icons/faceit.svg" class="faceit-icon" width="16" height="16" alt="">
-                        <img src="icons/loading.svg" class="loading-icon" width="16" height="16" alt="">
-                        <img src="icons/loaded.svg" class="success-icon" width="16" height="16" alt="">
-                        <img src="icons/error.svg" class="error-icon" width="16" height="16" alt="">
+                <div class="auth-controls">
+                    <div class="info-tooltip-wrapper">
+                        <div class="info-button" aria-label="Info">${UIBuilder.icon('info', 12, 12, 'info-icon')}</div>
+                        <div class="info-tooltip auth-tooltip">
+                            <div class="auth-tooltip-badge">
+                                <img src="icons/rawlogo.svg" width="20" height="20" alt="">
+                            </div>
+                            <p data-i18n="auth_hint">${t('auth_hint')}</p>
+                        </div>
                     </div>
-                    ${t('login')}
-                </button>
+                    <button id="loginBtn" class="${btnClass}">
+                        <div class="auth-btn-icon">
+                            <img src="icons/faceit.svg" class="faceit-icon" width="16" height="16" alt="">
+                            <img src="icons/loading.svg" class="loading-icon" width="16" height="16" alt="">
+                            <img src="icons/loaded.svg" class="success-icon" width="16" height="16" alt="">
+                            <img src="icons/error.svg" class="error-icon" width="16" height="16" alt="">
+                        </div>
+                        ${t('login')}
+                    </button>
+                </div>
             `;
 
             const loginBtn = document.getElementById('loginBtn');
             if (loginBtn && this.authState === 'idle') {
                 loginBtn.addEventListener('click', () => this.login());
             }
+
+            EventHandlers.setupTooltips(authSection);
         }
     },
 
@@ -831,7 +852,6 @@ const MapsConfigManager = {
 const SettingsManager = {
     defaults: {
         isEnabled: true,
-        aprilFools: true,
         sliderValue: 30,
         matchroom: true,
         teamMapWinrate: true,
@@ -855,7 +875,7 @@ const SettingsManager = {
 
     async load() {
         try {
-            const keys = ['isEnabled', 'aprilFools', 'sliderValue', 'matchroom', 'teamMapWinrate', 'playerMapWinrate',
+            const keys = ['isEnabled', 'sliderValue', 'matchroom', 'teamMapWinrate', 'playerMapWinrate',
                 'classicTeamView', 'classicPlayerView',
                 'eloranking', 'matchhistory', 'poscatcher',
                 'matchCounter', 'coloredStatsKDA', 'coloredStatsADR', 'coloredStatsKD',
@@ -880,7 +900,6 @@ const SettingsManager = {
     applySettings(settings) {
         const elements = {
             toggleExtension: 'isEnabled',
-            aprilFools: 'aprilFools',
             rangeSlider: 'sliderValue',
             matchroom: 'matchroom',
             eloranking: 'eloranking',
@@ -1296,10 +1315,9 @@ async function updateOnline() {
             const res = await fetch(`${apiUrl}/v1/extension/online`);
             if (!res.ok) throw new Error(`Error on fetching online: ${res.statusText}`);
             let online = await res.json();
-
-            const currentValue = Number.parseInt(onlineElement.textContent) || 0;
             const newValue = online.online;
 
+            const currentValue = Number.parseInt(onlineElement.textContent) || 0;
             if (currentValue !== newValue) {
                 animateValue(onlineElement, currentValue, newValue);
             }
@@ -1497,8 +1515,8 @@ const EventHandlers = {
         });
     },
 
-    setupTooltips() {
-        const infoButtons = document.querySelectorAll('.info-button');
+    setupTooltips(container = document) {
+        const infoButtons = container.querySelectorAll('.info-button');
 
         infoButtons.forEach(button => {
             const tooltip = button.parentElement?.querySelector('.info-tooltip')
@@ -1621,27 +1639,6 @@ function initDebugBadge() {
     setInterval(update, 2000);
 }
 
-function setupAprilFools() {
-    const container = document.getElementById('aprilFoolsContainer');
-    if (!container) return;
-
-    const toggle = document.getElementById('aprilFools');
-
-    const updateVisibility = () => {
-        const now = new Date();
-        const isAprilFirst = now.getMonth() === 3 && now.getDate() === 1;
-        container.style.display = isAprilFirst ? '' : 'none';
-    };
-
-    updateVisibility();
-    setInterval(updateVisibility, 60000);
-
-    if (toggle) {
-        toggle.addEventListener('change', async function () {
-            await SettingsManager.save({aprilFools: this.checked});
-        });
-    }
-}
 
 document.addEventListener("DOMContentLoaded", async () => {
     try {
@@ -1670,7 +1667,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         EventHandlers.setupMatchroomEventListeners();
         EventHandlers.setupTooltips();
         setupLanguageSelector();
-        setupAprilFools();
 
         initDebugBadge();
 
@@ -1681,7 +1677,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 CLIENT_RUNTIME.onMessage.addListener((message) => {
     if (message.type === 'auth_success') {
+        if (AuthManager.pendingState && message.state && message.state !== AuthManager.pendingState) {
+            console.warn('[Auth] Ignoring auth_success with mismatched state');
+            return;
+        }
+        AuthManager.pendingState = null;
         AuthManager.handleAuthSuccess(message.user);
+    } else if (message.type === 'auth_error') {
+        AuthManager.pendingState = null;
+        AuthManager.handleAuthError(message.error);
     } else if (message.type === 'transparent-bg') {
         document.body.style.backgroundColor = 'transparent'
     }

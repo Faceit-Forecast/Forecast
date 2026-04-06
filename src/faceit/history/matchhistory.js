@@ -2,21 +2,85 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
+
 const MATCHES_PER_LOAD = 30;
 
 const green = 'rgb(61,255,108)';
 const red = 'rgb(255, 0, 43)';
 const white = 'rgb(255, 255, 255)';
 
-const COLUMNS = {
-    map:   0,
-    score: 1,
-    elo:   2,
-    kda:   3,
-    adr:   4,
-    kd:    5,
-    kr:    6
-};
+function resolveColumns(row) {
+    const col = {};
+    const children = row?.children;
+    if (!children) return col;
+
+    const numericTds = [];
+
+    for (let i = 0; i < children.length; i++) {
+        const td = children[i];
+        if (td.classList.contains('fcr-fc') || td.classList.contains('avg-elo-fc')) continue;
+        if (td.querySelector('[class*="Score__Result"]')) {
+            col.score = td;
+        } else if (td.querySelector('[class*="EloValueContainer"], [class*="SkillIcon"]')) {
+            col.elo = td;
+        } else if (td.querySelector('img')) {
+            col.map = td;
+        } else {
+            const text = td.textContent?.trim() || '';
+            if (/\d+\s*\/\s*\d+\s*\/\s*\d+/.test(text)) {
+                col.kda = td;
+            } else if (/^\d+(\.\d+)?$/.test(text.replace(',', ''))) {
+                numericTds.push(td);
+            }
+        }
+    }
+
+    if (numericTds.length >= 3) {
+        col.adr = numericTds[0];
+        col.kd = numericTds[1];
+        col.kr = numericTds[2];
+    } else if (numericTds.length === 2) {
+        col.adr = numericTds[0];
+        col.kr = numericTds[1];
+    } else if (numericTds.length === 1) {
+        col.adr = numericTds[0];
+    }
+
+    return col;
+}
+
+function resolveHeaderColumns(headerRow, dataRow) {
+    const hcol = {};
+    if (!headerRow || !dataRow) return hcol;
+
+    const dataCells = Array.from(dataRow.children).filter(
+        td => !td.classList.contains('fcr-fc') && !td.classList.contains('avg-elo-fc')
+    );
+    const headerCells = Array.from(headerRow.children).filter(
+        th => !th.classList.contains('avg-elo-fc-header') && !th.classList.contains('fcr-fc-header')
+    );
+
+    const numericIndices = [];
+
+    for (let i = 0; i < dataCells.length; i++) {
+        const td = dataCells[i];
+        if (td.querySelector('[class*="EloValueContainer"], [class*="SkillIcon"]')) {
+            hcol.elo = headerCells[i] ?? null;
+        } else {
+            const text = td.textContent?.trim() || '';
+            if (!/\d+\s*\/\s*\d+\s*\/\s*\d+/.test(text) && !td.querySelector('img') && !td.querySelector('[class*="Score__Result"]') && /^\d+(\.\d+)?$/.test(text.replace(',', ''))) {
+                numericIndices.push(i);
+            }
+        }
+    }
+
+    const lastNumericIdx = numericIndices.length > 0 ? numericIndices[numericIndices.length - 1] : -1;
+    if (lastNumericIdx >= 0) {
+        hcol.kr = headerCells[lastNumericIdx] ?? null;
+    }
+
+    return hcol;
+}
 
 class MatchNodeChain {
     constructor() {
@@ -67,6 +131,12 @@ class MatchNodeByMatchStats {
         this.teamAvgElo = null;
         this.enemyAvgElo = null;
 
+        this.col = resolveColumns(this.node);
+
+        this.fcrNode = null;
+        this.avgEloNode = null;
+        this.setupPlaceholders();
+        this.setupStats();
         this.setupMatchCounterArrow()
     }
 
@@ -118,71 +188,21 @@ class MatchNodeByMatchStats {
         this.setupStatsToNode(playerId, cachedStats);
     }
 
-    setupStatsToNode(playerId, cachedStats) {
-        if (!this.matchStats) return;
+    setupPlaceholders() {
 
-        this.col = {};
-        for (const [name, index] of Object.entries(COLUMNS)) {
-            this.col[name] = this.node?.children[index] ?? null;
+        if (this.settings?.showFCR && this.col.kr && !this.node.querySelector('[class*="fcr-fc"]')) {
+            this.fcrNode = document.createElement("td");
+            this.fcrNode.textContent = '-';
+            this.fcrNode.style.color = white;
+            this.fcrNode.className = this.col.kr.className;
+            this.fcrNode.classList.add('fcr-fc');
+            this.col.kr.after(this.fcrNode);
+            matchHistoryModule.removalNode(this.fcrNode);
         }
 
-        if (this.col.score) {
-
-            this.col.score.parentElement.parentElement.style.overflow = "visible"
-
-            let popup = this.node.querySelector("[id*=extended-stats-node-]");
-            let tableNotExist = !popup;
-
-            if (tableNotExist) {
-                popup = MATCH_HISTORY_POPUP_TEMPLATE.cloneNode(true)
-                popup.id = this.nodeId
-            }
-
-            if (!this.popup) {
-                this.popup = new MatchroomPopup(popup, this.settings)
-                this.popup.attachToElement(cachedStats, playerId)
-            }
-
-            if (tableNotExist) {
-                this.col.score.querySelector('div').style.gap = 'unset'
-                this.col.score.querySelector('div').lastChild.style.justifyContent = "center";
-                this.col.score.querySelector('div').appendChild(popup);
-                matchHistoryModule.removalNode(popup)
-            }
-        }
-
-        if (this.settings?.showFCR) {
-            if (this.node.querySelector('[class*="fcr-fc"]')) return;
-            const rating = this.matchStats.Rating;
-            const ratingValue = parseFloat(rating);
-            let fcrText = rating !== null ? rating + '%' : '-';
-            let fcrNode = document.createElement("td");
-            fcrNode.textContent = fcrText;
-
-            if (this.settings?.coloredStatsFCR !== false && !isNaN(ratingValue)) {
-                if (ratingValue >= 20) {
-                    fcrNode.style.color = green;
-                } else if (ratingValue >= 15) {
-                    fcrNode.style.color = 'rgb(255, 200, 0)';
-                } else {
-                    fcrNode.style.color = red;
-                }
-            } else {
-                fcrNode.style.color = white;
-            }
-
-            if (this.col.kr) {
-                fcrNode.className = this.col.kr.className;
-                fcrNode.classList.add('fcr-fc');
-                this.col.kr.after(fcrNode);
-            }
-        }
-
-        if (this.settings?.showAVGElo) {
-            if (this.node.querySelector('[class*="avg-elo-fc"]')) return;
-
-            let avgEloNode = document.createElement("td");
-            avgEloNode.classList.add('avg-elo-fc');
+        if (this.settings?.showAVGElo && this.col.elo && !this.node.querySelector('[class*="avg-elo-fc"]')) {
+            this.avgEloNode = document.createElement("td");
+            this.avgEloNode.classList.add('avg-elo-fc');
 
             const cell = document.createElement("div");
             cell.className = "avg-elo-cell";
@@ -206,27 +226,79 @@ class MatchNodeByMatchStats {
 
             const teamVal = document.createElement("span");
             teamVal.className = "avg-elo-value avg-elo-value-team";
-            teamVal.textContent = this.teamAvgElo != null ? formatElo(this.teamAvgElo) : '-';
+            teamVal.textContent = '-';
 
             const enemyVal = document.createElement("span");
             enemyVal.className = "avg-elo-value avg-elo-value-enemy";
-            enemyVal.textContent = this.enemyAvgElo != null ? formatElo(this.enemyAvgElo) : '-';
+            enemyVal.textContent = '-';
 
             values.appendChild(teamVal);
             values.appendChild(enemyVal);
 
             cell.appendChild(badges);
             cell.appendChild(values);
-            avgEloNode.appendChild(cell);
+            this.avgEloNode.appendChild(cell);
 
-            if (this.col.elo) {
-                avgEloNode.className += ' ' + this.col.elo.className;
-                avgEloNode.classList.add('avg-elo-fc');
-                this.col.elo.after(avgEloNode);
+            this.avgEloNode.className += ' ' + this.col.elo.className;
+            this.avgEloNode.classList.add('avg-elo-fc');
+            this.col.elo.after(this.avgEloNode);
+            matchHistoryModule.removalNode(this.avgEloNode);
+        }
+    }
+
+    setupStatsToNode(playerId, cachedStats) {
+        if (!this.matchStats) return;
+
+        this.col = resolveColumns(this.node);
+
+        if (this.col.score) {
+            this.col.score.parentElement.parentElement.style.overflow = "visible"
+
+            let popup = this.node.querySelector("[id*=extended-stats-node-]");
+            let tableNotExist = !popup;
+
+            if (tableNotExist) {
+                popup = MATCH_HISTORY_POPUP_TEMPLATE.cloneNode(true)
+                popup.id = this.nodeId
+            }
+
+            if (!this.popup) {
+                this.popup = new MatchroomPopup(popup, this.settings)
+                this.popup.attachToElement(cachedStats, playerId)
+            }
+
+            if (tableNotExist) {
+                this.col.score.querySelector('div').style.gap = 'unset'
+                this.col.score.querySelector('div').lastChild.style.justifyContent = "center";
+                this.col.score.querySelector('div').appendChild(popup);
+                matchHistoryModule.removalNode(popup)
             }
         }
 
-        this.setupStats();
+        if (this.settings?.showFCR && this.fcrNode) {
+            const rating = this.matchStats.Rating;
+            const ratingValue = parseFloat(rating);
+            this.fcrNode.textContent = rating !== null ? rating + '%' : '-';
+
+            if (this.settings?.coloredStatsFCR !== false && !isNaN(ratingValue)) {
+                if (ratingValue >= 20) {
+                    this.fcrNode.style.color = green;
+                } else if (ratingValue >= 15) {
+                    this.fcrNode.style.color = 'rgb(255, 200, 0)';
+                } else {
+                    this.fcrNode.style.color = red;
+                }
+            } else {
+                this.fcrNode.style.color = white;
+            }
+        }
+
+        if (this.settings?.showAVGElo && this.avgEloNode) {
+            const teamVal = this.avgEloNode.querySelector('.avg-elo-value-team');
+            const enemyVal = this.avgEloNode.querySelector('.avg-elo-value-enemy');
+            if (teamVal) teamVal.textContent = this.teamAvgElo != null ? formatElo(this.teamAvgElo) : '-';
+            if (enemyVal) enemyVal.textContent = this.enemyAvgElo != null ? formatElo(this.enemyAvgElo) : '-';
+        }
     }
 
     setupStats() {
@@ -244,35 +316,35 @@ class MatchNodeByMatchStats {
         const shouldRound = this.settings?.roundedStats !== false;
 
         if (this.settings?.coloredStatsKDA !== false) {
-            const kdaWrapperNode = document.createElement('td');
-            const newKdaNode = createCompositeCell('div',[
+            const composite = createCompositeCell('div', [
                 {text: k, condition: kd >= 1.0},
                 {text: "/", condition: null, isSlash: true},
                 {text: d, condition: kd >= 1.0},
                 {text: "/", condition: null, isSlash: true},
                 {text: a, condition: null},
             ]);
-            kdaWrapperNode.className = kdaNode.className;
-            kdaWrapperNode.appendChild(newKdaNode)
-
-            matchHistoryModule.replaceNodeWith(kdaNode, kdaWrapperNode)
+            kdaNode.textContent = '';
+            kdaNode.appendChild(composite);
         }
 
-        if (this.settings?.coloredStatsADR !== false) {
-            const adr = parseNumber(adrNode?.innerText, true);
-            const adrDisplay = shouldRound ? adr.toFixed(1) : adrNode?.innerText;
-            matchHistoryModule.replaceNodeWithColored('td', adrNode, adrDisplay, adr >= 75);
+        if (this.settings?.coloredStatsADR !== false && adrNode) {
+            const adr = parseNumber(adrNode.innerText, true);
+            const adrDisplay = shouldRound ? adr.toFixed(1) : adrNode.innerText;
+            adrNode.textContent = adrDisplay;
+            adrNode.style.color = adr >= 75 ? green : red;
         }
 
-        if (this.settings?.coloredStatsKD !== false) {
-            const kdDisplay = shouldRound ? kd.toFixed(1) : kdNode?.innerText;
-            matchHistoryModule.replaceNodeWithColored('td', kdNode, kdDisplay, kd >= 1);
+        if (this.settings?.coloredStatsKD !== false && kdNode) {
+            const kdDisplay = shouldRound ? kd.toFixed(1) : kdNode.innerText;
+            kdNode.textContent = kdDisplay;
+            kdNode.style.color = kd >= 1 ? green : red;
         }
 
-        if (this.settings?.coloredStatsKR !== false) {
-            const kr = parseNumber(krNode?.innerText, true);
-            const krDisplay = shouldRound ? kr.toFixed(1) : krNode?.innerText;
-            matchHistoryModule.replaceNodeWithColored('td', krNode, krDisplay, kr >= 0.7);
+        if (this.settings?.coloredStatsKR !== false && krNode) {
+            const kr = parseNumber(krNode.innerText, true);
+            const krDisplay = shouldRound ? kr.toFixed(1) : krNode.innerText;
+            krNode.textContent = krDisplay;
+            krNode.style.color = kr >= 0.7 ? green : red;
         }
     }
 
@@ -339,6 +411,8 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     let tableElement;
     let tableBodyElement;
     let tableHeadElement;
+    let theadObserver = null;
+    let lastHeaderSignature = null;
 
     const matchChain = new MatchNodeChain();
 
@@ -349,6 +423,84 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     let suffix = `/scoreboard`;
     let selector = `tbody > a[href^="${prefix}"][href$="${suffix}"]:not([${tableRowAttribute}]):not(:has([id*=extended-stats-node]))`;
     const matchIdRegex = /\/room\/([^/]+)\/scoreboard/;
+
+    function getHeaderSignature(thead) {
+        if (!thead) return '';
+        const ths = thead.querySelectorAll('tr > th:not(.avg-elo-fc-header):not(.fcr-fc-header)');
+        return Array.from(ths).map(th => th.textContent.trim()).join('|');
+    }
+
+    async function insertHeaders(thead) {
+        const headerRow = thead.querySelector('tr');
+        if (!headerRow) return;
+
+        headerRow.querySelectorAll('.avg-elo-fc-header, .fcr-fc-header').forEach(el => el.remove());
+
+        const firstDataRow = tableElement.querySelector('tbody a tr');
+        const hcol = resolveHeaderColumns(headerRow, firstDataRow);
+        const _settings = await settings();
+
+        if (_settings.showAVGElo && hcol.elo && !headerRow.querySelector('.avg-elo-fc-header')) {
+            let headerAVGElo = document.createElement('th')
+            headerAVGElo.className = hcol.elo.className
+            headerAVGElo.classList.add('avg-elo-fc-header')
+            headerAVGElo.appendChild(document.createTextNode('AVG ELO'))
+            hcol.elo.after(headerAVGElo)
+        }
+
+        if (_settings.showFCR && hcol.kr && !headerRow.querySelector('.fcr-fc-header')) {
+            let headerFCR = document.createElement('th')
+            headerFCR.className = hcol.kr.className
+            headerFCR.classList.add('fcr-fc-header')
+            headerFCR.appendChild(document.createTextNode('FCR'))
+            hcol.kr.after(headerFCR)
+        }
+    }
+
+    async function reapplyAllRows() {
+        if (!tableElement || !tableElement.isConnected) return;
+
+        if (tableHeadElement) {
+            await insertHeaders(tableHeadElement);
+        }
+
+        let id = await playerId();
+
+        matchChain.nodes.forEach((matchNode, matchId) => {
+            const aLink = tableBodyElement?.querySelector(`a[href*="${matchId}"]`);
+            if (!aLink) return;
+            const tr = aLink.querySelector('tr');
+            if (!tr) return;
+
+            tr.querySelectorAll('.fcr-fc, .avg-elo-fc, [id*=extended-stats-node]').forEach(el => el.remove());
+
+            matchNode.node = tr;
+            matchNode.fcrNode = null;
+            matchNode.avgEloNode = null;
+            matchNode.popup = null;
+            matchNode.col = resolveColumns(tr);
+            matchNode.setupPlaceholders();
+            matchNode.setupStats();
+
+            if (matchNode.cachedStats) {
+                matchNode.setupStatsToNode(id, matchNode.cachedStats);
+            }
+        });
+    }
+
+    function setupTheadObserver(thead) {
+        if (theadObserver) theadObserver.disconnect();
+        lastHeaderSignature = getHeaderSignature(thead);
+
+        theadObserver = new MutationObserver(() => {
+            const newSig = getHeaderSignature(thead);
+            if (newSig !== lastHeaderSignature) {
+                lastHeaderSignature = newSig;
+                setTimeout(() => reapplyAllRows(), 50);
+            }
+        });
+        theadObserver.observe(thead, { childList: true, subtree: true });
+    }
 
     await matchHistoryModule.doAfterAllNodeAppearPack(selector, async function callback(nodes, attempt) {
         if (tableBodyElement && !tableBodyElement.isConnected
@@ -378,37 +530,14 @@ const matchHistoryModule = new Module("matchhistory", async () => {
             tableElement = getNthParent(nodesArr[0],2);
         }
         if (!tableElement) return;
-        if (!tableHeadElement) {
-            tableHeadElement = tableElement.querySelector("thead");
-            if (tableHeadElement) {
-                const headerRow = tableHeadElement.querySelector('tr');
-                if (headerRow) {
-                    const headerElo = headerRow.children[COLUMNS.elo];
-                    const headerKR = headerRow.children[COLUMNS.kr];
 
-                    if ((await settings()).showAVGElo && headerElo) {
-                        if (!tableHeadElement.querySelector('[class*="avg-elo-fc-header"]')) {
-                            let headerAVGElo = document.createElement('div')
-                            headerAVGElo.className = headerElo.className
-                            headerAVGElo.classList.add('avg-elo-fc-header')
-                            headerAVGElo.appendChild(document.createTextNode('AVG ELO'))
-                            headerElo.after(headerAVGElo)
-                        }
-                    }
-
-                    if ((await settings()).showFCR && headerKR) {
-                        if (!tableHeadElement.querySelector('[class*="fcr-fc-header"]')) {
-                            let headerFCR = document.createElement('div')
-                            headerFCR.className = headerKR.className
-                            headerFCR.classList.add('fcr-fc-header')
-                            headerFCR.appendChild(document.createTextNode('FCR'))
-                            headerKR.after(headerFCR)
-                        }
-                    }
-                }
-            }
+        tableHeadElement = tableElement.querySelector("thead");
+        if (tableHeadElement) {
+            await insertHeaders(tableHeadElement);
+            setupTheadObserver(tableHeadElement);
         }
-        if (!tableBodyElement) {
+
+        if (!tableBodyElement || !tableBodyElement.isConnected) {
             tableBodyElement = tableElement.querySelector("tbody");
         }
     }
@@ -463,7 +592,6 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         return batch;
     }
 
-
     function extractMatchId(node) {
         const match = node.href.match(matchIdRegex);
         return match[1];
@@ -472,17 +600,26 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     async function loadMatchStatsForBatch(batch) {
         let id = await playerId()
 
-        await Promise.all(batch.map(async node => {
-                const cachedStats = await getFromCacheOrFetch(
-                    node.matchId,
+        await Promise.all(batch.map(async matchNode => {
+            const cachedStats = await getFromCacheOrFetch(
+                matchNode.matchId,
+                null,
+                null
+            );
+
+            if (cachedStats) {
+                matchNode.loadMatchStats(id, cachedStats);
+            } else {
+                const fetchedStats = await getFromCacheOrFetch(
+                    matchNode.matchId,
                     fetchMatchStatsDetailed,
                     fetchV3MatchStats
                 );
-                if (cachedStats) {
-                    node.loadMatchStats(id, cachedStats);
+                if (fetchedStats) {
+                    matchNode.loadMatchStats(id, fetchedStats);
                 }
             }
-        ));
+        }));
     }
 }, async () => {});
 
@@ -521,4 +658,3 @@ function findTeamByPlayerId(teams, playerId) {
 function formatElo(value) {
     return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
 }
-

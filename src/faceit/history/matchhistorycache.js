@@ -5,7 +5,7 @@
 const forecastCacheKeyPrefix = "forecast-matchhistory"
 const cookieCacheId = "last-matchhistorycache-cleanup";
 const cleanUpPeriod = 86400000;
-const maxUnusedHours = 48;
+const maxUnusedHours = 72;
 const CACHE_VERSION = 5;
 
 const DB_NAME = 'faceit_matches';
@@ -16,12 +16,13 @@ const cacheMap = new Map();
 let db = null;
 
 function tryCleanCache() {
-    let nextCleanUpTime = Number.parseInt(getCookie(cookieCacheId), 10);
-    let currentTime = Date.now();
-    if (!nextCleanUpTime || nextCleanUpTime > currentTime) {
-        setCookie(cookieCacheId, currentTime + cleanUpPeriod, 1440);
-        cleanCache();
-    }
+    getLocalStorageCache(cookieCacheId).then(nextCleanUpTime => {
+        let currentTime = Date.now();
+        if (!nextCleanUpTime || nextCleanUpTime > currentTime) {
+            setLocalStorageCache(cookieCacheId, currentTime + cleanUpPeriod, 1440);
+            cleanCache();
+        }
+    });
 }
 
 async function initDB() {
@@ -47,38 +48,10 @@ async function initDB() {
 }
 
 function hasValidElo(entry) {
+    if (entry.eloOptional) return true;
     return entry.data?.rounds?.[0]?.teams?.every(team =>
         team.players.every(p => p.elo != null && p.elo > 0)
     );
-}
-
-async function loadMatchHistoryCache() {
-    if (!db) await initDB();
-
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
-
-        request.onsuccess = () => {
-            const matches = request.result;
-            let invalidated = 0;
-            matches.forEach(match => {
-                if (match.version === CACHE_VERSION && hasValidElo(match)) {
-                    cacheMap.set(`${forecastCacheKeyPrefix}::${match.matchId}`, match);
-                } else if (match.version === CACHE_VERSION && !hasValidElo(match)) {
-                    store.delete(match.matchId);
-                    invalidated++;
-                }
-            });
-            if (invalidated > 0) {
-                println(`Invalidated ${invalidated} cached matches with missing elo data`);
-            }
-            resolve();
-        };
-
-        request.onerror = () => reject(request.error);
-    });
 }
 
 function calculatePerformanceRating(stats, totalRounds, playerElo = null, teamContext = null) {
@@ -196,18 +169,16 @@ async function getFromCacheOrFetch(key, fetchDetailedStats, fetchV3Stats = null)
         const cachedData = cacheMap.get(cacheKey);
         if (cachedData.version === CACHE_VERSION && hasValidElo(cachedData)) {
             cachedData.lastUsed = Date.now();
-            await updateLastUsed(key, cachedData.lastUsed);
+            getFromDBAndTouch(key).catch(() => {});
             return cachedData.data;
         }
         cacheMap.delete(cacheKey);
     }
 
     try {
-        const cached = await getFromDB(key);
+        const cached = await getFromDBAndTouch(key);
         if (cached?.version === CACHE_VERSION && hasValidElo(cached)) {
-            cached.lastUsed = Date.now();
             cacheMap.set(cacheKey, cached);
-            await updateLastUsed(key, cached.lastUsed);
             return cached.data;
         }
         if (cached) {
@@ -216,6 +187,8 @@ async function getFromCacheOrFetch(key, fetchDetailedStats, fetchV3Stats = null)
     } catch (err) {
         error('Error reading from IndexedDB:', err);
     }
+
+    if (!fetchDetailedStats) return null;
 
     const detailedStats = await fetchDetailedStats(key);
     if (!detailedStats?.rounds?.[0]) return null;
@@ -363,6 +336,16 @@ async function getFromCacheOrFetch(key, fetchDetailedStats, fetchV3Stats = null)
         version: CACHE_VERSION
     };
 
+    const matchCreatedAt = v3Stats?.[0]?.created_at || v3Stats?.[0]?.date || 0;
+    const isOldMatch = matchCreatedAt > 0 && (Date.now() - matchCreatedAt) > 3 * 60 * 60 * 1000;
+    const hasElo = cachedValue.data?.rounds?.[0]?.teams?.every(team =>
+        team.players.every(p => p.elo != null && p.elo > 0)
+    );
+
+    if (isOldMatch && !hasElo) {
+        cachedValue.eloOptional = true;
+    }
+
     if (hasValidElo(cachedValue)) {
         saveToDb(cachedValue).catch(err => error('Error saving to IndexedDB:', err));
         cacheMap.set(cacheKey, cachedValue);
@@ -382,13 +365,20 @@ async function saveToDb(value) {
     });
 }
 
-async function getFromDB(key) {
+async function getFromDBAndTouch(key) {
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
         const request = store.get(key);
 
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            const data = request.result;
+            if (data) {
+                data.lastUsed = Date.now();
+                store.put(data);
+            }
+            resolve(data);
+        };
         request.onerror = () => reject(request.error);
     });
 }
@@ -400,24 +390,6 @@ async function deleteFromDB(key) {
         const request = store.delete(key);
 
         request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
-}
-
-async function updateLastUsed(key, timestamp) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.get(key);
-
-        request.onsuccess = () => {
-            const data = request.result;
-            if (data) {
-                data.lastUsed = timestamp;
-                store.put(data);
-                resolve();
-            }
-        };
         request.onerror = () => reject(request.error);
     });
 }
@@ -466,6 +438,5 @@ async function cleanCache() {
 async function initializeMatchHistoryCache() {
     await initDB().then(() => {
         tryCleanCache();
-        loadMatchHistoryCache();
     }).catch(error);
 }

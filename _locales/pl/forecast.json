@@ -81,6 +81,7 @@
   "logout": "Wyloguj",
   "account": "Konto",
   "fcUserLogo.tooltip": "Użytkownik Forecast",
-  "april_fools": "Prima Aprilis \uD83E\uDD21",
-  "april_fools_desc": "Włącz żarty primaaprilisowe w matchroomie."
+  "loading": "Ładowanie...",
+  "discord_cta": "Dołącz do naszego Discorda",
+  "auth_hint": "Zdobądź swoją odznakę"
 }
