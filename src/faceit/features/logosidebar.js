@@ -47,14 +47,14 @@ const logoSidebarModule = new Module("logoSidebar", async () => {
         return container;
     };
 
-    logoSidebarModule.doAfterNodeAppear('[class*=styles__TopContent]', (node) => {
+    logoSidebarModule.doAfterNodeAppear(sel('logoSidebar.topContent'), (node) => {
         if (document.getElementById("fc-logo-button")) return;
 
         const container = createLogoContainer(true);
         node.appendChild(container);
     });
 
-    logoSidebarModule.doAfterNodeAppear('[class*=styles__RightSideContainer]', (node) => {
+    logoSidebarModule.doAfterNodeAppear(sel('logoSidebar.rightSideContainer'), (node) => {
         if (document.getElementById("fc-logo-button")) return;
 
         const container = createLogoContainer();
@@ -126,10 +126,10 @@ function positionPopup(popupContainer) {
 }
 
 function detectLayoutType(logoButton) {
-    if (logoButton.closest('[class*=styles__RightSideContainer]')) {
+    if (logoButton.closest(sel('logoSidebar.rightSideContainer'))) {
         return 'rightSidebar';
     }
-    if (logoButton.closest('[class*=styles__TopContent]')) {
+    if (logoButton.closest(sel('logoSidebar.topContent'))) {
         return 'topMenu';
     }
     return 'default';

@@ -219,8 +219,8 @@ class Module {
     temporaryFaceitBugFix() {
         let existDialog = document.querySelector('[marked-as-bug]');
         if (existDialog) {
-            if (document.querySelector('[role="dialog"][data-dialog-type="LEAF"]')) {
-                this.doAfterNodeDisappear('[role="dialog"][data-dialog-type="LEAF"]', (node) => {
+            if (document.querySelector(sel('module.faceitBugDialog'))) {
+                this.doAfterNodeDisappear(sel('module.faceitBugDialog'), (node) => {
                     existDialog.removeAttribute("marked-as-bug")
                 })
             } else {
@@ -228,7 +228,7 @@ class Module {
             }
             return
         }
-        this.doAfterNodeAppear('[role="dialog"][data-dialog-type="LEAF"]', () => {
+        this.doAfterNodeAppear(sel('module.faceitBugDialog'), () => {
             let toMark = document.getElementById("canvas-body");
             if (toMark.hasAttribute("marked-as-bug")) return
             toMark.setAttribute("marked-as-bug", '');

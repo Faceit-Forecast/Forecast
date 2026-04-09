@@ -18,6 +18,10 @@ let SKILL_LEVELS_INFO_TABLE_TEMPLATE;
 let FORECAST_STYLES_TEMPLATE;
 
 function initTemplates() {
+    const processedPopupHtml = MATCH_HISTORY_POPUP_HTML.replace(
+        '__MATCHHISTORY_TABLE_ROW_SELECTOR__',
+        sel('matchhistory.tableRow') || 'tr[class*=MatchHistoryTableRow]'
+    );
     CHALLENGER_TEMPLATE = htmlToElement(CHALLENGER_HTML);
     LEVEL_TEMPLATES = new Map(
         Array.from({length: 20}, (_, i) => [i + 1, generateLevelIcon(i + 1)])
@@ -27,7 +31,7 @@ function initTemplates() {
     ELO_PROGRESS_BAR_SEPARATED_TEMPLATE = htmlToElement(ELO_PROGRESS_BAR_SEPARATED_HTML);
     LEVEL_PROGRESS_TABLE_TEMPLATE = htmlToElement(LEVEL_PROGRESS_TABLE_HTML);
     MATCH_COUNTER_ARROW_TEMPLATE = htmlToElement(MATCH_COUNTER_ARROW_HTML);
-    MATCH_HISTORY_POPUP_TEMPLATE = htmlToElement(MATCH_HISTORY_POPUP_HTML);
+    MATCH_HISTORY_POPUP_TEMPLATE = htmlToElement(processedPopupHtml);
     PLAYER_WINRATE_TABLE_TEMPLATE = htmlToElement(PLAYER_WINRATE_TABLE_HTML);
     TEAM_WINRATE_TABLE_TEMPLATE = htmlToElement(TEAM_WINRATE_TABLE_HTML);
     CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_PLAYER_WINRATE_TABLE_HTML);
@@ -1153,7 +1157,7 @@ const FORECAST_STYLES_HTML = `<style>
     visibility: visible;
 }
 
-tr[class*=MatchHistoryTableRow] {
+__MATCHHISTORY_TABLE_ROW_SELECTOR__ {
     background-color: transparent !important;
 }
 

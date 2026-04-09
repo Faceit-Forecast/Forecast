@@ -79,7 +79,7 @@ function insertAllLevelsToTable(table, currentLevel) {
 
 const rankingModule = new Module("eloranking", async () => {
     rankingModule.temporaryFaceitBugFix();
-    hideWithCSS(`[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]):has(+ [class*=forecast-statistic-table])`);
+    hideWithCSS(sel('ranking.hideSkillLevelsSection'));
     doAfterStatisticNodeAppear(async (node) => {
         node.parentElement.querySelector(`[class*=forecast-statistic-table]`)?.remove()
         let newNode = LEVEL_PROGRESS_TABLE_TEMPLATE.cloneNode(true)
@@ -175,10 +175,10 @@ function getBarProgress(elo, gameType) {
 }
 
 async function doAfterStatisticNodeAppear(callback) {
-    let progressTableSelector = '[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])'
+    let progressTableSelector = sel('ranking.progressTable')
 
     rankingModule.doAfterNodeAppear(progressTableSelector, async (node) => {
-        if (!node.parentElement?.parentElement?.parentElement?.matches || node.parentElement?.parentElement?.parentElement?.matches("[class*=SpotlightSearch__Content]")) return
+        if (!node.parentElement?.parentElement?.parentElement?.matches || node.parentElement?.parentElement?.parentElement?.matches(sel('ranking.spotlightSearch'))) return
         if (node.nodeType === Node.ELEMENT_NODE && !node.querySelector(`[class~="forecast-statistic-table-${rankingModule.sessionId}"]`)) {
             let newNode = document.createElement("div")
             appendTo(newNode, node);

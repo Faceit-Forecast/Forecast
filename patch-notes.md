@@ -1,3 +1,6 @@
+[1.7.13] Minor Fixes
+Minor bug fixes and stability improvements
+
 [1.7.12] Stability & Auth Improvements
 Added API rate limiting to prevent FACEIT request throttling
 Added Discord community link in settings

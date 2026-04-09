@@ -2,8 +2,24 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const baseUrlV3 = "https://www.faceit.com/api/stats/v3";
-const baseUrlV4 = "https://open.faceit.com/data/v4";
+let baseUrlV3 = "https://www.faceit.com/api/stats/v3";
+let baseUrlV4 = "https://open.faceit.com/data/v4";
+let _useProxy = false;
+
+function initApiEndpoints() {
+    const v3 = ep('faceit.baseUrlV3');
+    const v4 = ep('faceit.baseUrlV4');
+    if (v3) baseUrlV3 = v3;
+    if (v4) baseUrlV4 = v4;
+
+    const useProxy = ep('faceit.useProxy');
+    const proxyBaseUrl = ep('faceit.proxyBaseUrl');
+    if (useProxy && proxyBaseUrl) {
+        _useProxy = true;
+        baseUrlV3 = proxyBaseUrl + '/v3';
+        baseUrlV4 = proxyBaseUrl + '/v4';
+    }
+}
 
 class ApiQueue {
     constructor(rps) {
@@ -97,16 +113,25 @@ async function setLocalStorageCache(key, data, ttlMinutes) {
 
 async function fetchInternal(url, errorMsg, acceptHeader = 'application/json, text/plain, */*') {
     return apiQueue.enqueue(url, async () => {
+        const headers = {
+            'accept': acceptHeader,
+            'accept-language': 'ru,en-US;q=0.9,en;q=0.8',
+        };
+
+        if (_useProxy) {
+            headers['X-Extension-Version'] = EXTENSION_VERSION;
+            const deviceId = await getDeviceId();
+            if (deviceId) headers['X-Device-ID'] = deviceId;
+        } else {
+            headers['faceit-referer'] = 'web-next';
+            headers['sec-fetch-dest'] = 'empty';
+            headers['sec-fetch-mode'] = 'cors';
+            headers['sec-fetch-site'] = 'same-origin';
+        }
+
         const res = await fetch(url, {
-            headers: {
-                'accept': acceptHeader,
-                'accept-language': 'ru,en-US;q=0.9,en;q=0.8',
-                'faceit-referer': 'web-next',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'same-origin',
-            },
-            credentials: 'include'
+            headers,
+            credentials: _useProxy ? 'omit' : 'include'
         });
 
         if (!res.ok) {
@@ -121,13 +146,20 @@ async function fetchInternal(url, errorMsg, acceptHeader = 'application/json, te
 
 async function fetchV4(url, errorMsg) {
     return apiQueue.enqueue(url, async () => {
-        const apiKey = await getApiKey();
+        const headers = { 'Content-Type': 'application/json' };
+
+        if (_useProxy) {
+            headers['X-Extension-Version'] = EXTENSION_VERSION;
+            const deviceId = await getDeviceId();
+            if (deviceId) headers['X-Device-ID'] = deviceId;
+        } else {
+            const apiKey = await resolveAccessToken();
+            headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+
         const res = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include'
+            headers,
+            credentials: _useProxy ? 'omit' : 'include'
         });
 
         if (!res.ok) {
@@ -325,11 +357,27 @@ function getCookie(name) {
     return null;
 }
 
-async function getApiKey() {
+async function resolveAccessToken() {
+    if (_useProxy) return null;
     const cached = await getLocalStorageCache('forecast-api-key');
     if (cached) return cached;
+
+    // Try backend first
+    try {
+        const baseUrl = await getBaseUrlFC();
+        const res = await fetch(`${baseUrl}/v1/faceit/access-token`);
+        if (res.ok) {
+            const token = (await res.text()).trim();
+            if (token) {
+                await setLocalStorageCache('forecast-api-key', token, 5);
+                return token;
+            }
+        }
+    } catch (e) {}
+
+    // Fallback to GitHub
     const data = await fetch("https://raw.githubusercontent.com/Faceit-Forecast/Forecast/refs/heads/master/api-key");
-    const apiKey = (await data.text()).trim();
-    await setLocalStorageCache('forecast-api-key', apiKey, 5);
-    return apiKey;
+    const token = (await data.text()).trim();
+    await setLocalStorageCache('forecast-api-key', token, 5);
+    return token;
 }

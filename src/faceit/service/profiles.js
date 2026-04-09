@@ -11,13 +11,13 @@ const profilesModule = new Module("profiles", () => {
 
     let lobby = defineLobby(window.location.href);
 
-    let selectorProfileCard = "#canvas-body > div > div > aside > div[class*=styles__CardContent] > div[class*=Draggable__DraggableStyled] > div[class*=styles__Container] > h1";
+    let selectorProfileCard = sel('profiles.profileCard');
     profilesModule.doAfterNodeAppearWhenVisible(selectorProfileCard, async (node) => {
         const nickname = node.textContent;
         await addFCUserLogoIfRegisteredByNick(node.parentElement, nickname, 24, 24, true);
     });
 
-    let selectorProfileTooltipV2 = '[role="dialog"][id*="radix"] > div[class*=styles__FixedContainer] > div > a > h5'
+    let selectorProfileTooltipV2 = sel('profiles.profileTooltipV2');
     profilesModule.doAfterNodeAppearWhenVisible(selectorProfileTooltipV2, async (node) => {
         const nickname = node.textContent;
         const logo = await addFCUserLogoIfRegisteredByNick(getNthParent(node, 2), nickname, 20, 20, true);
@@ -28,7 +28,7 @@ const profilesModule = new Module("profiles", () => {
     });
 
     if (lobby.pageType === "matchroom") {
-        let selectorStatsMVP = 'div > div > div > div > div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div > div[class*=Draggable__DraggableStyled] > div > [class*=styles__Nickname]'
+        let selectorStatsMVP = sel('profiles.statsMVP');
         const statsMVPHandler = (selector) => {
             profilesModule.doAfterNodeAppearWhenVisible(selector, (node) => {
                 profilesModule.doAfter(() => node.textContent, async () => {
@@ -39,7 +39,7 @@ const profilesModule = new Module("profiles", () => {
         }
         statsMVPHandler(selectorStatsMVP);
 
-        let selectorMatchPlayer = 'div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div'
+        let selectorMatchPlayer = sel('profiles.matchPlayer');
         const matchId = extractMatchId();
         fetchMatchStats(matchId).then((matchDetails) => {
             const team1 = matchDetails["teams"]["faction1"];

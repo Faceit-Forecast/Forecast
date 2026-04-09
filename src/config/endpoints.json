@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "faceit": {
+    "baseUrlV3": "https://www.faceit.com/api/stats/v3",
+    "baseUrlV4": "https://open.faceit.com/data/v4",
+    "useProxy": false,
+    "proxyBaseUrl": null
+  },
+  "cdn": {
+    "paths": {
+      "mapsConfig": "/config/maps-config.json",
+      "selectorsConfig": "/config/selectors.json",
+      "endpointsConfig": "/config/endpoints.json",
+      "mapIcon": "/web/images/maps/48"
+    }
+  }
+}

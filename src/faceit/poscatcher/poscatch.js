@@ -2,7 +2,9 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const MAPS_CONFIG_URL_PATH_PC = '/config/maps-config.json';
+function getMapsConfigPath() {
+    return ep('cdn.paths.mapsConfig') || '/config/maps-config.json';
+}
 const MAPS_CONFIG_CACHE_KEY = 'maps-config-cache';
 const MAPS_CONFIG_CACHE_TTL = 1000 * 60 * 60 * 6;
 
@@ -38,7 +40,7 @@ async function loadMapsConfig() {
 
     try {
         const cdnUrl = await getCdnUrl();
-        const response = await fetch(cdnUrl + MAPS_CONFIG_URL_PATH_PC);
+        const response = await fetch(cdnUrl + getMapsConfigPath());
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         mapsConfig = await response.json();
 
@@ -53,7 +55,7 @@ async function loadMapsConfig() {
     } catch (error) {
         try {
             const fallbackCdnUrl = isUsingFallback() ? 'https://cdn.fforecast.net' : 'https://cdn.fforecast.dev';
-            const response = await fetch(fallbackCdnUrl + MAPS_CONFIG_URL_PATH_PC);
+            const response = await fetch(fallbackCdnUrl + getMapsConfigPath());
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             mapsConfig = await response.json();
 
@@ -90,9 +92,9 @@ const posCatcherModule = new Module("poscatcher", async () => {
     const matchId = extractMatchId();
     const cookieKey = `${matchId}_poscatched`
     if (getCookie(cookieKey)) return
-    let anchorSelector = "[name=info] > div[class*=Overview__Stack] > div[class*=Ready__Container]"
-    let mapselector = "[name=info] > div[class*=Overview__Stack] > div > div > div > div:nth-child(4) > div > div[class*=middleSlot] > div > div > span > span"
-    let chatSelector = "div[class*=styles__ChatSidebarContainer] > div > div:nth-child(2) > div[class*=ChatSection__ChatContainer] > div > div > div > div > div[class*=styles__MessageInputContainer] > div[class*=styles__InputWrapper] > div > div[class*=StyledTextArea__TextAreaWrapper] > textarea"
+    let anchorSelector = sel('poscatcher.anchor');
+    let mapselector = sel('poscatcher.mapSelector');
+    let chatSelector = sel('poscatcher.chatInput');
 
     posCatcherModule.doAfterNodeAppear(anchorSelector, () => {
         posCatcherModule.doAfterNodeAppear(mapselector, async (node) => {

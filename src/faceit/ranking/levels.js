@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
@@ -17,16 +17,16 @@ class PartySlot {
     }
 
     isShortStyle() {
-        let isShort = this.slotNode?.firstElementChild?.querySelector(`[class*='ButtonBase__Wrapper']`)?.querySelector(`[class*='PlayerCardListItem__Row-']`)
+        let isShort = this.slotNode?.firstElementChild?.querySelector(sel('levels.partySlot.buttonBaseWrapper'))?.querySelector(sel('levels.partySlot.playerCardRow'))
         return !!isShort
     }
 
     getNickNode(isShort) {
         let node
         if (isShort) {
-            node = this.slotNode?.firstElementChild?.querySelector('[class*=Nickname__Name]')
+            node = this.slotNode?.firstElementChild?.querySelector(sel('levels.partySlot.nicknameName'))
         } else {
-            node = this.slotNode?.firstElementChild?.querySelector('[role=button]')?.children[1]?.children[0]
+            node = this.slotNode?.firstElementChild?.querySelector(sel('levels.partySlot.roleButton'))?.children[1]?.children[0]
         }
         if (node?.innerText) this.isEmpty = false
         return node
@@ -35,9 +35,9 @@ class PartySlot {
     getLevelNode(isShort) {
         let node
         if (isShort) {
-            node = this.slotNode?.firstElementChild?.querySelector('[class*=SkillIcon__StyledSvg]')
+            node = this.slotNode?.firstElementChild?.querySelector(sel('levels.skillIconSvg'))
         } else {
-            node = this.slotNode?.firstElementChild?.querySelector('[role=button]')?.children[2]
+            node = this.slotNode?.firstElementChild?.querySelector(sel('levels.partySlot.roleButton'))?.children[2]
         }
         return node
     }
@@ -58,7 +58,7 @@ class PartySlot {
     removeOldIcon() {
         let levelNode = this.getLevelNode(this.isShort);
         if (!levelNode) return
-        let icon = levelNode.querySelector('[class*=SkillIcon__StyledSvg]')
+        let icon = levelNode.querySelector(sel('levels.skillIconSvg'))
         if (!icon) return;
         if (icon.style.display !== "none") {
             icon.style.display = "none"
@@ -111,7 +111,7 @@ class PartySlot {
     }
 
     getEloFromNode(levelNode) {
-        const textNode = levelNode.querySelector('[class*=styles__EloText]');
+        const textNode = levelNode.querySelector(sel('levels.eloText'));
         if (!textNode) return null;
 
         const eloText = textNode.innerText;
@@ -124,7 +124,7 @@ class PartySlot {
         if (this.isShort) {
             return levelNode;
         }
-        return levelNode.querySelector('[class*=SkillIcon__StyledSvg]');
+        return levelNode.querySelector(sel('levels.skillIconSvg'));
     }
 
     createNewIcon(level) {
@@ -156,20 +156,20 @@ class PartySlot {
 
 const newLevelsModule = new Module("eloranking", async () => {
     newLevelsModule.temporaryFaceitBugFix();
-    hideWithCSS(`[class*=SkillIcon__StyledSvg]:not([origin-levels]):not([origin-levels] *)`);
-    hideWithCSS(`[origin-levels] [hided-levels] [class*=SkillIcon__StyledSvg]`);
+    hideWithCSS(sel('levels.hideOriginalIcons'));
+    hideWithCSS(sel('levels.hideNestedIcons'));
 
     const styleElement = document.createElement("style");
-    styleElement.textContent = `span[id*=lvlicon]:has(+ [class*=SkillIcon__StyledSvg]) {margin-inline-end: 0 !important;}`;
+    styleElement.textContent = `${sel('levels.iconMarginFix')} {margin-inline-end: 0 !important;}`;
     document.head.appendChild(styleElement);
 
-    newLevelsModule.doAfterNodeAppear('div[class*=Content__StyledContentElement][data-dialog-type=TRAY]:not([marked-as-bug])', async (element) => {
+    newLevelsModule.doAfterNodeAppear(sel('levels.trayDialog'), async (element) => {
         let uniqueCheck = () => element?.parentElement?.querySelector('[id*=statistic-progress-bar]')
         if (!uniqueCheck()) {
-            await newLevelsModule.doAfterAsync(() => element.querySelector('[class*=styles__HeadingWrapper]'), async (result) => {
+            await newLevelsModule.doAfterAsync(() => element.querySelector(sel('levels.trayHeadingWrapper')), async (result) => {
                 if (uniqueCheck()) return
                 let nick = result.innerText
-                let target = result.parentElement.parentElement.querySelector('[class*=styles__BottomAreaWrapper]')
+                let target = result.parentElement.parentElement.querySelector(sel('levels.trayBottomArea'))
                 let newTable = ELO_PROGRESS_BAR_TEMPLATE.cloneNode(true)
                 setupBrandIcon(newTable, 24, 24)
                 newTable.id = "statistic-progress-bar"
@@ -187,7 +187,7 @@ const newLevelsModule = new Module("eloranking", async () => {
     let levelInfoTableId = `session-${sessionId}-level-info-table-container`
     let matchmakingHolderId = `session-${sessionId}-matchmaking-holder`
     let collectionLevelIconId = `session-${sessionId}-collection-level-icon`
-    let selector2 = '[role="dialog"] > div[class*=styles__ScrollableContainer] > div[class*=SkillLevel__StatsContainer] > div > span'
+    let selector2 = sel('levels.skillLevelEloSpan');
     let gameType = extractGameType("cs2");
 
     let preppendIconOnEloNodeFound = async (cardEloNode) => {
@@ -209,11 +209,11 @@ const newLevelsModule = new Module("eloranking", async () => {
         let matchId = extractMatchId();
 
 
-        let selector = '[class*=Subtitle__Holder]';
-        let selector3 = 'div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div[class*=styles__MvpCardHolder] > div > div[class*=Tag__Container] > span'
-        let selector4 = '#tooltip-portal > div > div > div > div:nth-child(3)'
-        let selector5 = 'div[class*=Scoreboard__Main] > div > div[class*=styles__Section] > div[class*=styles__ScrollWrapper] > table > tbody > tr > td:nth-child(2) > div > div'
-        let selector6 = 'div[class*=Scoreboard__Main] > div > div[class*=styles__ScrollWrapper] > table > tbody > tr > td:nth-child(2) > div > div'
+        let selector = sel('levels.matchroom.subtitle');
+        let selector3 = sel('levels.matchroom.scoreboardMvpTag');
+        let selector4 = sel('levels.matchroom.tooltipTeams');
+        let selector5 = sel('levels.matchroom.scoreboardElo1');
+        let selector6 = sel('levels.matchroom.scoreboardElo2');
         let matchStats;
 
         await newLevelsModule.doAfterAllNodeAppear(selector4, async (node) => {
@@ -245,9 +245,8 @@ const newLevelsModule = new Module("eloranking", async () => {
             newLevelsModule.removalNode(newIcon);
         });
     } else if (lobby.pageType === "profile") {
-        let primarySelector = '[class*=styles__MainSection] > [class*=styles__EloAndLeagueContainer] > div > [class*=styles__Flex]'
-        let eloTextSelector = `${primarySelector} > div[class*=styles__Flex] > span`;
-        let badgeHolderSelector = `${primarySelector} > div[class*=BadgeHolder]`
+        let primarySelector = sel('levels.profile.mainSection');
+        let eloTextSelector = sel('levels.profile.eloText').replace('{mainSection}', primarySelector);
         newLevelsModule.doAfterNodeAppear(eloTextSelector, async (eloText) => {
             const node = getNthParent(eloText, 2)
             let mainProfileLevelIconId = "main-profile-icon"
@@ -260,7 +259,7 @@ const newLevelsModule = new Module("eloranking", async () => {
                 )) return;
 
                 node.querySelector(`[class*='${mainProfileLevelIconId}']`)?.remove()
-                let badgeHolder = node.querySelector('[class*=BadgeHolder__Holder]')
+                let badgeHolder = node.querySelector(sel('levels.profile.badgeHolder'))
                 let elo = Number.parseInt(eloText.textContent.replace(/[\s,._]/g, ''), 10);
                 let currentLevel = getLevel(elo, lobby.gameType);
                 let icon = getLevelIcon(currentLevel);
@@ -305,7 +304,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             new MutationObserver(updateIcon).observe(node, observeOptions);
         });
 
-        let selector2 = '[class*=styles__MainSection] > table > tbody > a > tr > td:nth-child(3) > div > div:nth-child(2) > span';
+        let selector2 = sel('levels.profile.matchHistoryElo');
         newLevelsModule.doAfterAllNodeAppear(selector2, async (node) => {
             let levelContainer = node.parentElement.parentElement
             let elo = Number.parseInt(node.textContent.replace(/[\s,._]/g, ''), 10);
@@ -318,7 +317,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             levelContainer.prepend(icon)
         });
 
-        let selector3 = '[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Col]'
+        let selector3 = sel('levels.profile.chartRightPanelFooter');
         newLevelsModule.doAfterAllNodeAppear(selector3, async (node) => {
             let existing = node.parentElement.querySelector("[unique]")
             existing?.remove()
@@ -359,7 +358,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             }
         });
 
-        let selector4 = '[class*=styles__TickIconWrapper]'
+        let selector4 = sel('levels.profile.tickIconWrapper');
         newLevelsModule.doAfterAllNodeAppear(selector4, (node) => {
             if (node.querySelector("[unique]")) return
             let chart = getNthParent(node, 13)
@@ -373,11 +372,11 @@ const newLevelsModule = new Module("eloranking", async () => {
             levelIcon.setAttribute("unique", "")
             levelIcon.firstChild.style.width = "24px"
             levelIcon.firstChild.style.height = "24px"
-            node.querySelector("span[class*=styles__SkillIconWrapper]")?.remove()
+            node.querySelector(sel('levels.skillIconWrapper'))?.remove()
             node.prepend(levelIcon)
         })
     } else if (lobby.pageType === "stats") {
-        let selector3 = '[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Flex] > [class*=styles__Flex] > span'
+        let selector3 = sel('levels.stats.chartRightPanelFooterSpan');
         newLevelsModule.doAfterAllNodeAppear(selector3, async (node) => {
             if (node.parentElement.querySelector("[unique]")) return
             let row = getNthParent(node, 2)
@@ -413,7 +412,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             });
         })
 
-        let selector4 = '[class*=styles__TickIconWrapper]'
+        let selector4 = sel('levels.stats.tickIconWrapper');
         newLevelsModule.doAfterAllNodeAppear(selector4, (node) => {
             if (node.querySelector("[unique]")) return
             let chart = getNthParent(node, 13)
@@ -427,11 +426,12 @@ const newLevelsModule = new Module("eloranking", async () => {
             levelIcon.setAttribute("unique", "")
             levelIcon.firstChild.style.width = "24px"
             levelIcon.firstChild.style.height = "24px"
-            node.querySelector("span[class*=styles__SkillIconWrapper]")?.remove()
+            node.querySelector(sel('levels.skillIconWrapper'))?.remove()
             node.prepend(levelIcon)
         })
+
     } else if (lobby.pageType === "history") {
-        let selector = '[class*=styles__MainSection] > div > table > tbody > a > tr > td:nth-child(3) > div > div > span[class*=Text]'
+        let selector = sel('levels.history.eloSpan');
         newLevelsModule.doAfterAllNodeAppear(selector, (node) => {
             let levelContainer = node.parentElement.parentElement
             let elo = Number.parseInt(node.textContent.replace(/[\s,._]/g, ''), 10);
@@ -442,17 +442,17 @@ const newLevelsModule = new Module("eloranking", async () => {
             levelContainer.prepend(icon)
         });
     } else if (lobby.pageType === "matchmaking") {
-        let selector = '[class*=Matchmaking__PlayHolder]';
-        let selectorMidLevel = 'main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > button > div > div:nth-child(1)'
-        let selectorMidLevelLowerThanTen = 'main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div[class*=LevelWidget__IconWrapper]'
+        let selector = sel('levels.matchmaking.playHolder');
+        let selectorMidLevel = sel('levels.matchmaking.midLevel');
+        let selectorMidLevelLowerThanTen = sel('levels.matchmaking.midLevelLowerThanTen');
         newLevelsModule.doAfterNodeAppear(selectorMidLevel, (node) => {
             if (node.querySelector("[class*=elowidgeticon]")) return
 
-            let eloText = node.parentElement.querySelector('div:nth-child(2) > div:nth-child(2) > h5').innerText
+            let eloText = node.parentElement.querySelector(sel('levels.matchmaking.eloTextInHeader')).innerText
             let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10);
             let level = getLevel(elo, "cs2");
 
-            let lvlTextNode = node.parentElement.querySelector('div:nth-child(2) > div:nth-child(1) > span');
+            let lvlTextNode = node.parentElement.querySelector(sel('levels.matchmaking.levelTextInHeader'));
             let lvlText = lvlTextNode.innerText;
             let lvlTextOrigin = lvlText.match(/.+ (\d+)/)[1];
             lvlTextNode.innerText = lvlText.replace(lvlTextOrigin, level);
@@ -472,7 +472,7 @@ const newLevelsModule = new Module("eloranking", async () => {
 
         newLevelsModule.doAfterNodeAppear(selectorMidLevelLowerThanTen, (node) => {
             if (node.querySelector("[class*=elowidgeticon]")) return
-            let eloText = node.parentElement.querySelector('h1').innerText
+            let eloText = node.parentElement.querySelector(sel('levels.matchmaking.eloTextLowerThanTen')).innerText
             let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10);
             let level = getLevel(elo, "cs2");
             let levelIcon = getLevelIcon(level);
@@ -586,7 +586,7 @@ const newLevelsModule = new Module("eloranking", async () => {
             node.id = matchmakingHolderId;
         }
     } else if (lobby.pageType === "home") {
-        let selector = "#canvas-body > [class*=home__Container] > div > [class*=style__SocialGameFeed] > div > [class*=styles__PlayBlock] > [class*=styles__GameSelectorWrapper] > [class*=EloWidget__Wrapper] > [class*=styles__Flex] > span:not([value])"
+        let selector = sel('levels.home.eloWidget');
         newLevelsModule.doAfterNodeAppear(selector, async (node) => {
             let eloText = node.textContent
             let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10);
@@ -601,7 +601,7 @@ const newLevelsModule = new Module("eloranking", async () => {
     const lobbiesToHandleCards = ["profile","stats","parties","club","team_leagues","settings_profile"];
 
     if (lobbiesToHandleCards.includes(lobby.pageType)) {
-        let selector = '[class*=styles__EloText]';
+        let selector = sel('levels.cards.eloText');
         newLevelsModule.doAfterNodeAppear(selector,  (node) => {
             let uniqueCheck = () => node.matches(`[class*=${collectionLevelIconId}]`)
             if (uniqueCheck()) return
@@ -619,7 +619,7 @@ const newLevelsModule = new Module("eloranking", async () => {
         })
 
         if (lobby.pageType === "parties" || lobby.pageType === "club") {
-            let safeSelectors = ["[class*=styles__RequirementsHolder]", "[class*=styles__BadgesHolder]"]
+            let safeSelectors = [sel('levels.cards.requirementsHolder'), sel('levels.cards.badgesHolder')]
             safeSelectors.forEach((selector) => {
                 newLevelsModule.doAfterNodeAppear(selector, (node) => {
                     if (!node.hasAttribute("origin-levels")) node.setAttribute("origin-levels", '')
@@ -628,7 +628,7 @@ const newLevelsModule = new Module("eloranking", async () => {
         }
     }
 
-    let skillLevelsTableNodeSelector = "body > div.FuseModalPortal > div > div > div[class*=SkillLevelsInfo__ModalContent]"
+    let skillLevelsTableNodeSelector = sel('levels.skillLevelsTable')
     newLevelsModule.doAfterNodeAppear(skillLevelsTableNodeSelector, (node) => {
         let uniqueCheck = () => node?.parentElement?.querySelector('[id*=level-info-table-container]')
         if (!uniqueCheck()) {
@@ -768,7 +768,7 @@ async function insertStatsToEloBar(nick, table) {
     table.querySelector("[class~=max-elo-level]").innerText = `${max === Infinity ? '' : max}`
 
     let isLastLevel = currentLevel === levelRanges.length
-    table.querySelector("[class~=elo-to-de-or-up-grade]").innerText = `${min - elo - 1}/+${isLastLevel ? "∞" : max - elo + 1}`
+    table.querySelector("[class~=elo-to-de-or-up-grade]").innerText = `${min - elo - 1}/+${isLastLevel ? "в€ћ" : max - elo + 1}`
 
     const progressBar = table.querySelector("a > div > div.details > div:nth-child(2) > div.progress-container.elo-progress-bar-container > div");
 
@@ -794,11 +794,12 @@ async function insertStatsToEloBar(nick, table) {
 function doAfterSearchPlayerNodeAppear(callback) {
     let language = extractLanguage()
     const targetHrefPattern = new RegExp(`^/${language}/players/([a-zA-Z0-9-_]+)$`);
-    newLevelsModule.doAfterNodeAppear(`[href*="/${language}/players/"]:not([${newLevelsModule.dataProcessedAttribute}])`, (node) => {
+    let hrefSelector = sel('levels.searchPlayer.href', { lang: language, attr: newLevelsModule.dataProcessedAttribute });
+    newLevelsModule.doAfterNodeAppear(hrefSelector, (node) => {
         if (node.nodeType === Node.ELEMENT_NODE) {
             let parent = node?.parentElement
             if (!parent) return;
-            if (!parent.matches("[class*=styles__PlayersListContainer]")) return;
+            if (!parent.matches(sel('levels.playersListContainer'))) return;
             let doubleParent = parent.parentElement
             if (!doubleParent) return;
             const href = node.getAttribute('href');

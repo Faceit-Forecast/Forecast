@@ -73,7 +73,14 @@ async function fetchFC(url, options = {}) {
 
 async function fetchPing() {
     const baseUrl = await getBaseUrlFC();
-    await fetchFC(`${baseUrl}/v2/extension/ping`);
+    const result = await fetchFC(`${baseUrl}/v2/extension/ping`);
+    if (result && result.deviceInvalid) {
+        CLIENT_STORAGE.remove(['deviceId']);
+        const newDeviceId = await registerDevice();
+        if (newDeviceId) {
+            CLIENT_STORAGE.set({ deviceId: newDeviceId });
+        }
+    }
 }
 
 function sanitizeHtml(html) {

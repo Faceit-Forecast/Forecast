@@ -19,9 +19,9 @@ function resolveColumns(row) {
     for (let i = 0; i < children.length; i++) {
         const td = children[i];
         if (td.classList.contains('fcr-fc') || td.classList.contains('avg-elo-fc')) continue;
-        if (td.querySelector('[class*="Score__Result"]')) {
+        if (td.querySelector(sel('matchhistory.scoreResult'))) {
             col.score = td;
-        } else if (td.querySelector('[class*="EloValueContainer"], [class*="SkillIcon"]')) {
+        } else if (td.querySelector(sel('matchhistory.eloValueContainer'))) {
             col.elo = td;
         } else if (td.querySelector('img')) {
             col.map = td;
@@ -64,11 +64,11 @@ function resolveHeaderColumns(headerRow, dataRow) {
 
     for (let i = 0; i < dataCells.length; i++) {
         const td = dataCells[i];
-        if (td.querySelector('[class*="EloValueContainer"], [class*="SkillIcon"]')) {
+        if (td.querySelector(sel('matchhistory.eloValueContainer'))) {
             hcol.elo = headerCells[i] ?? null;
         } else {
             const text = td.textContent?.trim() || '';
-            if (!/\d+\s*\/\s*\d+\s*\/\s*\d+/.test(text) && !td.querySelector('img') && !td.querySelector('[class*="Score__Result"]') && /^\d+(\.\d+)?$/.test(text.replace(',', ''))) {
+            if (!/\d+\s*\/\s*\d+\s*\/\s*\d+/.test(text) && !td.querySelector('img') && !td.querySelector(sel('matchhistory.scoreResult')) && /^\d+(\.\d+)?$/.test(text.replace(',', ''))) {
                 numericIndices.push(i);
             }
         }
@@ -421,7 +421,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     let gameType = extractGameType("cs2");
     let prefix = `/${langKey}/${gameType}/room/`;
     let suffix = `/scoreboard`;
-    let selector = `tbody > a[href^="${prefix}"][href$="${suffix}"]:not([${tableRowAttribute}]):not(:has([id*=extended-stats-node]))`;
+    let selector = sel('matchhistory.matchRow', { prefix, suffix, attr: tableRowAttribute });
     const matchIdRegex = /\/room\/([^/]+)\/scoreboard/;
 
     function getHeaderSignature(thead) {
@@ -436,7 +436,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
         headerRow.querySelectorAll('.avg-elo-fc-header, .fcr-fc-header').forEach(el => el.remove());
 
-        const firstDataRow = tableElement.querySelector('tbody a tr');
+        const firstDataRow = tableElement.querySelector(sel('matchhistory.dataRowInTable') || 'tbody a tr');
         const hcol = resolveHeaderColumns(headerRow, firstDataRow);
         const _settings = await settings();
 

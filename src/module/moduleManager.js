@@ -18,6 +18,8 @@ const lobbyModules = [
 
 async function initExtension() {
     if (!(await isExtensionEnabled())) return
+    await loadConfigs();
+    initApiEndpoints();
     await initializeMatchHistoryCache();
     initTemplates();
     await resourcesModule.produceOf("load");

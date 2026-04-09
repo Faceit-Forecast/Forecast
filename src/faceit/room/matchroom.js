@@ -302,10 +302,10 @@ async function getMatchWinRates(matchId, maxRetries = 5, retryDelay = 3000) {
 }
 
 async function findUserCard(nickname, callback) {
-    let nickNodeSelector = 'div[class*=styles__PopoverStyled] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5'
+    let nickNodeSelector = sel('matchroom.nickNode');
     matchRoomModule.doAfterNodeAppearWithCondition(nickNodeSelector, (node) => node.innerText === nickname, (node) => {
         const parentNode = getNthParent(node, 4)
-        matchRoomModule.doAfter(() => parentNode.querySelector('div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]'), (ratingsNode) => {
+        matchRoomModule.doAfter(() => parentNode.querySelector(sel('matchroom.ratingsContainer')), (ratingsNode) => {
             if (!matchRoomModule.isProcessedNode(ratingsNode)) {
                 matchRoomModule.processedNode(ratingsNode);
                 callback(ratingsNode);
@@ -386,18 +386,18 @@ async function displayWinRates(matchDetails, settings) {
 
     if (settings.teamMapWinrate) {
         let teamTableNodeId = `team-table-${matchRoomModule.sessionId}`
-        await matchRoomModule.doAfterAllNodeAppear('[name="info"][class*=Overview__Column]', async (node) => {
+        await matchRoomModule.doAfterAllNodeAppear(sel('matchroom.teamTable'), async (node) => {
             let existingTeamTableNode = node.querySelector(`[class*=fc-team-panel]`);
             if (existingTeamTableNode) {
                 if (existingTeamTableNode.classList.contains(teamTableNodeId)) return
                 else existingTeamTableNode.remove()
             }
-            const targetNode = node.matches('[name="info"]') ? node : node.querySelector('[name="info"][class*=Overview__Column]');
+            const targetNode = node.matches(sel('matchroom.infoName')) ? node : node.querySelector(sel('matchroom.teamTable'));
             if (!targetNode) return;
             if (matchRoomModule.isProcessedNode(targetNode)) return;
             matchRoomModule.processedNode(targetNode);
 
-            let innerNode = targetNode.querySelector('[class*=forecast-banner]') ?? targetNode.querySelector('[class*=Overview__Stack]')
+            let innerNode = targetNode.querySelector('[class*=forecast-banner]') ?? targetNode.querySelector(sel('matchroom.overviewStack'))
 
             let template = settings.classicTeamView ? CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE : TEAM_WINRATE_TABLE_TEMPLATE;
             let htmlResource = template.cloneNode(true)

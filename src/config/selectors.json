@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "levels": {
+    "hideOriginalIcons": "[class*=SkillIcon__StyledSvg]:not([origin-levels]):not([origin-levels] *)",
+    "hideNestedIcons": "[origin-levels] [hided-levels] [class*=SkillIcon__StyledSvg]",
+    "iconMarginFix": "span[id*=lvlicon]:has(+ [class*=SkillIcon__StyledSvg])",
+    "eloText": "[class*=styles__EloText]",
+    "skillIconWrapper": "span[class*=styles__SkillIconWrapper]",
+    "playersListContainer": "[class*=styles__PlayersListContainer]",
+    "skillIconSvg": "[class*=SkillIcon__StyledSvg]",
+    "partySlot": {
+      "buttonBaseWrapper": "[class*='ButtonBase__Wrapper']",
+      "playerCardRow": "[class*='PlayerCardListItem__Row-']",
+      "nicknameName": "[class*=Nickname__Name]",
+      "roleButton": "[role=button]"
+    },
+    "trayDialog": "div[class*=Content__StyledContentElement][data-dialog-type=TRAY]:not([marked-as-bug])",
+    "trayHeadingWrapper": "[class*=styles__HeadingWrapper]",
+    "trayBottomArea": "[class*=styles__BottomAreaWrapper]",
+    "skillLevelEloSpan": "[role=\"dialog\"] > div[class*=styles__ScrollableContainer] > div[class*=SkillLevel__StatsContainer] > div > span",
+    "matchroom": {
+      "subtitle": "[class*=Subtitle__Holder]",
+      "scoreboardMvpTag": "div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div[class*=styles__MvpCardHolder] > div > div[class*=Tag__Container] > span",
+      "tooltipTeams": "#tooltip-portal > div > div > div > div:nth-child(3)",
+      "scoreboardElo1": "div[class*=Scoreboard__Main] > div > div[class*=styles__Section] > div[class*=styles__ScrollWrapper] > table > tbody > tr > td:nth-child(2) > div > div",
+      "scoreboardElo2": "div[class*=Scoreboard__Main] > div > div[class*=styles__ScrollWrapper] > table > tbody > tr > td:nth-child(2) > div > div"
+    },
+    "profile": {
+      "mainSection": "[class*=styles__MainSection] > [class*=styles__EloAndLeagueContainer] > div > [class*=styles__Flex]",
+      "eloText": "{mainSection} > [class*=styles__Flex] > [class*=styles__Flex] > span",
+      "matchHistoryElo": "[class*=styles__MainSection] > table > tbody > a > tr > td:nth-child(3) > div > div:nth-child(2) > span",
+      "chartRightPanelFooter": "[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Col]",
+      "tickIconWrapper": "[class*=styles__TickIconWrapper]",
+      "badgeHolder": "[class*=BadgeHolder__Holder]"
+    },
+    "stats": {
+      "chartRightPanelFooterSpan": "[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Flex] > [class*=styles__Flex] > span",
+      "tickIconWrapper": "[class*=styles__TickIconWrapper]"
+    },
+    "history": {
+      "eloSpan": "[class*=styles__MainSection] > div > table > tbody > a > tr > td:nth-child(3) > div > div > span[class*=Text]"
+    },
+    "matchmaking": {
+      "playHolder": "[class*=Matchmaking__PlayHolder]",
+      "midLevel": "main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > div > button > div > div:nth-child(1)",
+      "midLevelLowerThanTen": "main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div[class*=LevelWidget__IconWrapper]",
+      "eloTextInHeader": "div:nth-child(2) > div:nth-child(2) > h5",
+      "levelTextInHeader": "div:nth-child(2) > div:nth-child(1) > span",
+      "eloTextLowerThanTen": "h1"
+    },
+    "home": {
+      "eloWidget": "#canvas-body > [class*=home__Container] > div > [class*=style__SocialGameFeed] > div > [class*=styles__PlayBlock] > [class*=styles__GameSelectorWrapper] > [class*=EloWidget__Wrapper] > [class*=styles__Flex] > span:not([value])"
+    },
+    "cards": {
+      "eloText": "[class*=styles__EloText]",
+      "requirementsHolder": "[class*=styles__RequirementsHolder]",
+      "badgesHolder": "[class*=styles__BadgesHolder]"
+    },
+    "skillLevelsTable": "body > div.FuseModalPortal > div > div > div[class*=SkillLevelsInfo__ModalContent]",
+    "searchPlayer": {
+      "nicknameNode": "[class*=styles__PlayersListContainer]",
+      "href": "[href*=\"/$lang/players/\"]:not([$attr])"
+    }
+  },
+  "ranking": {
+    "hideSkillLevelsSection": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]):has(+ [class*=forecast-statistic-table])",
+    "progressTable": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])",
+    "spotlightSearch": "[class*=SpotlightSearch__Content]"
+  },
+  "profiles": {
+    "profileCard": "#canvas-body > div > div > aside > div[class*=styles__CardContent] > div[class*=Draggable__DraggableStyled] > div[class*=styles__Container] > h1",
+    "profileTooltipV2": "[role=\"dialog\"][id*=\"radix\"] > div[class*=styles__FixedContainer] > div > a > h5",
+    "statsMVP": "div > div > div > div > div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div > div[class*=Draggable__DraggableStyled] > div > [class*=styles__Nickname]",
+    "matchPlayer": "div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div"
+  },
+  "integrations": {
+    "statsSlot": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])",
+    "matchroomSlot": "div[name=\"info\"][class*=Overview__Column] > div[class*=Overview__Stack]"
+  },
+  "matchroom": {
+    "teamTable": "[name=\"info\"][class*=Overview__Column]",
+    "infoName": "[name=\"info\"]",
+    "nickNode": "div[class*=styles__PopoverStyled] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5",
+    "ratingsContainer": "div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]",
+    "bannerFallback": "[class*=forecast-banner]",
+    "overviewStack": "[class*=Overview__Stack]"
+  },
+  "poscatcher": {
+    "anchor": "[name=info] > div[class*=Overview__Stack] > div[class*=Ready__Container]",
+    "mapSelector": "[name=info] > div[class*=Overview__Stack] > div > div > div > div:nth-child(4) > div > div[class*=middleSlot] > div > div > span > span",
+    "chatInput": "div[class*=styles__ChatSidebarContainer] > div > div:nth-child(2) > div[class*=ChatSection__ChatContainer] > div > div > div > div > div[class*=styles__MessageInputContainer] > div[class*=styles__InputWrapper] > div > div[class*=StyledTextArea__TextAreaWrapper] > textarea"
+  },
+  "logoSidebar": {
+    "topContent": "[class*=styles__TopContent]",
+    "rightSideContainer": "[class*=styles__RightSideContainer]"
+  },
+  "module": {
+    "faceitBugDialog": "[role=\"dialog\"][data-dialog-type=\"LEAF\"]",
+    "canvasBody": "#canvas-body"
+  },
+  "matchhistory": {
+    "eloValueContainer": "[class*=EloValueContainer], [class*=SkillIcon]",
+    "scoreResult": "[class*=Score__Result]",
+    "tableRow": "tr[class*=MatchHistoryTableRow]",
+    "matchRow": "tbody > a[href^=\"$prefix\"][href$=\"$suffix\"]:not([$attr]):not(:has([id*=extended-stats-node]))",
+    "dataRowInTable": "tbody a tr"
+  }
+}

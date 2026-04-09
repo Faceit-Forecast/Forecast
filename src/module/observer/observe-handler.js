@@ -153,6 +153,7 @@ class ObserveHandler {
     }
 
     async doAfterNodeDisappear(selector, callback, id) {
+        if (!selector) return;
         this.observeDisappear(id || selector, async (node) => {
             if (node.matches?.(selector)) {
                 callback(node)
@@ -172,6 +173,7 @@ class ObserveHandler {
     }
 
     async doAfterNodeAppear(selector, callback, id) {
+        if (!selector) return;
         this.observeAppear(id || selector, async (node) => {
             if (node.matches?.(selector)) {
                 await callback(node);
@@ -190,6 +192,7 @@ class ObserveHandler {
     }
 
     async doAfterNodeAppearWithCondition(selector, conditionFn, callback, id) {
+        if (!selector) return;
         this.observeAppear(id || selector, async (node) => {
             if (node.matches?.(selector) && conditionFn(node)) {
                 await callback(node);
@@ -209,6 +212,7 @@ class ObserveHandler {
     }
 
     async doAfterNodeAppearWhenVisible(selector, callback, id) {
+        if (!selector) return;
         this.observeAppear(id || selector, async (node) => {
             if (node.matches?.(selector)) {
                 this.doWhenVisible(node, callback);
@@ -227,6 +231,7 @@ class ObserveHandler {
     }
 
     async doAfterAllNodeAppear(selector, callback, id) {
+        if (!selector) return;
         const taskInfo = this.registerSelectorTask(selector, callback, id);
 
         this.observeAppear(id || selector, async (node) => {
@@ -256,6 +261,7 @@ class ObserveHandler {
     }
 
     async doAfterAllNodeAppearWhenVisible(selector, callback, id) {
+        if (!selector) return;
         const taskInfo = this.registerSelectorTask(selector, callback, id);
 
         this.observeAppear(id || selector, async (node) => {
@@ -285,6 +291,7 @@ class ObserveHandler {
     }
 
     async doAfterAllNodeAppearPack(selector, callback, id) {
+        if (!selector) return;
         this.observeAppear(id || selector, async () => {
             let elements = document.querySelectorAll(selector);
             if (elements.length !== 0) await callback(elements);

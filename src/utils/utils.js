@@ -37,6 +37,7 @@ function hideNode(node) {
 }
 
 function hideWithCSS(selector) {
+    if (!selector) return;
     let style = document.getElementById("hideStyleElement");
     if (!style) {
         style = document.createElement('style');
