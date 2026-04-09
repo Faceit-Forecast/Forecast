@@ -362,7 +362,6 @@ async function resolveAccessToken() {
     const cached = await getLocalStorageCache('forecast-api-key');
     if (cached) return cached;
 
-    // Try backend first
     try {
         const baseUrl = await getBaseUrlFC();
         const res = await fetch(`${baseUrl}/v1/faceit/access-token`);
@@ -375,7 +374,6 @@ async function resolveAccessToken() {
         }
     } catch (e) {}
 
-    // Fallback to GitHub
     const data = await fetch("https://raw.githubusercontent.com/Faceit-Forecast/Forecast/refs/heads/master/api-key");
     const token = (await data.text()).trim();
     await setLocalStorageCache('forecast-api-key', token, 5);

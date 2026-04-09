@@ -2,7 +2,7 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 
-const CONFIG_CACHE_TTL = 1000 * 60 * 60 * 2; // 2 hours
+const CONFIG_CACHE_TTL = 1000 * 60 * 60 * 2;
 const SELECTORS_CACHE_KEY = 'forecast-selectors-config';
 const ENDPOINTS_CACHE_KEY = 'forecast-endpoints-config';
 const SELECTORS_CONFIG_PATH = '/config/selectors.json';
