@@ -71,9 +71,7 @@
         "src/visual/icons/rawlogo.svg",
         "src/visual/icons/loading.svg",
         "src/visual/icons/loaded.svg",
-        "src/visual/popup.html",
-        "src/visual/popup.js",
-        "src/visual/popup.styles"
+        "src/visual/popup.html"
       ],
       "matches": [
         "https://www.faceit.com/*"

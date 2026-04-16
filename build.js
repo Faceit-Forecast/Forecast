@@ -106,6 +106,7 @@ const config = {
             manifestMod: (manifest) => {
                 delete manifest.background.scripts;
                 delete manifest.background.type;
+                delete manifest.browser_specific_settings;
             }
         },
         firefox: {
@@ -207,7 +208,6 @@ function updateManifestForBundle(manifestPath, bundledFileName) {
         for (const resource of manifest.web_accessible_resources) {
             if (resource.resources) {
                 resource.resources = resource.resources.filter(r => !r.endsWith('.js'));
-                if (!resource.resources.includes(bundledFileName)) resource.resources.push(bundledFileName);
             }
         }
     }
