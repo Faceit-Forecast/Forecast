@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "levels": {
     "hideOriginalIcons": "[class*=SkillIcon__StyledSvg]:not([origin-levels]):not([origin-levels] *)",
     "hideNestedIcons": "[origin-levels] [hided-levels] [class*=SkillIcon__StyledSvg]",
@@ -28,7 +28,7 @@
     "profile": {
       "mainSection": "[class*=styles__MainSection] > [class*=styles__EloAndLeagueContainer] > div > [class*=styles__Flex]",
       "eloText": "{mainSection} > [class*=styles__Flex] > [class*=styles__Flex] > span",
-      "matchHistoryElo": "[class*=styles__MainSection] > table > tbody > a > tr > td:nth-child(3) > div > div:nth-child(2) > span",
+      "matchHistoryElo": "[class*=styles__MainSection] > table > tbody > a > tr > td:nth-child(3) > div > div:nth-child(2) > span, [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) > div > div:nth-child(2) > span",
       "chartRightPanelFooter": "[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Col]",
       "tickIconWrapper": "[class*=styles__TickIconWrapper]",
       "badgeHolder": "[class*=BadgeHolder__Holder]"
@@ -38,7 +38,7 @@
       "tickIconWrapper": "[class*=styles__TickIconWrapper]"
     },
     "history": {
-      "eloSpan": "[class*=styles__MainSection] > div > table > tbody > a > tr > td:nth-child(3) > div > div > span[class*=Text]"
+      "eloSpan": "[class*=styles__MainSection] > div > table > tbody > a > tr > td:nth-child(3) > div > div > span[class*=Text], [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) > div > div > span[class*=Text]"
     },
     "matchmaking": {
       "playHolder": "[class*=Matchmaking__PlayHolder]",
@@ -102,7 +102,14 @@
     "eloValueContainer": "[class*=EloValueContainer], [class*=SkillIcon]",
     "scoreResult": "[class*=Score__Result]",
     "tableRow": "tr[class*=MatchHistoryTableRow]",
-    "matchRow": "tbody > a[href^=\"$prefix\"][href$=\"$suffix\"]:not([$attr]):not(:has([id*=extended-stats-node]))",
-    "dataRowInTable": "tbody a tr"
+    "matchRow": "tbody > a[href^=\"$prefix\"][href$=\"$suffix\"]:not([$attr]):not(:has([id*=extended-stats-node])), div[class*=MatchTableBody] > a[href^=\"$prefix\"][href$=\"$suffix\"]:not([$attr]):not(:has([id*=extended-stats-node]))",
+    "dataRowInTable": "tbody a tr",
+    "tableContainer": "table, div[class*=MatchTable-]",
+    "tableHead": "thead, div[class*=MatchTableHead]",
+    "tableBody": "tbody, div[class*=MatchTableBody]",
+    "headerRow": "tr, div[class*=MatchTableHeaderRow]",
+    "headerCell": "th, div[class*=MatchTableHeaderCell]",
+    "dataRow": "tr, a[class*=MatchLink]",
+    "dataCell": "td, div[class*=MatchTableCell]"
   }
 }

@@ -9,6 +9,31 @@ const green = 'rgb(61,255,108)';
 const red = 'rgb(255, 0, 43)';
 const white = 'rgb(255, 255, 255)';
 
+let _isDivLayout = null;
+
+function isDivLayout() {
+    if (_isDivLayout !== null) return _isDivLayout;
+    _isDivLayout = !!document.querySelector('div[class*=MatchTable-]');
+    return _isDivLayout;
+}
+
+function resetLayoutDetection() {
+    _isDivLayout = null;
+}
+
+function createDataCell() {
+    return document.createElement(isDivLayout() ? 'div' : 'td');
+}
+
+function createHeaderCell() {
+    return document.createElement(isDivLayout() ? 'div' : 'th');
+}
+
+function getRowFromLink(aLink) {
+    if (isDivLayout()) return aLink;
+    return aLink.querySelector('tr');
+}
+
 function resolveColumns(row) {
     const col = {};
     const children = row?.children;
@@ -191,7 +216,7 @@ class MatchNodeByMatchStats {
     setupPlaceholders() {
 
         if (this.settings?.showFCR && this.col.kr && !this.node.querySelector('[class*="fcr-fc"]')) {
-            this.fcrNode = document.createElement("td");
+            this.fcrNode = createDataCell();
             this.fcrNode.textContent = '-';
             this.fcrNode.style.color = white;
             this.fcrNode.className = this.col.kr.className;
@@ -201,7 +226,7 @@ class MatchNodeByMatchStats {
         }
 
         if (this.settings?.showAVGElo && this.col.elo && !this.node.querySelector('[class*="avg-elo-fc"]')) {
-            this.avgEloNode = document.createElement("td");
+            this.avgEloNode = createDataCell();
             this.avgEloNode.classList.add('avg-elo-fc');
 
             const cell = document.createElement("div");
@@ -426,22 +451,29 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
     function getHeaderSignature(thead) {
         if (!thead) return '';
-        const ths = thead.querySelectorAll('tr > th:not(.avg-elo-fc-header):not(.fcr-fc-header)');
-        return Array.from(ths).map(th => th.textContent.trim()).join('|');
+        const headerRow = thead.querySelector(sel('matchhistory.headerRow'));
+        if (!headerRow) return '';
+        const cells = Array.from(headerRow.children).filter(c => !c.classList.contains('avg-elo-fc-header') && !c.classList.contains('fcr-fc-header'));
+        return cells.map(c => c.textContent.trim()).join('|');
     }
 
     async function insertHeaders(thead) {
-        const headerRow = thead.querySelector('tr');
+        const headerRow = thead.querySelector(sel('matchhistory.headerRow'));
         if (!headerRow) return;
 
         headerRow.querySelectorAll('.avg-elo-fc-header, .fcr-fc-header').forEach(el => el.remove());
 
-        const firstDataRow = tableElement.querySelector(sel('matchhistory.dataRowInTable') || 'tbody a tr');
+        let firstDataRow;
+        if (isDivLayout()) {
+            firstDataRow = tableElement.querySelector(sel('matchhistory.tableBody') + ' > a');
+        } else {
+            firstDataRow = tableElement.querySelector(sel('matchhistory.dataRowInTable') || 'tbody a tr');
+        }
         const hcol = resolveHeaderColumns(headerRow, firstDataRow);
         const _settings = await settings();
 
         if (_settings.showAVGElo && hcol.elo && !headerRow.querySelector('.avg-elo-fc-header')) {
-            let headerAVGElo = document.createElement('th')
+            let headerAVGElo = createHeaderCell()
             headerAVGElo.className = hcol.elo.className
             headerAVGElo.classList.add('avg-elo-fc-header')
             headerAVGElo.appendChild(document.createTextNode('AVG ELO'))
@@ -449,7 +481,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         }
 
         if (_settings.showFCR && hcol.kr && !headerRow.querySelector('.fcr-fc-header')) {
-            let headerFCR = document.createElement('th')
+            let headerFCR = createHeaderCell()
             headerFCR.className = hcol.kr.className
             headerFCR.classList.add('fcr-fc-header')
             headerFCR.appendChild(document.createTextNode('FCR'))
@@ -469,16 +501,16 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         matchChain.nodes.forEach((matchNode, matchId) => {
             const aLink = tableBodyElement?.querySelector(`a[href*="${matchId}"]`);
             if (!aLink) return;
-            const tr = aLink.querySelector('tr');
-            if (!tr) return;
+            const row = getRowFromLink(aLink);
+            if (!row) return;
 
-            tr.querySelectorAll('.fcr-fc, .avg-elo-fc, [id*=extended-stats-node]').forEach(el => el.remove());
+            row.querySelectorAll('.fcr-fc, .avg-elo-fc, [id*=extended-stats-node]').forEach(el => el.remove());
 
-            matchNode.node = tr;
+            matchNode.node = row;
             matchNode.fcrNode = null;
             matchNode.avgEloNode = null;
             matchNode.popup = null;
-            matchNode.col = resolveColumns(tr);
+            matchNode.col = resolveColumns(row);
             matchNode.setupPlaceholders();
             matchNode.setupStats();
 
@@ -527,18 +559,19 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
     async function initializeTableElements(nodesArr) {
         if (!tableElement || !tableElement.isConnected) {
-            tableElement = getNthParent(nodesArr[0],2);
+            resetLayoutDetection();
+            tableElement = getNthParent(nodesArr[0], 2);
         }
         if (!tableElement) return;
 
-        tableHeadElement = tableElement.querySelector("thead");
+        tableHeadElement = tableElement.querySelector(sel('matchhistory.tableHead') || 'thead');
         if (tableHeadElement) {
             await insertHeaders(tableHeadElement);
             setupTheadObserver(tableHeadElement);
         }
 
         if (!tableBodyElement || !tableBodyElement.isConnected) {
-            tableBodyElement = tableElement.querySelector("tbody");
+            tableBodyElement = tableElement.querySelector(sel('matchhistory.tableBody') || 'tbody');
         }
     }
 
@@ -583,7 +616,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
             const matchId = extractMatchId(node);
 
-            const matchNode = new MatchNodeByMatchStats(node.children[0], matchId, index, _settings);
+            const matchNode = new MatchNodeByMatchStats(getRowFromLink(node), matchId, index, _settings);
 
             matchChain.append(matchNode);
             batch.push(matchNode);
@@ -624,9 +657,10 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 }, async () => {});
 
 function filterUnmarkedNodes(nodes) {
-    return [...nodes].filter((e) =>
-        !getNthParent(e,9).hasAttribute("marked-as-bug")
-    );
+    return [...nodes].filter((e) => {
+        const bugParent = e.closest('[marked-as-bug]');
+        return !bugParent;
+    });
 }
 
 function shouldContinue(nodesArr, attempts, nodes, callback) {

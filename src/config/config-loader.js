@@ -8,6 +8,8 @@ const ENDPOINTS_CACHE_KEY = 'forecast-endpoints-config';
 const SELECTORS_CONFIG_PATH = '/config/selectors.json';
 const ENDPOINTS_CONFIG_PATH = '/config/endpoints.json';
 
+const isTest = false;
+
 let _selectorsConfig = null;
 let _endpointsConfig = null;
 let _configLoadPromise = null;
@@ -54,6 +56,8 @@ async function _setLocalConfig(key, value) {
 }
 
 async function _loadConfigWithFallback(cacheName, remotePath, bundledPath) {
+    if (isTest) return await _loadBundledJson(bundledPath);
+
     try {
         const cached = await _getLocalConfig(cacheName);
         const cachedTime = await _getLocalConfig(`${cacheName}-time`);

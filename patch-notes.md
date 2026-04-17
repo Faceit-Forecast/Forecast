@@ -1,3 +1,9 @@
+[1.7.14] Layout Compatibility Fix
+Fixed match history not working when FACEIT serves alternative page layout
+Extension now automatically detects and adapts to both table and div-based layouts
+Improved config system for faster remote fixes without extension updates
+Internal code improvements and stability fixes
+
 [1.7.13] Minor Fixes
 Minor bug fixes and stability improvements
 
