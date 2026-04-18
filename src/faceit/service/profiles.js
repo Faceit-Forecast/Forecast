@@ -14,13 +14,13 @@ const profilesModule = new Module("profiles", () => {
     let selectorProfileCard = sel('profiles.profileCard');
     profilesModule.doAfterNodeAppearWhenVisible(selectorProfileCard, async (node) => {
         const nickname = node.textContent;
-        await addFCUserLogoIfRegisteredByNick(node.parentElement, nickname, 24, 24, true);
+        await addFCUserLogoIfRegisteredByNick(getNthParent(node, idx('profiles.profileCardParentDepth', 1)), nickname, 24, 24, true);
     });
 
     let selectorProfileTooltipV2 = sel('profiles.profileTooltipV2');
     profilesModule.doAfterNodeAppearWhenVisible(selectorProfileTooltipV2, async (node) => {
         const nickname = node.textContent;
-        const logo = await addFCUserLogoIfRegisteredByNick(getNthParent(node, 2), nickname, 20, 20, true);
+        const logo = await addFCUserLogoIfRegisteredByNick(getNthParent(node, idx('profiles.profileTooltipV2ParentDepth', 2)), nickname, 20, 20, true);
         if (!logo) return;
         logo.style.display = 'flex'
         logo.style.alignItems = 'center'
@@ -33,7 +33,7 @@ const profilesModule = new Module("profiles", () => {
             profilesModule.doAfterNodeAppearWhenVisible(selector, (node) => {
                 profilesModule.doAfter(() => node.textContent, async () => {
                     const nickname = node.textContent;
-                    await addFCUserLogoIfRegisteredByNick(node.parentElement, nickname, 20, 20, true);
+                    await addFCUserLogoIfRegisteredByNick(getNthParent(node, idx('profiles.statsMVPParentDepth', 1)), nickname, 20, 20, true);
                 }, 10)
             });
         }
@@ -59,7 +59,7 @@ const profilesModule = new Module("profiles", () => {
             profilesModule.doAfterAllNodeAppearWhenVisible(selectorMatchPlayer, async (node) => {
                 const nickname = node.textContent;
                 const playerId = nicknameToIdMap.get(nickname);
-                await addFCUserLogoIfRegisteredById(node.parentElement, playerId, 16, 16, true);
+                await addFCUserLogoIfRegisteredById(getNthParent(node, idx('profiles.matchPlayerParentDepth', 1)), playerId, 16, 16, true);
             });
         });
     }

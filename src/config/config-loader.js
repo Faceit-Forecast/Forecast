@@ -8,8 +8,6 @@ const ENDPOINTS_CACHE_KEY = 'forecast-endpoints-config';
 const SELECTORS_CONFIG_PATH = '/config/selectors.json';
 const ENDPOINTS_CONFIG_PATH = '/config/endpoints.json';
 
-const isTest = false;
-
 let _selectorsConfig = null;
 let _endpointsConfig = null;
 let _configLoadPromise = null;
@@ -56,36 +54,47 @@ async function _setLocalConfig(key, value) {
 }
 
 async function _loadConfigWithFallback(cacheName, remotePath, bundledPath) {
-    if (isTest) return await _loadBundledJson(bundledPath);
+    let resolved = null;
 
     try {
         const cached = await _getLocalConfig(cacheName);
         const cachedTime = await _getLocalConfig(`${cacheName}-time`);
 
         if (cached && cachedTime && (Date.now() - cachedTime < CONFIG_CACHE_TTL)) {
-            return cached;
+            resolved = cached;
         }
     } catch (e) {
         error('Config cache read failed', e);
     }
 
-    const remote = await _fetchRemoteConfig(remotePath);
-    if (remote) {
-        try {
-            await _setLocalConfig(cacheName, remote);
-            await _setLocalConfig(`${cacheName}-time`, Date.now());
-        } catch (e) {
-            error('Config cache write failed', e);
+    if (!resolved) {
+        const remote = await _fetchRemoteConfig(remotePath);
+        if (remote) {
+            try {
+                await _setLocalConfig(cacheName, remote);
+                await _setLocalConfig(`${cacheName}-time`, Date.now());
+            } catch (e) {
+                error('Config cache write failed', e);
+            }
+            resolved = remote;
         }
-        return remote;
     }
 
-    try {
-        const cached = await _getLocalConfig(cacheName);
-        if (cached) return cached;
-    } catch (e) {}
+    if (!resolved) {
+        try {
+            const cached = await _getLocalConfig(cacheName);
+            if (cached) resolved = cached;
+        } catch (e) {}
+    }
 
-    return await _loadBundledJson(bundledPath);
+    if (!resolved) return await _loadBundledJson(bundledPath);
+
+    const bundled = await _loadBundledJson(bundledPath);
+    if (bundled && typeof bundled.version === 'number' && (typeof resolved.version !== 'number' || bundled.version > resolved.version)) {
+        return bundled;
+    }
+
+    return resolved;
 }
 
 async function loadConfigs() {
@@ -152,6 +161,14 @@ function sel(path, vars) {
         }
     }
     return value;
+}
+
+function idx(path, defaultValue) {
+    if (!_selectorsConfig) return defaultValue;
+    const value = _resolvePath(_selectorsConfig, path);
+    if (value === undefined || value === null) return defaultValue;
+    const num = Number(value);
+    return isNaN(num) ? defaultValue : num;
 }
 
 function ep(path) {

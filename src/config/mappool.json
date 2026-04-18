@@ -1,0 +1,14 @@
+{
+  "version": 3,
+  "maps": {
+    "de_dust2": { "active": true, "display": "DUST 2", "faceitName": "Dust2", "icon": "map_icon_de_dust2.png" },
+    "de_mirage": { "active": true, "display": "MIRAGE", "faceitName": "Mirage", "icon": "map_icon_de_mirage.png" },
+    "de_nuke": { "active": true, "display": "NUKE", "faceitName": "Nuke", "icon": "map_icon_de_nuke.png" },
+    "de_ancient": { "active": true, "display": "ANCIENT", "faceitName": "Ancient", "icon": "map_icon_de_ancient.png" },
+    "de_anubis": { "active": true, "display": "ANUBIS", "faceitName": "Anubis", "icon": "map_icon_de_anubis.png" },
+    "de_train": { "active": false, "display": "TRAIN", "faceitName": "Train", "icon": "map_icon_de_train.png" },
+    "de_inferno": { "active": true, "display": "INFERNO", "faceitName": "Inferno", "icon": "map_icon_de_inferno.png" },
+    "de_overpass": { "active": true, "display": "OVERPASS", "faceitName": "Overpass", "icon": "map_icon_de_overpass.png" },
+    "de_cache": { "active": true, "display": "CACHE", "faceitName": "Cache", "icon": "map_icon_de_cache.png" }
+  }
+}

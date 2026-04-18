@@ -277,7 +277,7 @@ class MatchNodeByMatchStats {
         this.col = resolveColumns(this.node);
 
         if (this.col.score) {
-            this.col.score.parentElement.parentElement.style.overflow = "visible"
+            getNthParent(this.col.score, idx('matchhistory.scoreOverflowDepth', 2)).style.overflow = "visible"
 
             let popup = this.node.querySelector("[id*=extended-stats-node-]");
             let tableNotExist = !popup;
@@ -560,7 +560,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     async function initializeTableElements(nodesArr) {
         if (!tableElement || !tableElement.isConnected) {
             resetLayoutDetection();
-            tableElement = getNthParent(nodesArr[0], 2);
+            tableElement = getNthParent(nodesArr[0], idx('matchhistory.tableParentDepth', 2));
         }
         if (!tableElement) return;
 

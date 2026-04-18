@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "levels": {
     "hideOriginalIcons": "[class*=SkillIcon__StyledSvg]:not([origin-levels]):not([origin-levels] *)",
     "hideNestedIcons": "[origin-levels] [hided-levels] [class*=SkillIcon__StyledSvg]",
@@ -15,11 +15,17 @@
       "roleButton": "[role=button]"
     },
     "trayDialog": "div[class*=Content__StyledContentElement][data-dialog-type=TRAY]:not([marked-as-bug])",
+    "trayDialogParentDepth": 1,
     "trayHeadingWrapper": "[class*=styles__HeadingWrapper]",
+    "trayHeadingWrapperParentDepth": 2,
     "trayBottomArea": "[class*=styles__BottomAreaWrapper]",
     "skillLevelEloSpan": "[role=\"dialog\"] > div[class*=styles__ScrollableContainer] > div[class*=SkillLevel__StatsContainer] > div > span",
+    "skillLevelEloSpanParentDepth": 1,
+    "skillLevelEloSpanCheckDepth": 2,
     "matchroom": {
       "subtitle": "[class*=Subtitle__Holder]",
+      "subtitleParentDepth": 2,
+      "subtitleCheckDepth": 3,
       "scoreboardMvpTag": "div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div[class*=styles__MvpCardHolder] > div > div[class*=Tag__Container] > span",
       "tooltipTeams": "#tooltip-portal > div > div > div > div:nth-child(3)",
       "scoreboardElo1": "div[class*=Scoreboard__Main] > div > div[class*=styles__Section] > div[class*=styles__ScrollWrapper] > table > tbody > tr > td:nth-child(2) > div > div",
@@ -28,46 +34,82 @@
     "profile": {
       "mainSection": "[class*=styles__MainSection] > [class*=styles__EloAndLeagueContainer] > div > [class*=styles__Flex]",
       "eloText": "{mainSection} > [class*=styles__Flex] > [class*=styles__Flex] > span",
+      "eloTextParentDepth": 2,
+      "levelContainerDepth": 2,
       "matchHistoryElo": "[class*=styles__MainSection] > table > tbody > a > tr > td:nth-child(3) > div > div:nth-child(2) > span, [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) > div > div:nth-child(2) > span",
+      "matchHistoryEloContainerDepth": 2,
       "chartRightPanelFooter": "[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Col]",
+      "chartRightPanelFooterParentDepth": 1,
+      "chartRightPanelFooterChartDepth": 4,
+      "chartRightPanelFooterChartParentDepth": 5,
+      "chartRightPanelFooterChildIndex": 1,
       "tickIconWrapper": "[class*=styles__TickIconWrapper]",
-      "badgeHolder": "[class*=BadgeHolder__Holder]"
+      "tickIconWrapperChartDepth": 12,
+      "tickIconWrapperChartParentDepth": 13,
+      "tickIconWrapperChildIndex": 1,
+      "badgeHolder": "[class*=BadgeHolder__Holder]",
+      "badgeHolderParentDepth": 1
     },
     "stats": {
       "chartRightPanelFooterSpan": "[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Flex] > [class*=styles__Flex] > span",
-      "tickIconWrapper": "[class*=styles__TickIconWrapper]"
+      "chartRightPanelFooterSpanParentDepth": 1,
+      "chartRightPanelFooterSpanRowDepth": 2,
+      "chartRightPanelFooterSpanRowParentDepth": 3,
+      "chartRightPanelFooterSpanChartDepth": 4,
+      "chartRightPanelFooterSpanChartParentDepth": 5,
+      "chartRightPanelFooterSpanChildIndex": 1,
+      "chartRightPanelFooterSpanRowChildIndex0": 0,
+      "chartRightPanelFooterSpanRowChildIndex1": 2,
+      "tickIconWrapper": "[class*=styles__TickIconWrapper]",
+      "tickIconWrapperChartDepth": 11,
+      "tickIconWrapperChartParentDepth": 12,
+      "tickIconWrapperChildIndex": 1
     },
     "history": {
-      "eloSpan": "[class*=styles__MainSection] > div > table > tbody > a > tr > td:nth-child(3) > div > div > span[class*=Text], [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) > div > div > span[class*=Text]"
+      "eloSpan": "[class*=styles__MainSection] > div > table > tbody > a > tr > td:nth-child(3) > div > div > span[class*=Text], [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) > div > div > span[class*=Text]",
+      "eloSpanContainerDepth": 2
     },
     "matchmaking": {
       "playHolder": "[class*=Matchmaking__PlayHolder]",
       "midLevel": "main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > div > button > div > div:nth-child(1)",
+      "midLevelParentDepth": 1,
       "midLevelLowerThanTen": "main[class*=Layout__Container] > div[class*=Header__Container] > div:nth-child(2) > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div[class*=LevelWidget__IconWrapper]",
+      "midLevelLowerThanTenParentDepth": 1,
       "eloTextInHeader": "div:nth-child(2) > div:nth-child(2) > h5",
       "levelTextInHeader": "div:nth-child(2) > div:nth-child(1) > span",
       "eloTextLowerThanTen": "h1"
     },
     "home": {
-      "eloWidget": "#canvas-body > [class*=home__Container] > div > [class*=style__SocialGameFeed] > div > [class*=styles__PlayBlock] > [class*=styles__GameSelectorWrapper] > [class*=EloWidget__Wrapper] > [class*=styles__Flex] > span:not([value])"
+      "eloWidget": "#canvas-body > [class*=home__Container] > div > [class*=style__SocialGameFeed] > div > [class*=styles__PlayBlock] > [class*=styles__GameSelectorWrapper] > [class*=EloWidget__Wrapper] > [class*=styles__Flex] > span:not([value])",
+      "eloWidgetParentDepth": 1
     },
     "cards": {
       "eloText": "[class*=styles__EloText]",
+      "eloTextParentDepth": 1,
       "requirementsHolder": "[class*=styles__RequirementsHolder]",
       "badgesHolder": "[class*=styles__BadgesHolder]"
     },
     "skillLevelsTable": "body > div.FuseModalPortal > div > div > div[class*=SkillLevelsInfo__ModalContent]",
+    "skillLevelsTableParentDepth": 1,
     "searchPlayer": {
       "nicknameNode": "[class*=styles__PlayersListContainer]",
-      "href": "[href*=\"/$lang/players/\"]:not([$attr])"
+      "href": "[href*=\"/$lang/players/\"]:not([$attr])",
+      "hrefParentDepth": 1,
+      "hrefDoubleParentDepth": 2
     }
   },
   "ranking": {
     "hideSkillLevelsSection": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]):has(+ [class*=forecast-statistic-table])",
     "progressTable": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])",
+    "progressTableParentDepth": 1,
+    "progressTableSpotlightCheckDepth": 3,
     "spotlightSearch": "[class*=SpotlightSearch__Content]"
   },
   "profiles": {
+    "profileCardParentDepth": 1,
+    "profileTooltipV2ParentDepth": 2,
+    "statsMVPParentDepth": 1,
+    "matchPlayerParentDepth": 1,
     "profileCard": "#canvas-body > div > div > aside > div[class*=styles__CardContent] > div[class*=Draggable__DraggableStyled] > div[class*=styles__Container] > h1",
     "profileTooltipV2": "[role=\"dialog\"][id*=\"radix\"] > div[class*=styles__FixedContainer] > div > a > h5",
     "statsMVP": "div > div > div > div > div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div > div[class*=Draggable__DraggableStyled] > div > [class*=styles__Nickname]",
@@ -75,9 +117,12 @@
   },
   "integrations": {
     "statsSlot": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])",
-    "matchroomSlot": "div[name=\"info\"][class*=Overview__Column] > div[class*=Overview__Stack]"
+    "statsSlotParentDepth": 1,
+    "matchroomSlot": "div[name=\"info\"][class*=Overview__Column] > div[class*=Overview__Stack]",
+    "matchroomSlotParentDepth": 1
   },
   "matchroom": {
+    "nickNodeParentDepth": 4,
     "teamTable": "[name=\"info\"][class*=Overview__Column]",
     "infoName": "[name=\"info\"]",
     "nickNode": "div[class*=styles__PopoverStyled] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5",
@@ -99,6 +144,8 @@
     "canvasBody": "#canvas-body"
   },
   "matchhistory": {
+    "tableParentDepth": 2,
+    "scoreOverflowDepth": 2,
     "eloValueContainer": "[class*=EloValueContainer], [class*=SkillIcon]",
     "scoreResult": "[class*=Score__Result]",
     "tableRow": "tr[class*=MatchHistoryTableRow]",

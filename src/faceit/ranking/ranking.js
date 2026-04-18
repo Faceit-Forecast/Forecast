@@ -81,7 +81,7 @@ const rankingModule = new Module("eloranking", async () => {
     rankingModule.temporaryFaceitBugFix();
     hideWithCSS(sel('ranking.hideSkillLevelsSection'));
     doAfterStatisticNodeAppear(async (node) => {
-        node.parentElement.querySelector(`[class*=forecast-statistic-table]`)?.remove()
+        getNthParent(node, idx('ranking.progressTableParentDepth', 1)).querySelector(`[class*=forecast-statistic-table]`)?.remove()
         let newNode = LEVEL_PROGRESS_TABLE_TEMPLATE.cloneNode(true)
         localizeHtmlResource(newNode);
         appendTo(newNode, node);
@@ -178,7 +178,7 @@ async function doAfterStatisticNodeAppear(callback) {
     let progressTableSelector = sel('ranking.progressTable')
 
     rankingModule.doAfterNodeAppear(progressTableSelector, async (node) => {
-        if (!node.parentElement?.parentElement?.parentElement?.matches || node.parentElement?.parentElement?.parentElement?.matches(sel('ranking.spotlightSearch'))) return
+        if (!getNthParent(node, idx('ranking.progressTableSpotlightCheckDepth', 3))?.matches || getNthParent(node, idx('ranking.progressTableSpotlightCheckDepth', 3))?.matches(sel('ranking.spotlightSearch'))) return
         if (node.nodeType === Node.ELEMENT_NODE && !node.querySelector(`[class~="forecast-statistic-table-${rankingModule.sessionId}"]`)) {
             let newNode = document.createElement("div")
             appendTo(newNode, node);

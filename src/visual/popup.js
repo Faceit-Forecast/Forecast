@@ -14,7 +14,7 @@ const CLIENT_STORAGE_SYNC = CLIENT_API.storage.sync;
 
 const PRIMARY_CDN_URL = 'https://cdn.fforecast.net';
 const FALLBACK_CDN_URL = 'https://cdn.fforecast.dev';
-const MAPS_CONFIG_URL_PATH = '/config/maps-config.json';
+const MAPS_CONFIG_URL_PATH = '/config/mappool.json';
 const MAPS_CONFIG_URL = PRIMARY_CDN_URL + MAPS_CONFIG_URL_PATH;
 const MAPS_CONFIG_CACHE_KEY = 'maps-config-cache';
 const MAPS_CONFIG_CACHE_TTL = 1000 * 60 * 60 * 6;
@@ -744,66 +744,79 @@ const AuthManager = {
 };
 
 const MapsConfigManager = {
-    defaultConfig: {
-        version: 1,
-        maps: {
-            de_dust2: {active: true, display: "DUST 2", faceitName: "Dust2", icon: "map_icon_de_dust2.png"},
-            de_mirage: {active: true, display: "MIRAGE", faceitName: "Mirage", icon: "map_icon_de_mirage.png"},
-            de_nuke: {active: true, display: "NUKE", faceitName: "Nuke", icon: "map_icon_de_nuke.png"},
-            de_ancient: {active: true, display: "ANCIENT", faceitName: "Ancient", icon: "map_icon_de_ancient.png"},
-            de_anubis: {active: true, display: "ANUBIS", faceitName: "Anubis", icon: "map_icon_de_anubis.png"},
-            de_train: {active: false, display: "TRAIN", faceitName: "Train", icon: "map_icon_de_train.png"},
-            de_inferno: {active: true, display: "INFERNO", faceitName: "Inferno", icon: "map_icon_de_inferno.png"},
-            de_overpass: {active: true, display: "OVERPASS", faceitName: "Overpass", icon: "map_icon_de_overpass.png"}
-        }
+    async _loadBundledConfig() {
+        try {
+            const url = CLIENT_RUNTIME.getURL('src/config/mappool.json');
+            const response = await fetch(url);
+            if (response.ok) return await response.json();
+        } catch (e) {}
+        return null;
     },
 
     async init() {
         try {
             mapsConfig = await this.fetchWithCache();
         } catch (error) {
-            console.error('Failed to load maps config, using default:', error);
-            mapsConfig = this.defaultConfig;
+            console.error('Failed to load maps config, using bundled:', error);
+            mapsConfig = await this._loadBundledConfig() || { maps: {} };
         }
         CS2_MAPS = this.getActiveMaps();
         this.renderMapGrid();
     },
 
     async fetchWithCache() {
+        let resolved = null;
+
         try {
             const cached = await StorageUtils.get([MAPS_CONFIG_CACHE_KEY, `${MAPS_CONFIG_CACHE_KEY}-time`]);
             const cachedData = cached[MAPS_CONFIG_CACHE_KEY];
             const cachedTime = cached[`${MAPS_CONFIG_CACHE_KEY}-time`];
 
             if (cachedData && cachedTime && (Date.now() - cachedTime < MAPS_CONFIG_CACHE_TTL)) {
-                await _ensurePopupDomain();
-                return cachedData;
+                resolved = cachedData;
             }
         } catch (e) {
         }
 
-        await _ensurePopupDomain();
-        const cdnUrl = activeCdnUrl;
-        let response;
-        try {
-            response = await fetch(`${cdnUrl}${MAPS_CONFIG_URL_PATH}?_=${Date.now()}`);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        } catch (e) {
-            const fallbackCdn = cdnUrl === PRIMARY_CDN_URL ? FALLBACK_CDN_URL : PRIMARY_CDN_URL;
-            response = await fetch(`${fallbackCdn}${MAPS_CONFIG_URL_PATH}?_=${Date.now()}`);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        }
-        const config = await response.json();
+        if (!resolved) {
+            await _ensurePopupDomain();
+            const cdnUrl = activeCdnUrl;
+            let response;
+            try {
+                response = await fetch(`${cdnUrl}${MAPS_CONFIG_URL_PATH}?_=${Date.now()}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            } catch (e) {
+                const fallbackCdn = cdnUrl === PRIMARY_CDN_URL ? FALLBACK_CDN_URL : PRIMARY_CDN_URL;
+                response = await fetch(`${fallbackCdn}${MAPS_CONFIG_URL_PATH}?_=${Date.now()}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            }
+            resolved = await response.json();
 
-        try {
-            await StorageUtils.set({
-                [MAPS_CONFIG_CACHE_KEY]: config,
-                [`${MAPS_CONFIG_CACHE_KEY}-time`]: Date.now()
-            });
-        } catch (e) {
+            try {
+                await StorageUtils.set({
+                    [MAPS_CONFIG_CACHE_KEY]: resolved,
+                    [`${MAPS_CONFIG_CACHE_KEY}-time`]: Date.now()
+                });
+            } catch (e) {
+            }
         }
 
-        return config;
+        if (!resolved) {
+            try {
+                const cached = await StorageUtils.get([MAPS_CONFIG_CACHE_KEY]);
+                if (cached[MAPS_CONFIG_CACHE_KEY]) resolved = cached[MAPS_CONFIG_CACHE_KEY];
+            } catch (e) {}
+        }
+
+        const bundled = await this._loadBundledConfig();
+
+        if (!resolved) return bundled || { maps: {} };
+
+        if (bundled && typeof bundled.version === 'number' && (typeof resolved.version !== 'number' || bundled.version > resolved.version)) {
+            return bundled;
+        }
+
+        return resolved;
     },
 
     getActiveMaps() {

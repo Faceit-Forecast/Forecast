@@ -304,7 +304,7 @@ async function getMatchWinRates(matchId, maxRetries = 5, retryDelay = 3000) {
 async function findUserCard(nickname, callback) {
     let nickNodeSelector = sel('matchroom.nickNode');
     matchRoomModule.doAfterNodeAppearWithCondition(nickNodeSelector, (node) => node.innerText === nickname, (node) => {
-        const parentNode = getNthParent(node, 4)
+        const parentNode = getNthParent(node, idx('matchroom.nickNodeParentDepth', 4))
         matchRoomModule.doAfter(() => parentNode.querySelector(sel('matchroom.ratingsContainer')), (ratingsNode) => {
             if (!matchRoomModule.isProcessedNode(ratingsNode)) {
                 matchRoomModule.processedNode(ratingsNode);

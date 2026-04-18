@@ -711,8 +711,20 @@ const SKILL_LEVELS_INFO_TABLE_HTML = /*language=HTML*/ `
 
 const FORECAST_STYLES_HTML = `<style>
 .profile-level-container::before {
-    background: radial-gradient(circle at center top, rgba(255, 255, 255, 0.65) 0%, rgba(0, 0, 0, 0) 50%), linear-gradient(var(--glow-color) 0%, rgb(56, 56, 56) 60%) !important;
+    content: "" !important;
+    position: absolute !important;
+    inset: 0px !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-color: rgba(241, 241, 241, 0.05) !important;
+    border-radius: 8px !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+    border-block-start: 1px solid !important;
+    border-image-slice: 1 !important;
+    border-image-source: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--glow-color), transparent 75%) 15%, var(--glow-color) 40%, color-mix(in srgb, var(--glow-color), white 20%) 50%, var(--glow-color) 60%, color-mix(in srgb, var(--glow-color), transparent 75%) 85%, transparent 100%) !important;
 }
+
 .profile-level-container::after {
     background: radial-gradient(24.53% 70.85% at 49.91% 29.02%, var(--glow-color-1) 0%, var(--glow-color-2) 43.61%, var(--glow-color-3) 100%), radial-gradient(24.53% 70.85% at 49.91% 29.02%, var(--glow-color-4) 0%, var(--glow-color-5) 43.61%, var(--glow-color-6) 100%), rgb(18, 18, 18) !important;
 }

@@ -3,74 +3,89 @@
  */
 
 function getMapsConfigPath() {
-    return ep('cdn.paths.mapsConfig') || '/config/maps-config.json';
+    return ep('cdn.paths.mapsConfig') || '/config/mappool.json';
 }
 const MAPS_CONFIG_CACHE_KEY = 'maps-config-cache';
 const MAPS_CONFIG_CACHE_TTL = 1000 * 60 * 60 * 6;
 
-const defaultMapsConfig = {
-    maps: {
-        de_dust2: { active: true, faceitName: "Dust2" },
-        de_mirage: { active: true, faceitName: "Mirage" },
-        de_nuke: { active: true, faceitName: "Nuke" },
-        de_ancient: { active: true, faceitName: "Ancient" },
-        de_anubis: { active: true, faceitName: "Anubis" },
-        de_train: { active: false, faceitName: "Train" },
-        de_inferno: { active: true, faceitName: "Inferno" },
-        de_overpass: { active: true, faceitName: "Overpass" }
-    }
-};
+async function _loadBundledMapsConfig() {
+    try {
+        const url = CLIENT_RUNTIME.getURL('src/config/mappool.json');
+        const response = await fetch(url);
+        if (response.ok) return await response.json();
+    } catch (e) {}
+    return null;
+}
 
 let mapsConfig = null;
 
 async function loadMapsConfig() {
     if (mapsConfig) return mapsConfig;
 
+    let resolved = null;
+
     try {
         const cached = await getSettingValue(MAPS_CONFIG_CACHE_KEY, null);
         const cachedTime = await getSettingValue(`${MAPS_CONFIG_CACHE_KEY}-time`, 0);
 
         if (cached && cachedTime && (Date.now() - cachedTime < MAPS_CONFIG_CACHE_TTL)) {
-            mapsConfig = cached;
-            return mapsConfig;
+            resolved = cached;
         }
     } catch (e) {
         console.warn('Cache read failed:', e);
     }
 
-    try {
-        const cdnUrl = await getCdnUrl();
-        const response = await fetch(cdnUrl + getMapsConfigPath());
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        mapsConfig = await response.json();
-
+    if (!resolved) {
         try {
-            await setSettingValue(MAPS_CONFIG_CACHE_KEY, mapsConfig);
-            await setSettingValue(`${MAPS_CONFIG_CACHE_KEY}-time`, Date.now());
-        } catch (e) {
-            console.warn('Cache write failed:', e);
-        }
-
-        return mapsConfig;
-    } catch (error) {
-        try {
-            const fallbackCdnUrl = isUsingFallback() ? 'https://cdn.fforecast.net' : 'https://cdn.fforecast.dev';
-            const response = await fetch(fallbackCdnUrl + getMapsConfigPath());
+            const cdnUrl = await getCdnUrl();
+            const response = await fetch(cdnUrl + getMapsConfigPath());
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            mapsConfig = await response.json();
+            resolved = await response.json();
 
             try {
-                await setSettingValue(MAPS_CONFIG_CACHE_KEY, mapsConfig);
+                await setSettingValue(MAPS_CONFIG_CACHE_KEY, resolved);
                 await setSettingValue(`${MAPS_CONFIG_CACHE_KEY}-time`, Date.now());
-            } catch (e) {}
+            } catch (e) {
+                console.warn('Cache write failed:', e);
+            }
+        } catch (error) {
+            try {
+                const fallbackCdnUrl = isUsingFallback() ? 'https://cdn.fforecast.net' : 'https://cdn.fforecast.dev';
+                const response = await fetch(fallbackCdnUrl + getMapsConfigPath());
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                resolved = await response.json();
 
-            return mapsConfig;
-        } catch (fallbackError) {
-            console.error('Failed to load maps config, using default:', fallbackError);
-            mapsConfig = defaultMapsConfig;
-            return mapsConfig;
+                try {
+                    await setSettingValue(MAPS_CONFIG_CACHE_KEY, resolved);
+                    await setSettingValue(`${MAPS_CONFIG_CACHE_KEY}-time`, Date.now());
+                } catch (e) {}
+            } catch (fallbackError) {
+                console.error('Failed to load maps config from CDN:', fallbackError);
+            }
         }
     }
+
+    if (!resolved) {
+        try {
+            const cached = await getSettingValue(MAPS_CONFIG_CACHE_KEY, null);
+            if (cached) resolved = cached;
+        } catch (e) {}
+    }
+
+    const bundled = await _loadBundledMapsConfig();
+
+    if (!resolved) {
+        mapsConfig = bundled || { maps: {} };
+        return mapsConfig;
+    }
+
+    if (bundled && typeof bundled.version === 'number' && (typeof resolved.version !== 'number' || bundled.version > resolved.version)) {
+        mapsConfig = bundled;
+    } else {
+        mapsConfig = resolved;
+    }
+
+    return mapsConfig;
 }
 
 function buildFaceitNameToMapId(config) {

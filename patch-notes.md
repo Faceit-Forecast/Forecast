@@ -1,3 +1,9 @@
+[1.7.15] Map Pool & Config Update
+Added Cache to the map pool for quick position setup
+Improved profile level glow effect to match FACEIT updated design
+Improved compatibility with future FACEIT layout changes
+Internal code improvements and stability fixes
+
 [1.7.14] Layout Compatibility Fix
 Fixed match history not working when FACEIT serves alternative page layout
 Extension now automatically detects and adapts to both table and div-based layouts

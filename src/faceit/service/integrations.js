@@ -55,7 +55,7 @@ const integrationsModule = new Module("integrations", async () => {
         integrationsModule.doAfterNodeAppear(sel('integrations.statsSlot'), async (node) => {
             const banner = createBanner();
             banner.style.marginTop = "-12px"
-            let oldBanner = node.parentElement.querySelector("[class*='forecast-banner']")
+            let oldBanner = getNthParent(node, idx('integrations.statsSlotParentDepth', 1)).querySelector("[class*='forecast-banner']")
             if (oldBanner) {
                 oldBanner.remove();
             }
@@ -64,7 +64,7 @@ const integrationsModule = new Module("integrations", async () => {
     } else if (lobbyType === "matchroom") {
         integrationsModule.doAfterNodeAppear(sel('integrations.matchroomSlot'), async (node) => {
             const banner = createBanner();
-            let oldBanner = node.parentElement.querySelector("[class*='forecast-banner']")
+            let oldBanner = getNthParent(node, idx('integrations.matchroomSlotParentDepth', 1)).querySelector("[class*='forecast-banner']")
             if (oldBanner) {
                 oldBanner.remove()
             }

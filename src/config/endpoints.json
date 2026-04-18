@@ -8,7 +8,7 @@
   },
   "cdn": {
     "paths": {
-      "mapsConfig": "/config/maps-config.json",
+      "mapsConfig": "/config/mappool.json",
       "selectorsConfig": "/config/selectors.json",
       "endpointsConfig": "/config/endpoints.json",
       "mapIcon": "/web/images/maps/48"
