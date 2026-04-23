@@ -161,6 +161,18 @@ function calculatePerformanceRating(stats, totalRounds, playerElo = null, teamCo
     };
 }
 
+function peekCacheSync(key) {
+    const cacheKey = `${forecastCacheKeyPrefix}::${key}`;
+    if (!cacheMap.has(cacheKey)) return null;
+    const cachedData = cacheMap.get(cacheKey);
+    if (cachedData.version === CACHE_VERSION && hasValidElo(cachedData)) {
+        cachedData.lastUsed = Date.now();
+        return cachedData.data;
+    }
+    cacheMap.delete(cacheKey);
+    return null;
+}
+
 async function getFromCacheOrFetch(key, fetchDetailedStats, fetchV3Stats = null) {
     if (!db) await initDB();
     const cacheKey = `${forecastCacheKeyPrefix}::${key}`;

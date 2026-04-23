@@ -1,3 +1,8 @@
+[1.7.16] Bug Fixes & Season 8 Update
+Added logic to auto-click on chat button for Quick Position Setup
+Fixed most known issues with new FACEIT calibration system
+Improved network usage efficiency
+
 [1.7.15] Map Pool & Config Update
 Added Cache to the map pool for quick position setup
 Improved profile level glow effect to match FACEIT updated design

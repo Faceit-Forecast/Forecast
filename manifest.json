@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.7.15",
+  "version": "1.7.16",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",
@@ -35,6 +35,7 @@
         "src/utils/pagetype.js",
         "src/faceit/api/faceit-api.js",
         "src/faceit/api/forecast-api.js",
+        "src/faceit/api/metrics.js",
         "src/module/observer/observe-handler.js",
         "src/module/module.js",
         "src/faceit/resources/templates.js",

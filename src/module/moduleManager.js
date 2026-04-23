@@ -20,6 +20,7 @@ async function initExtension() {
     if (!(await isExtensionEnabled())) return
     await loadConfigs();
     initApiEndpoints();
+    startMetricsReporter();
     await initializeMatchHistoryCache();
     initTemplates();
     await resourcesModule.produceOf("load");
@@ -36,6 +37,7 @@ async function initExtension() {
             let currentUrl = window.location.href;
             if (currentUrl !== previousUrl) {
                 previousUrl = currentUrl;
+                bumpApiSession();
                 const currentLobby = defineLobby(currentUrl);
                 await handleModules(currentLobby, previousLobby);
                 previousLobby = currentLobby;

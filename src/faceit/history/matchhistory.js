@@ -46,6 +46,8 @@ function resolveColumns(row) {
         if (td.classList.contains('fcr-fc') || td.classList.contains('avg-elo-fc')) continue;
         if (td.querySelector(sel('matchhistory.scoreResult'))) {
             col.score = td;
+        } else if (td.querySelector(sel('matchhistory.faceitRating'))) {
+            col.rating = td;
         } else if (td.querySelector(sel('matchhistory.eloValueContainer'))) {
             col.elo = td;
         } else if (td.querySelector('img')) {
@@ -60,7 +62,14 @@ function resolveColumns(row) {
         }
     }
 
-    if (numericTds.length >= 3) {
+    if (col.rating) {
+        if (numericTds.length >= 2) {
+            col.kd = numericTds[0];
+            col.adr = numericTds[1];
+        } else if (numericTds.length === 1) {
+            col.kd = numericTds[0];
+        }
+    } else if (numericTds.length >= 3) {
         col.adr = numericTds[0];
         col.kd = numericTds[1];
         col.kr = numericTds[2];
@@ -91,6 +100,8 @@ function resolveHeaderColumns(headerRow, dataRow) {
         const td = dataCells[i];
         if (td.querySelector(sel('matchhistory.eloValueContainer'))) {
             hcol.elo = headerCells[i] ?? null;
+        } else if (td.querySelector(sel('matchhistory.faceitRating'))) {
+            hcol.rating = headerCells[i] ?? null;
         } else {
             const text = td.textContent?.trim() || '';
             if (!/\d+\s*\/\s*\d+\s*\/\s*\d+/.test(text) && !td.querySelector('img') && !td.querySelector(sel('matchhistory.scoreResult')) && /^\d+(\.\d+)?$/.test(text.replace(',', ''))) {
@@ -101,7 +112,8 @@ function resolveHeaderColumns(headerRow, dataRow) {
 
     const lastNumericIdx = numericIndices.length > 0 ? numericIndices[numericIndices.length - 1] : -1;
     if (lastNumericIdx >= 0) {
-        hcol.kr = headerCells[lastNumericIdx] ?? null;
+        hcol.lastNumeric = headerCells[lastNumericIdx] ?? null;
+        hcol.kr = hcol.lastNumeric;
     }
 
     return hcol;
@@ -215,13 +227,14 @@ class MatchNodeByMatchStats {
 
     setupPlaceholders() {
 
-        if (this.settings?.showFCR && this.col.kr && !this.node.querySelector('[class*="fcr-fc"]')) {
+        const fcrAnchor = this.col.kr || this.col.adr;
+        if (this.settings?.showFCR && fcrAnchor && !this.node.querySelector('[class*="fcr-fc"]')) {
             this.fcrNode = createDataCell();
             this.fcrNode.textContent = '-';
             this.fcrNode.style.color = white;
-            this.fcrNode.className = this.col.kr.className;
+            this.fcrNode.className = fcrAnchor.className;
             this.fcrNode.classList.add('fcr-fc');
-            this.col.kr.after(this.fcrNode);
+            fcrAnchor.after(this.fcrNode);
             matchHistoryModule.removalNode(this.fcrNode);
         }
 
@@ -440,6 +453,8 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     let lastHeaderSignature = null;
 
     const matchChain = new MatchNodeChain();
+    const inflightStats = new Map();
+    const LAZY_STATS_OBSERVER_OPTIONS = { threshold: 0, rootMargin: '400px 0px 400px 0px' };
 
     let tableRowAttribute = `forecast-matchhistory-row-${matchHistoryModule.sessionId}`;
     let langKey = extractLanguage();
@@ -516,6 +531,8 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
             if (matchNode.cachedStats) {
                 matchNode.setupStatsToNode(id, matchNode.cachedStats);
+            } else {
+                registerLazyStatsObserver(matchNode, id);
             }
         });
     }
@@ -599,9 +616,10 @@ const matchHistoryModule = new Module("matchhistory", async () => {
             }
             return;
         }
+        const id = await playerId();
         for (const nodeArray of nodeArrays) {
             const batch = await createBatchFromNodes(nodeArray, tableNodesArray);
-            await loadMatchStatsForBatch(batch);
+            scheduleLazyStatsForBatch(batch, id);
         }
     }
 
@@ -630,29 +648,53 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         return match[1];
     }
 
-    async function loadMatchStatsForBatch(batch) {
-        let id = await playerId()
-
-        await Promise.all(batch.map(async matchNode => {
-            const cachedStats = await getFromCacheOrFetch(
-                matchNode.matchId,
-                null,
-                null
-            );
-
-            if (cachedStats) {
-                matchNode.loadMatchStats(id, cachedStats);
-            } else {
-                const fetchedStats = await getFromCacheOrFetch(
-                    matchNode.matchId,
-                    fetchMatchStatsDetailed,
-                    fetchV3MatchStats
-                );
-                if (fetchedStats) {
-                    matchNode.loadMatchStats(id, fetchedStats);
+    function scheduleLazyStatsForBatch(batch, id) {
+        for (const matchNode of batch) {
+            const cached = peekCacheSync(matchNode.matchId);
+            if (cached) {
+                try {
+                    matchNode.loadMatchStats(id, cached);
+                } catch (e) {
+                    error(e);
                 }
+                continue;
             }
-        }));
+            registerLazyStatsObserver(matchNode, id);
+        }
+    }
+
+    function registerLazyStatsObserver(matchNode, id) {
+        const rowNode = matchNode.node;
+        if (!rowNode || !rowNode.isConnected) return;
+
+        matchHistoryModule.doWhenVisible(rowNode, () => {
+            if (!matchNode.node || !matchNode.node.isConnected) return;
+            if (matchNode.cachedStats) return;
+            loadSingleMatchStats(matchNode, id).catch(e => error(e));
+        }, LAZY_STATS_OBSERVER_OPTIONS);
+    }
+
+    async function loadSingleMatchStats(matchNode, id) {
+        if (matchNode.cachedStats) return;
+
+        const matchId = matchNode.matchId;
+        let pending = inflightStats.get(matchId);
+        if (!pending) {
+            pending = (async () => {
+                const cached = await getFromCacheOrFetch(matchId, null, null);
+                if (cached) return cached;
+                return await getFromCacheOrFetch(matchId, fetchMatchStatsDetailed, fetchV3MatchStats);
+            })().finally(() => {
+                inflightStats.delete(matchId);
+            });
+            inflightStats.set(matchId, pending);
+        }
+
+        const stats = await pending;
+        if (!stats) return;
+        if (!matchNode.node || !matchNode.node.isConnected) return;
+        if (matchNode.cachedStats) return;
+        matchNode.loadMatchStats(id, stats);
     }
 }, async () => {});
 

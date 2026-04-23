@@ -121,6 +121,12 @@ const posCatcherModule = new Module("poscatcher", async () => {
             if (!await isSettingEnabled(`${mapPick}Enabled`, true)) return
             let message = await getSettingValue(`${mapPick}Message`, "")
             if (typeof message !== "string" || message.trim() === "") return
+            let chatButtonSelector = "div[class*=styles__LocalNavigationWrapper] > div[class*=styles__RightSlot] > div > div[class*=MainHeader__ChatButtonContainer] > div > div > button"
+            let chatButtonClicked = false;
+            let chatButton = document.querySelector(chatButtonSelector);
+            if (chatButton && !chatButtonClicked) {
+                chatButton.click();
+            }
             posCatcherModule.doAfterAllNodeAppear(chatSelector, (chatInput) => {
                 if (getCookie(cookieKey)) return
                 chatInput.focus();

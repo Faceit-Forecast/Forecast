@@ -19,67 +19,246 @@ function initApiEndpoints() {
         baseUrlV3 = proxyBaseUrl + '/v3';
         baseUrlV4 = proxyBaseUrl + '/v4';
     }
+
+    applyApiQueueConfig();
+}
+
+function applyApiQueueConfig() {
+    const rps = ep('apiQueue.rps');
+    if (typeof rps === 'number' && rps > 0 && rps <= 50) {
+        apiQueue.setRps(rps);
+    }
 }
 
 class ApiQueue {
     constructor(rps) {
+        this.setRps(rps);
+        this.pending = [];
+        this.lastCall = 0;
+        this.running = false;
+        this.cooldownUntil = 0;
+        this._resetStats();
+    }
+
+    setRps(rps) {
+        this.rps = rps;
         this.interval = 1000 / rps;
-        this.queues = new Map();
     }
 
-    getEndpointKey(url) {
-        try {
-            const u = new URL(url);
-            const path = u.pathname
-                .replace(/\/1-[a-f0-9-]{36}/g, '/{id}')
-                .replace(/\/[a-f0-9-]{36}/g, '/{id}')
-                .replace(/\/[a-f0-9]{20,}/g, '/{id}');
-            return u.host + path;
-        } catch {
-            return 'default';
+    _resetStats() {
+        this.stats = {
+            windowStart: Date.now(),
+            requests: 0,
+            status2xx: 0,
+            status429: 0,
+            status5xx: 0,
+            networkErr: 0,
+            retries: 0,
+            cooldownHits: 0,
+            queueDepthSamples: [],
+            waitMsSamples: []
+        };
+    }
+
+    recordStatus(code) {
+        this.stats.requests++;
+        if (code >= 200 && code < 300) this.stats.status2xx++;
+        else if (code === 429) this.stats.status429++;
+        else if (code >= 500 && code < 600) this.stats.status5xx++;
+    }
+
+    recordNetworkError() {
+        this.stats.requests++;
+        this.stats.networkErr++;
+    }
+
+    recordRetry() {
+        this.stats.retries++;
+    }
+
+    recordCooldownHit() {
+        this.stats.cooldownHits++;
+    }
+
+    getAndResetStats() {
+        const now = Date.now();
+        const snap = {
+            ...this.stats,
+            windowEnd: now,
+            rpsCap: this.rps,
+            queueDepthP50: _p(this.stats.queueDepthSamples, 50),
+            queueDepthP95: _p(this.stats.queueDepthSamples, 95),
+            waitMsP50: _p(this.stats.waitMsSamples, 50),
+            waitMsP95: _p(this.stats.waitMsSamples, 95),
+            sampleCount: this.stats.queueDepthSamples.length
+        };
+        delete snap.queueDepthSamples;
+        delete snap.waitMsSamples;
+        this._resetStats();
+        return snap;
+    }
+
+    enqueue(url, fn, sessionId) {
+        const enqueuedAt = Date.now();
+        if (this.stats.queueDepthSamples.length < 2000) {
+            this.stats.queueDepthSamples.push(this.pending.length);
         }
-    }
-
-    getQueue(key) {
-        if (!this.queues.has(key)) {
-            this.queues.set(key, { pending: [], lastCall: 0, running: false });
-        }
-        return this.queues.get(key);
-    }
-
-    enqueue(url, fn) {
-        const key = this.getEndpointKey(url);
-        const queue = this.getQueue(key);
-
         return new Promise((resolve, reject) => {
-            queue.pending.push({ fn, resolve, reject });
-            this.process(key);
+            this.pending.push({ fn, resolve, reject, sessionId: sessionId ?? _currentApiSession, enqueuedAt });
+            this.process();
         });
     }
 
-    async process(key) {
-        const queue = this.getQueue(key);
-        if (queue.running || queue.pending.length === 0) return;
+    applyCooldown(ms) {
+        const until = Date.now() + ms;
+        if (until > this.cooldownUntil) this.cooldownUntil = until;
+    }
 
-        queue.running = true;
+    async process() {
+        if (this.running || this.pending.length === 0) return;
+        this.running = true;
 
-        while (queue.pending.length > 0) {
+        while (this.pending.length > 0) {
+            const item = this.pending.shift();
+
+            if (item.sessionId !== _currentApiSession) {
+                item.resolve(null);
+                continue;
+            }
+
             const now = Date.now();
-            const wait = Math.max(0, queue.lastCall + this.interval - now);
-
+            const wait = Math.max(
+                0,
+                this.lastCall + this.interval - now,
+                this.cooldownUntil - now
+            );
             if (wait > 0) await new Promise(r => setTimeout(r, wait));
 
-            const { fn, resolve, reject } = queue.pending.shift();
-            queue.lastCall = Date.now();
+            if (item.sessionId !== _currentApiSession) {
+                item.resolve(null);
+                continue;
+            }
 
-            fn().then(resolve, reject);
+            const fetchStart = Date.now();
+            if (this.stats.waitMsSamples.length < 2000) {
+                this.stats.waitMsSamples.push(fetchStart - item.enqueuedAt);
+            }
+            this.lastCall = fetchStart;
+            try {
+                const res = await item.fn();
+                item.resolve(res);
+            } catch (e) {
+                item.reject(e);
+            }
         }
 
-        queue.running = false;
+        this.running = false;
+    }
+
+    cancelStale(currentSession) {
+        this.pending = this.pending.filter(item => {
+            if (item.sessionId !== currentSession) {
+                item.resolve(null);
+                return false;
+            }
+            return true;
+        });
     }
 }
 
+function _p(arr, percentile) {
+    if (!arr || arr.length === 0) return 0;
+    const sorted = arr.slice().sort((a, b) => a - b);
+    const idx = Math.min(sorted.length - 1, Math.floor((percentile / 100) * sorted.length));
+    return sorted[idx];
+}
+
 const apiQueue = new ApiQueue(5);
+
+let _currentApiSession = 0;
+
+function bumpApiSession() {
+    _currentApiSession++;
+    apiQueue.cancelStale(_currentApiSession);
+    fetchInFlight.clear();
+    return _currentApiSession;
+}
+
+function _sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+const API_MAX_RETRIES = 6;
+const API_BASE_DELAY = 1000;
+const API_MAX_RETRY_AFTER = 30000;
+const API_MAX_BACKOFF = 15000;
+
+function _parseRetryAfter(headerValue) {
+    if (!headerValue) return null;
+    const sec = parseFloat(headerValue);
+    if (!isNaN(sec) && isFinite(sec)) {
+        return Math.min(Math.max(sec * 1000, 0), API_MAX_RETRY_AFTER);
+    }
+    const dateMs = Date.parse(headerValue);
+    if (!isNaN(dateMs)) {
+        return Math.min(Math.max(dateMs - Date.now(), 0), API_MAX_RETRY_AFTER);
+    }
+    return null;
+}
+
+function _backoffDelay(attempt) {
+    const exp = Math.min(API_BASE_DELAY * Math.pow(2, attempt), API_MAX_BACKOFF);
+    return exp + Math.random() * 250;
+}
+
+async function _performRequestWithRetry(url, buildInit, errorMsg, mySession) {
+    for (let attempt = 0; attempt <= API_MAX_RETRIES; attempt++) {
+        if (mySession !== _currentApiSession) return null;
+
+        if (attempt > 0) apiQueue.recordRetry();
+
+        let res;
+        try {
+            res = await fetch(url, await buildInit());
+        } catch (e) {
+            if (mySession !== _currentApiSession) return null;
+            apiQueue.recordNetworkError();
+            if (attempt < API_MAX_RETRIES) {
+                const wait = _backoffDelay(attempt);
+                apiQueue.applyCooldown(wait);
+                apiQueue.recordCooldownHit();
+                await _sleep(wait);
+                continue;
+            }
+            error(`${errorMsg}: network error ${e?.message || e}`);
+            return null;
+        }
+
+        apiQueue.recordStatus(res.status);
+
+        if (res.status === 429 || res.status === 502 || res.status === 503 || res.status === 504) {
+            if (attempt >= API_MAX_RETRIES || mySession !== _currentApiSession) {
+                error(`${errorMsg}: ${res.status} ${res.statusText}`);
+                return null;
+            }
+            const parsed = _parseRetryAfter(res.headers.get('Retry-After'));
+            const wait = parsed != null ? parsed : _backoffDelay(attempt);
+            apiQueue.applyCooldown(wait);
+            apiQueue.recordCooldownHit();
+            await _sleep(wait);
+            continue;
+        }
+
+        if (!res.ok) {
+            const txt = await res.text().catch(() => '');
+            error(`${errorMsg}: ${res.status} ${res.statusText}. Response: ${txt}`);
+            return null;
+        }
+
+        return res.json();
+    }
+    return null;
+}
 
 const playerDataCache = new Map();
 const playerGamesDataCache = new Map();
@@ -112,7 +291,8 @@ async function setLocalStorageCache(key, data, ttlMinutes) {
 }
 
 async function fetchInternal(url, errorMsg, acceptHeader = 'application/json, text/plain, */*') {
-    return apiQueue.enqueue(url, async () => {
+    const mySession = _currentApiSession;
+    const buildInit = async () => {
         const headers = {
             'accept': acceptHeader,
             'accept-language': 'ru,en-US;q=0.9,en;q=0.8',
@@ -129,23 +309,18 @@ async function fetchInternal(url, errorMsg, acceptHeader = 'application/json, te
             headers['sec-fetch-site'] = 'same-origin';
         }
 
-        const res = await fetch(url, {
+        return {
             headers,
             credentials: _useProxy ? 'omit' : 'include'
-        });
+        };
+    };
 
-        if (!res.ok) {
-            const errorText = await res.text();
-            error(`${errorMsg}: ${res.status} ${res.statusText}. Response: ${errorText}`);
-            return null;
-        }
-
-        return res.json();
-    });
+    return apiQueue.enqueue(url, () => _performRequestWithRetry(url, buildInit, errorMsg, mySession), mySession);
 }
 
 async function fetchV4(url, errorMsg) {
-    return apiQueue.enqueue(url, async () => {
+    const mySession = _currentApiSession;
+    const buildInit = async () => {
         const headers = { 'Content-Type': 'application/json' };
 
         if (_useProxy) {
@@ -157,17 +332,13 @@ async function fetchV4(url, errorMsg) {
             headers['Authorization'] = `Bearer ${apiKey}`;
         }
 
-        const res = await fetch(url, {
+        return {
             headers,
             credentials: _useProxy ? 'omit' : 'include'
-        });
+        };
+    };
 
-        if (!res.ok) {
-            error(`${errorMsg}: ${res.statusText}`);
-            return null;
-        }
-        return res.json();
-    });
+    return apiQueue.enqueue(url, () => _performRequestWithRetry(url, buildInit, errorMsg, mySession), mySession);
 }
 
 const fetchV3 = (url, errorMsg) => fetchInternal(url, errorMsg, 'application/json, text/plain, */*');

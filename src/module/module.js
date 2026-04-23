@@ -146,6 +146,14 @@ class Module {
         return this.observeHandler.doAfterAllNodeAppearPack(selector, callback, id)
     }
 
+    doWhenVisible(element, callback, options) {
+        return this.observeHandler.doWhenVisible(element, callback, options)
+    }
+
+    unobserveVisibility(element, options) {
+        return this.observeHandler.unobserveVisibility(element, options)
+    }
+
     async doAfterAsync(conditionFn, callback, interval = 50) {
         let isRunning = true;
         let task;

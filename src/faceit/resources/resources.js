@@ -67,7 +67,12 @@ function getHtmlResource(path) {
 }
 
 function getLevelIcon(level, width = 32, height = 32) {
-    let icon = LEVEL_TEMPLATES.get(level).cloneNode(true)
+    const template = LEVEL_TEMPLATES.get(level);
+    if (!template) {
+        console.warn(`[FORECAST]: getLevelIcon called with invalid level: ${level}`);
+        return null;
+    }
+    let icon = template.cloneNode(true)
     const span = icon.querySelector('span');
     span.style.width = `${width}px`
     span.style.height = `${height}px`

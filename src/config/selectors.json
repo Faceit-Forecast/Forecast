@@ -1,8 +1,9 @@
 {
-  "version": 3,
+  "version": 5,
   "levels": {
     "hideOriginalIcons": "[class*=SkillIcon__StyledSvg]:not([origin-levels]):not([origin-levels] *)",
     "hideNestedIcons": "[origin-levels] [hided-levels] [class*=SkillIcon__StyledSvg]",
+    "hideInOurRows": "[fc-hide-native] [class*=SkillIcon__StyledSvg]",
     "iconMarginFix": "span[id*=lvlicon]:has(+ [class*=SkillIcon__StyledSvg])",
     "eloText": "[class*=styles__EloText]",
     "skillIconWrapper": "span[class*=styles__SkillIconWrapper]",
@@ -22,6 +23,7 @@
     "skillLevelEloSpan": "[role=\"dialog\"] > div[class*=styles__ScrollableContainer] > div[class*=SkillLevel__StatsContainer] > div > span",
     "skillLevelEloSpanParentDepth": 1,
     "skillLevelEloSpanCheckDepth": 2,
+    "popoverLastKnownRow": "[role=\"dialog\"] div[class*=styles__ScrollableContainer] div[class*=RatingsAndStats__Row]:has(svg[class*=SkillIcon__StyledSvg]):not([fc-last-known])",
     "matchroom": {
       "subtitle": "[class*=Subtitle__Holder]",
       "subtitleParentDepth": 2,
@@ -29,21 +31,26 @@
       "scoreboardMvpTag": "div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div[class*=styles__MvpCardHolder] > div > div[class*=Tag__Container] > span",
       "tooltipTeams": "#tooltip-portal > div > div > div > div:nth-child(3)",
       "scoreboardElo1": "div[class*=Scoreboard__Main] > div > div[class*=styles__Section] > div[class*=styles__ScrollWrapper] > table > tbody > tr > td:nth-child(2) > div > div",
-      "scoreboardElo2": "div[class*=Scoreboard__Main] > div > div[class*=styles__ScrollWrapper] > table > tbody > tr > td:nth-child(2) > div > div"
+      "scoreboardElo2": "div[class*=Scoreboard__Main] > div > div[class*=styles__ScrollWrapper] > table > tbody > tr > td:nth-child(2) > div > div",
+      "unrankedPlayerCardSlot": "div[class*=ListContentPlayer__SlotWrapper] > div[class*=styles__EndSlotContainer]:has(> svg[class*=SkillIcon__StyledSvg]):not(:has([class*=Subtitle__Holder])):not([origin-levels])",
+      "subtitleInsideUnrankedSlot": "div[class*=styles__EndSlotContainer][origin-levels] [class*=Subtitle__Holder]"
     },
     "profile": {
       "mainSection": "[class*=styles__MainSection] > [class*=styles__EloAndLeagueContainer] > div > [class*=styles__Flex]",
       "eloText": "{mainSection} > [class*=styles__Flex] > [class*=styles__Flex] > span",
       "eloTextParentDepth": 2,
       "levelContainerDepth": 2,
-      "matchHistoryElo": "[class*=styles__MainSection] > table > tbody > a > tr > td:nth-child(3) > div > div:nth-child(2) > span, [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) > div > div:nth-child(2) > span",
+      "matchHistoryElo": "[class*=styles__MainSection] > table > tbody > a > tr > td:nth-child(3) [class*=EloValueContainer] > span:first-child, [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) [class*=EloValueContainer] > span:first-child",
       "matchHistoryEloContainerDepth": 2,
-      "chartRightPanelFooter": "[class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Col]",
+      "calibrationIconContainer": "[class*=styles__MainSection] [class*=styles__EloAndLeagueContainer] [class*=styles__SkillIconContainer]",
+      "lastSeasonRow": "[class*=styles__MainSection] [class*=styles__EloAndLeagueContainer] [class*=styles__LastSeasonRow]",
+      "avgSkillRow": "[class*=styles__MainSection] div[aria-haspopup=dialog]:has(> svg[class*=SkillIcon__StyledSvg])",
+      "chartRightPanelFooter": "[class*=styles__MainSection] [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Col]:first-child, [class*=styles__MainSection] > [class*=styles__Flex] > [class*=styles__Container] > div > [class*=styles__RightPanel] > [class*=styles__RightPanelFooter] > [class*=styles__Col]",
       "chartRightPanelFooterParentDepth": 1,
       "chartRightPanelFooterChartDepth": 4,
       "chartRightPanelFooterChartParentDepth": 5,
       "chartRightPanelFooterChildIndex": 1,
-      "tickIconWrapper": "[class*=styles__TickIconWrapper]",
+      "tickIconWrapper": "[class*=styles__TickIconWrapper]:has([class*=styles__TickLabel]):not([fc-tick])",
       "tickIconWrapperChartDepth": 12,
       "tickIconWrapperChartParentDepth": 13,
       "tickIconWrapperChildIndex": 1,
@@ -60,13 +67,16 @@
       "chartRightPanelFooterSpanChildIndex": 1,
       "chartRightPanelFooterSpanRowChildIndex0": 0,
       "chartRightPanelFooterSpanRowChildIndex1": 2,
-      "tickIconWrapper": "[class*=styles__TickIconWrapper]",
+      "rightPanelFooterEloRow": "[class*=styles__MainSection] [class*=styles__RightPanelFooter] [class*=styles__Row]:has(> svg[class*=SkillIcon__StyledSvg] + span[class*=Text]):not([fc-rp-elo])",
+      "currentEloIconContainer": "[class*=styles__MainSection] [class*=styles__CurrentElo]",
+      "statsLastSeasonRow": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__CurrentElo]) [class*=styles__LastSeasonRow]",
+      "tickIconWrapper": "[class*=styles__TickIconWrapper]:has([class*=styles__TickLabel]):not([fc-tick])",
       "tickIconWrapperChartDepth": 11,
       "tickIconWrapperChartParentDepth": 12,
       "tickIconWrapperChildIndex": 1
     },
     "history": {
-      "eloSpan": "[class*=styles__MainSection] > div > table > tbody > a > tr > td:nth-child(3) > div > div > span[class*=Text], [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) > div > div > span[class*=Text]",
+      "eloSpan": "[class*=styles__MainSection] > div > table > tbody > a > tr > td:nth-child(3) [class*=EloValueContainer] > span[class*=Text]:first-child, [class*=styles__MainSection] div[class*=MatchTableBody] > a > div:nth-child(3) [class*=EloValueContainer] > span[class*=Text]:first-child",
       "eloSpanContainerDepth": 2
     },
     "matchmaking": {
@@ -77,7 +87,8 @@
       "midLevelLowerThanTenParentDepth": 1,
       "eloTextInHeader": "div:nth-child(2) > div:nth-child(2) > h5",
       "levelTextInHeader": "div:nth-child(2) > div:nth-child(1) > span",
-      "eloTextLowerThanTen": "h1"
+      "eloTextLowerThanTen": "h1",
+      "eloWidgetV2Svg": "[class*=EloWidgetV2-module][class*=widgetContainer] svg[class*=SkillIcon__StyledSvg]"
     },
     "home": {
       "eloWidget": "#canvas-body > [class*=home__Container] > div > [class*=style__SocialGameFeed] > div > [class*=styles__PlayBlock] > [class*=styles__GameSelectorWrapper] > [class*=EloWidget__Wrapper] > [class*=styles__Flex] > span:not([value])",
@@ -99,8 +110,8 @@
     }
   },
   "ranking": {
-    "hideSkillLevelsSection": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]):has(+ [class*=forecast-statistic-table])",
-    "progressTable": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])",
+    "hideSkillLevelsSection": "[class*=styles__MainSection]:has([class*=forecast-statistic-table]) > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]), [class*=styles__MainSection]:has([class*=forecast-statistic-table]) > div > [class*=styles__Container]:has([class*=styles__CurrentElo])",
+    "progressTable": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]), [class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__CurrentElo])",
     "progressTableParentDepth": 1,
     "progressTableSpotlightCheckDepth": 3,
     "spotlightSearch": "[class*=SpotlightSearch__Content]"
@@ -116,7 +127,7 @@
     "matchPlayer": "div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div"
   },
   "integrations": {
-    "statsSlot": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection])",
+    "statsSlot": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]), [class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__CurrentElo])",
     "statsSlotParentDepth": 1,
     "matchroomSlot": "div[name=\"info\"][class*=Overview__Column] > div[class*=Overview__Stack]",
     "matchroomSlotParentDepth": 1
@@ -126,7 +137,7 @@
     "teamTable": "[name=\"info\"][class*=Overview__Column]",
     "infoName": "[name=\"info\"]",
     "nickNode": "div[class*=styles__PopoverStyled] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5",
-    "ratingsContainer": "div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]",
+    "ratingsContainer": "div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__BoxedContainer]",
     "bannerFallback": "[class*=forecast-banner]",
     "overviewStack": "[class*=Overview__Stack]"
   },
@@ -148,6 +159,7 @@
     "scoreOverflowDepth": 2,
     "eloValueContainer": "[class*=EloValueContainer], [class*=SkillIcon]",
     "scoreResult": "[class*=Score__Result]",
+    "faceitRating": "[class*=FaceitRating__RatingBox], [class*=FaceitRating__RatingHolder]",
     "tableRow": "tr[class*=MatchHistoryTableRow]",
     "matchRow": "tbody > a[href^=\"$prefix\"][href$=\"$suffix\"]:not([$attr]):not(:has([id*=extended-stats-node])), div[class*=MatchTableBody] > a[href^=\"$prefix\"][href$=\"$suffix\"]:not([$attr]):not(:has([id*=extended-stats-node]))",
     "dataRowInTable": "tbody a tr",

@@ -11,22 +11,60 @@ class ObserveHandler {
         this.isRegistered = false;
         this.recheckScheduled = false;
 
-        this.visibilityObserver = new IntersectionObserver(
+        this.visibilityObservers = new Map();
+        this.visibilityCallbackKey = Symbol('__visibilityCallbacks');
+
+        this.visibilityObserver = this.#getVisibilityObserver({ threshold: 0 });
+    }
+
+    #visibilityObserverKey(options) {
+        const threshold = options && options.threshold != null ? options.threshold : 0;
+        const rootMargin = options && options.rootMargin != null ? options.rootMargin : '0px';
+        return `${rootMargin}|${threshold}`;
+    }
+
+    #getVisibilityObserver(options) {
+        const key = this.#visibilityObserverKey(options);
+        const existing = this.visibilityObservers.get(key);
+        if (existing) return existing;
+
+        const self = this;
+        const observer = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
                     if (!entry.isIntersecting) continue;
 
-                    const callback = entry.target.__visibilityCallback;
-                    if (callback) {
-                        callback(entry.target);
-                        delete entry.target.__visibilityCallback;
+                    const callbacks = entry.target[self.visibilityCallbackKey];
+                    let cb = null;
+                    if (callbacks) {
+                        cb = callbacks.get(key);
+                        if (cb) {
+                            callbacks.delete(key);
+                            if (callbacks.size === 0) {
+                                delete entry.target[self.visibilityCallbackKey];
+                            }
+                        }
                     }
 
-                    this.visibilityObserver.unobserve(entry.target);
+                    observer.unobserve(entry.target);
+
+                    if (cb) {
+                        try {
+                            cb(entry.target);
+                        } catch (e) {
+                            error(e);
+                        }
+                    }
                 }
             },
-            { threshold: 0 }
+            {
+                threshold: options && options.threshold != null ? options.threshold : 0,
+                rootMargin: options && options.rootMargin != null ? options.rootMargin : '0px'
+            }
         );
+
+        this.visibilityObservers.set(key, observer);
+        return observer;
     }
 
     register() {
@@ -133,13 +171,20 @@ class ObserveHandler {
         this.observerDisappearTasks.delete(id)
     }
 
-    doWhenVisible(element, callback) {
+    doWhenVisible(element, callback, options) {
         if (!element) return;
 
+        const opts = options || {};
+        const rootMargin = opts.rootMargin || '0px';
+        let marginTop = 0, marginBottom = 0;
+        const parts = rootMargin.trim().split(/\s+/).map(p => parseInt(p, 10) || 0);
+        if (parts.length === 1)      { marginTop = marginBottom = parts[0]; }
+        else if (parts.length === 2) { marginTop = marginBottom = parts[0]; }
+        else if (parts.length >= 3)  { marginTop = parts[0]; marginBottom = parts[2] ?? parts[0]; }
         const rect = element.getBoundingClientRect();
         const isVisible =
-            rect.bottom > 0 &&
-            rect.top < window.innerHeight &&
+            rect.bottom > -marginTop &&
+            rect.top < window.innerHeight + marginBottom &&
             rect.right > 0 &&
             rect.left < window.innerWidth;
 
@@ -148,8 +193,30 @@ class ObserveHandler {
             return;
         }
 
-        element.__visibilityCallback = callback;
-        this.visibilityObserver.observe(element);
+        const key = this.#visibilityObserverKey(opts);
+        let callbacks = element[this.visibilityCallbackKey];
+        if (!callbacks) {
+            callbacks = new Map();
+            element[this.visibilityCallbackKey] = callbacks;
+        }
+        if (callbacks.has(key)) return;
+        callbacks.set(key, callback);
+
+        const observer = this.#getVisibilityObserver(opts);
+        observer.observe(element);
+    }
+
+    unobserveVisibility(element, options) {
+        if (!element) return;
+        const key = this.#visibilityObserverKey(options || {});
+        const observer = this.visibilityObservers.get(key);
+        if (observer) observer.unobserve(element);
+
+        const callbacks = element[this.visibilityCallbackKey];
+        if (callbacks) {
+            callbacks.delete(key);
+            if (callbacks.size === 0) delete element[this.visibilityCallbackKey];
+        }
     }
 
     async doAfterNodeDisappear(selector, callback, id) {
@@ -311,6 +378,10 @@ class ObserveHandler {
         this.observerDisappearTasks.clear();
         this.selectorTasks.clear();
         this.observer?.disconnect()
-        this.visibilityObserver?.disconnect()
+        this.visibilityObservers.forEach(observer => {
+            try { observer.disconnect(); } catch (_) {}
+        });
+        this.visibilityObservers.clear();
+        this.visibilityObserver = this.#getVisibilityObserver({ threshold: 0 });
     }
 }

@@ -84,7 +84,10 @@ class PartySlot {
         if (!levelNode) return null;
 
         const elo = await this.getElo(nick, levelNode);
-        if (!elo) return null;
+        if (!elo || isNaN(elo)) {
+            this.showNativeIcon(levelNode);
+            return null;
+        }
 
         const oldIcon = this.getOldIcon(levelNode);
         if (!oldIcon) return null;
@@ -93,6 +96,22 @@ class PartySlot {
         const newIcon = this.createNewIcon(currentLevel);
 
         return {levelNode, oldIcon, newIcon};
+    }
+
+    showNativeIcon(levelNode) {
+        this.removeExistingIcon();
+
+        const container = this.isShort ? levelNode.parentElement : levelNode;
+        const svgs = container
+            ? container.querySelectorAll('svg[class*=SkillIcon__StyledSvg]')
+            : [];
+        svgs.forEach(svg => {
+            if (!svg.hasAttribute('origin-levels')) svg.setAttribute('origin-levels', '');
+            if (svg.style.display === 'none') svg.style.display = '';
+            svg.removeAttribute('hided');
+        });
+
+        this.nick = null;
     }
 
     async getElo(nick, levelNode) {
@@ -158,6 +177,7 @@ const newLevelsModule = new Module("eloranking", async () => {
     newLevelsModule.temporaryFaceitBugFix();
     hideWithCSS(sel('levels.hideOriginalIcons'));
     hideWithCSS(sel('levels.hideNestedIcons'));
+    hideWithCSS(sel('levels.hideInOurRows'));
 
     const styleElement = document.createElement("style");
     styleElement.textContent = `${sel('levels.iconMarginFix')} {margin-inline-end: 0 !important;}`;
@@ -191,19 +211,48 @@ const newLevelsModule = new Module("eloranking", async () => {
     let gameType = extractGameType("cs2");
 
     let preppendIconOnEloNodeFound = async (cardEloNode) => {
+        if (cardEloNode.id && cardEloNode.id.includes(levelIconId)) return;
         let eloText = cardEloNode.innerText.replace(/[\s,._]/g, '');
-        if (!isNumber(eloText)) return;
+        if (!eloText) return;
         let eloNodeParent = getNthParent(cardEloNode, idx('levels.skillLevelEloSpanParentDepth', 1));
+        if (!isNumber(eloText)) {
+            if (eloNodeParent && !eloNodeParent.hasAttribute('origin-levels')) {
+                eloNodeParent.setAttribute('origin-levels', '');
+            }
+            return;
+        }
         if (getNthParent(cardEloNode, idx('levels.skillLevelEloSpanCheckDepth', 2)).querySelector(`[id*=${levelIconId}]`)) return;
         let elo = Number.parseInt(eloText, 10)
         let currentLevel = getLevel(elo, gameType);
-        let newIcon = getLevelIcon(currentLevel).firstChild;
+        let levelIconWrapper = getLevelIcon(currentLevel);
+        if (!levelIconWrapper) return;
+        let newIcon = levelIconWrapper.firstChild;
         newIcon.id = `${levelIconId}${currentLevel}`;
         preppendTo(newIcon, eloNodeParent);
         newLevelsModule.removalNode(newIcon);
     }
 
     await newLevelsModule.doAfterAllNodeAppear(selector2, preppendIconOnEloNodeFound);
+
+    let selectorLastKnown = sel('levels.popoverLastKnownRow');
+    await newLevelsModule.doAfterAllNodeAppear(selectorLastKnown, (row) => {
+        row.setAttribute('fc-last-known', '');
+        const inlineRow = row.querySelector('[class*=InlineRow]');
+        const textSpan = inlineRow?.querySelector(':scope > span:last-child');
+        const eloText = textSpan?.innerText?.replace(/[\s,._]/g, '') || '';
+        if (!isNumber(eloText)) {
+            row.setAttribute('origin-levels', '');
+            return;
+        }
+        const elo = Number.parseInt(eloText, 10);
+        const currentLevel = getLevel(elo, gameType);
+        const iconWrapper = getLevelIcon(currentLevel, 24, 24);
+        if (!iconWrapper) return;
+        const newIcon = iconWrapper.firstChild;
+        newIcon.id = `${levelIconId}${currentLevel}`;
+        textSpan.insertAdjacentElement('afterend', newIcon);
+        newLevelsModule.removalNode(newIcon);
+    });
 
     if (lobby.pageType === "matchroom") {
         let matchId = extractMatchId();
@@ -214,7 +263,18 @@ const newLevelsModule = new Module("eloranking", async () => {
         let selector4 = sel('levels.matchroom.tooltipTeams');
         let selector5 = sel('levels.matchroom.scoreboardElo1');
         let selector6 = sel('levels.matchroom.scoreboardElo2');
+        let selectorUnrankedSlot = sel('levels.matchroom.unrankedPlayerCardSlot');
+        let selectorSubtitleInUnrankedSlot = sel('levels.matchroom.subtitleInsideUnrankedSlot');
         let matchStats;
+
+        await newLevelsModule.doAfterAllNodeAppear(selectorUnrankedSlot, (node) => {
+            if (!node.hasAttribute('origin-levels')) node.setAttribute('origin-levels', '');
+        });
+
+        await newLevelsModule.doAfterAllNodeAppear(selectorSubtitleInUnrankedSlot, (node) => {
+            node.closest('div[class*=styles__EndSlotContainer][origin-levels]')
+                ?.removeAttribute('origin-levels');
+        });
 
         await newLevelsModule.doAfterAllNodeAppear(selector4, async (node) => {
             if (!matchStats) matchStats = await fetchMatchStats(matchId);
@@ -260,7 +320,23 @@ const newLevelsModule = new Module("eloranking", async () => {
 
                 node.querySelector(`[class*='${mainProfileLevelIconId}']`)?.remove()
                 let badgeHolder = node.querySelector(sel('levels.profile.badgeHolder'))
-                let elo = Number.parseInt(eloText.textContent.replace(/[\s,._]/g, ''), 10);
+                let rawText = (eloText.textContent || '').trim();
+                let elo = Number.parseInt(rawText.replace(/[\s,._]/g, ''), 10);
+                let container = getNthParent(node, idx('levels.profile.levelContainerDepth', 2));
+
+                if (!rawText || !elo || isNaN(elo)) {
+                    container.classList.remove('profile-level-container');
+                    container.style.removeProperty('--glow-color');
+                    container.style.removeProperty('--glow-color-1');
+                    container.style.removeProperty('--glow-color-2');
+                    container.style.removeProperty('--glow-color-3');
+                    container.style.removeProperty('--glow-color-4');
+                    container.style.removeProperty('--glow-color-5');
+                    container.style.removeProperty('--glow-color-6');
+                    if (!container.hasAttribute('origin-levels')) container.setAttribute('origin-levels', '');
+                    return;
+                }
+
                 let currentLevel = getLevel(elo, lobby.gameType);
                 let icon = getLevelIcon(currentLevel);
                 let color = getLevelColor(currentLevel);
@@ -268,7 +344,6 @@ const newLevelsModule = new Module("eloranking", async () => {
                 let levelSpan = icon.firstChild;
                 levelSpan.style.width = "64px";
                 levelSpan.style.height = "64px";
-                let container = getNthParent(node, idx('levels.profile.levelContainerDepth', 2));
                 container.classList.add('profile-level-container')
                 container.style.setProperty('--glow-color', color);
                 container.style.setProperty('--glow-color-1', `${color}2E`);
@@ -307,8 +382,13 @@ const newLevelsModule = new Module("eloranking", async () => {
         let selector2 = sel('levels.profile.matchHistoryElo');
         newLevelsModule.doAfterAllNodeAppear(selector2, async (node) => {
             let levelContainer = getNthParent(node, idx('levels.profile.matchHistoryEloContainerDepth', 2))
-            let elo = Number.parseInt(node.textContent.replace(/[\s,._]/g, ''), 10);
-            if (!elo || isNaN(elo)) return;
+            let rawText = (node.textContent || '').trim();
+            let elo = Number.parseInt(rawText.replace(/[\s,._]/g, ''), 10);
+            if (!rawText || !elo || isNaN(elo)) {
+                levelContainer.querySelector(`[class*='-new-elo-level-icon']`)?.remove();
+                if (!levelContainer.hasAttribute("origin-levels")) levelContainer.setAttribute("origin-levels", '');
+                return;
+            }
             let currentLevel = getLevel(elo, lobby.gameType);
             let icon = getLevelIcon(currentLevel);
             icon.classList.add(newEloLevelIconId);
@@ -322,15 +402,14 @@ const newLevelsModule = new Module("eloranking", async () => {
             let existing = getNthParent(node, idx('levels.profile.chartRightPanelFooterParentDepth', 1)).querySelector("[unique]")
             existing?.remove()
 
-            const chart = getNthParent(node, idx('levels.profile.chartRightPanelFooterChartDepth', 4));
-            const chartParent = getNthParent(node, idx('levels.profile.chartRightPanelFooterChartParentDepth', 5));
-            if (Array.from(chartParent.children)[idx('levels.profile.chartRightPanelFooterChildIndex', 1)] !== chart) return;
             const nick = extractPlayerNick();
             const playerStatistic = await fetchPlayerStatsByNickName(nick);
             const {gameStats, gameType} = getStatistic(playerStatistic);
             if (!gameStats) return;
             const elo = Number.parseInt(gameStats["faceit_elo"], 10);
+            if (!elo || isNaN(elo) || elo < 100) return;
             const currentLevel = getLevel(elo, gameType);
+            if (currentLevel < 1) return;
             const levelIcon = getLevelIcon(currentLevel, 24, 24);
             if (currentLevel < 20) {
                 const newTable = ELO_PROGRESS_BAR_SEPARATED_TEMPLATE.cloneNode(true)
@@ -360,12 +439,13 @@ const newLevelsModule = new Module("eloranking", async () => {
 
         let selector4 = sel('levels.profile.tickIconWrapper');
         newLevelsModule.doAfterAllNodeAppear(selector4, (node) => {
-            if (node.querySelector("[unique]")) return
-            let chart = getNthParent(node, idx('levels.profile.tickIconWrapperChartDepth', 12))
-            let chartParent = getNthParent(node, idx('levels.profile.tickIconWrapperChartParentDepth', 13))
-            if (Array.from(chartParent.children)[idx('levels.profile.tickIconWrapperChildIndex', 1)] !== chart) return
-            let nodeText = node.innerText
+            if (node.hasAttribute('fc-tick')) return
+            let nodeText = (node.innerText || '').trim()
             let elo = Number.parseInt(nodeText.replace(/[\s,._]/g, ''), 10);
+            if (!elo || isNaN(elo) || elo < 100) {
+                node.setAttribute('fc-tick', '');
+                return
+            }
             let gameType = extractGameType("cs2");
             let currentLevel = getLevel(elo, gameType);
             let levelIcon = getLevelIcon(currentLevel);
@@ -374,7 +454,52 @@ const newLevelsModule = new Module("eloranking", async () => {
             levelIcon.firstChild.style.height = "24px"
             node.querySelector(sel('levels.skillIconWrapper'))?.remove()
             node.prepend(levelIcon)
+            node.setAttribute('fc-tick', '');
+            node.setAttribute('fc-hide-native', '');
         })
+
+        let calibrationIconSel = sel('levels.profile.calibrationIconContainer');
+        newLevelsModule.doAfterAllNodeAppear(calibrationIconSel, (node) => {
+            if (!node.hasAttribute('origin-levels')) node.setAttribute('origin-levels', '');
+        });
+
+        let lastSeasonSel = sel('levels.profile.lastSeasonRow');
+        newLevelsModule.doAfterAllNodeAppear(lastSeasonSel, (node) => {
+            if (node.hasAttribute('fc-last-season')) return;
+            const numSpan = [...node.querySelectorAll('span')].find(s => {
+                const txt = (s.textContent || '').trim();
+                return /^\d[\d\s,._]*$/.test(txt);
+            });
+            if (!numSpan) return;
+            const elo = Number.parseInt(numSpan.textContent.replace(/[\s,._]/g, ''), 10);
+            if (!elo || isNaN(elo)) return;
+            const currentLevel = getLevel(elo, lobby.gameType);
+            const icon = getLevelIcon(currentLevel, 24, 24);
+            icon.setAttribute('fc-last-season-icon', '');
+            node.querySelector('svg[class*=SkillIcon__StyledSvg]')?.remove();
+            numSpan.parentElement.insertBefore(icon, numSpan);
+            node.setAttribute('fc-last-season', '');
+            node.setAttribute('fc-hide-native', '');
+        });
+
+        let avgSkillSel = sel('levels.profile.avgSkillRow');
+        newLevelsModule.doAfterAllNodeAppear(avgSkillSel, (node) => {
+            if (node.hasAttribute('fc-avg-skill')) return;
+            const numSpan = [...node.querySelectorAll('span')].find(s => {
+                const txt = (s.textContent || '').trim();
+                return /^\d+$/.test(txt);
+            });
+            if (!numSpan) return;
+            const elo = Number.parseInt(numSpan.textContent, 10);
+            if (!elo || isNaN(elo) || elo < 100) return;
+            const currentLevel = getLevel(elo, lobby.gameType);
+            const icon = getLevelIcon(currentLevel, 24, 24);
+            icon.setAttribute('fc-avg-skill-icon', '');
+            node.querySelector('svg[class*=SkillIcon__StyledSvg]')?.remove();
+            node.prepend(icon);
+            node.setAttribute('fc-avg-skill', '');
+            node.setAttribute('fc-hide-native', '');
+        });
     } else if (lobby.pageType === "stats") {
         let selector3 = sel('levels.stats.chartRightPanelFooterSpan');
         newLevelsModule.doAfterAllNodeAppear(selector3, async (node) => {
@@ -390,9 +515,11 @@ const newLevelsModule = new Module("eloranking", async () => {
             const updateIcon = () => {
                 let eloText = node.innerText
                 let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10);
+                if (!elo || isNaN(elo)) return;
                 let gameType = extractGameType("cs2");
                 let currentLevel = getLevel(elo, gameType);
                 let levelIcon = getLevelIcon(currentLevel);
+                if (!levelIcon) return;
                 levelIcon.setAttribute("unique", "")
                 levelIcon.firstChild.style.width = "24px"
                 levelIcon.firstChild.style.height = "24px"
@@ -415,12 +542,13 @@ const newLevelsModule = new Module("eloranking", async () => {
 
         let selector4 = sel('levels.stats.tickIconWrapper');
         newLevelsModule.doAfterAllNodeAppear(selector4, (node) => {
-            if (node.querySelector("[unique]")) return
-            let chart = getNthParent(node, idx('levels.stats.tickIconWrapperChartDepth', 11))
-            let chartParent = getNthParent(node, idx('levels.stats.tickIconWrapperChartParentDepth', 12))
-            if (Array.from(chartParent.children)[idx('levels.stats.tickIconWrapperChildIndex', 1)] !== chart) return
-            let nodeText = node.innerText
+            if (node.hasAttribute('fc-tick')) return
+            let nodeText = (node.innerText || '').trim()
             let elo = Number.parseInt(nodeText.replace(/[\s,._]/g, ''), 10);
+            if (!elo || isNaN(elo) || elo < 100) {
+                node.setAttribute('fc-tick', '');
+                return
+            }
             let gameType = extractGameType("cs2");
             let currentLevel = getLevel(elo, gameType);
             let levelIcon = getLevelIcon(currentLevel);
@@ -429,13 +557,63 @@ const newLevelsModule = new Module("eloranking", async () => {
             levelIcon.firstChild.style.height = "24px"
             node.querySelector(sel('levels.skillIconWrapper'))?.remove()
             node.prepend(levelIcon)
+            node.setAttribute('fc-tick', '');
+            node.setAttribute('fc-hide-native', '');
         })
+
+        let rpEloRowSel = sel('levels.stats.rightPanelFooterEloRow');
+        newLevelsModule.doAfterAllNodeAppear(rpEloRowSel, (node) => {
+            if (node.hasAttribute('fc-rp-elo')) return;
+            const numSpan = [...node.children].find(c => c.tagName === 'SPAN' && /^\d[\d\s,._]*$/.test((c.textContent || '').trim()));
+            if (!numSpan) return;
+            const elo = Number.parseInt(numSpan.textContent.replace(/[\s,._]/g, ''), 10);
+            if (!elo || isNaN(elo) || elo < 100) return;
+            const gameType = extractGameType("cs2");
+            const currentLevel = getLevel(elo, gameType);
+            const icon = getLevelIcon(currentLevel, 24, 24);
+            icon.setAttribute('fc-rp-elo-icon', '');
+            node.querySelector('svg[class*=SkillIcon__StyledSvg]')?.remove();
+            node.prepend(icon);
+            node.setAttribute('fc-rp-elo', '');
+            node.setAttribute('fc-hide-native', '');
+        });
+
+        let currentEloIconSel = sel('levels.stats.currentEloIconContainer');
+        newLevelsModule.doAfterAllNodeAppear(currentEloIconSel, (node) => {
+            if (!node.hasAttribute('origin-levels')) node.setAttribute('origin-levels', '');
+        });
+
+        let statsLastSeasonSel = sel('levels.stats.statsLastSeasonRow');
+        newLevelsModule.doAfterAllNodeAppear(statsLastSeasonSel, (node) => {
+            if (node.hasAttribute('fc-last-season')) return;
+            const numSpan = [...node.querySelectorAll('span')].find(s => {
+                const txt = (s.textContent || '').trim();
+                return /^\d[\d\s,._]*$/.test(txt);
+            });
+            if (!numSpan) return;
+            const elo = Number.parseInt(numSpan.textContent.replace(/[\s,._]/g, ''), 10);
+            if (!elo || isNaN(elo)) return;
+            const gameType = extractGameType("cs2");
+            const currentLevel = getLevel(elo, gameType);
+            const icon = getLevelIcon(currentLevel, 24, 24);
+            icon.setAttribute('fc-last-season-icon', '');
+            node.querySelector('svg[class*=SkillIcon__StyledSvg]')?.remove();
+            numSpan.parentElement.insertBefore(icon, numSpan);
+            node.setAttribute('fc-last-season', '');
+            node.setAttribute('fc-hide-native', '');
+        });
 
     } else if (lobby.pageType === "history") {
         let selector = sel('levels.history.eloSpan');
         newLevelsModule.doAfterAllNodeAppear(selector, (node) => {
             let levelContainer = getNthParent(node, idx('levels.history.eloSpanContainerDepth', 2))
-            let elo = Number.parseInt(node.textContent.replace(/[\s,._]/g, ''), 10);
+            let rawText = (node.textContent || '').trim();
+            let elo = Number.parseInt(rawText.replace(/[\s,._]/g, ''), 10);
+            if (!rawText || !elo || isNaN(elo)) {
+                levelContainer.querySelector(`[class*='-new-elo-level-icon']`)?.remove();
+                if (!levelContainer.hasAttribute("origin-levels")) levelContainer.setAttribute("origin-levels", '');
+                return;
+            }
             let currentLevel = getLevel(elo, lobby.gameType);
             let icon = getLevelIcon(currentLevel);
             icon.classList.add(newEloLevelIconId);
@@ -446,19 +624,29 @@ const newLevelsModule = new Module("eloranking", async () => {
         let selector = sel('levels.matchmaking.playHolder');
         let selectorMidLevel = sel('levels.matchmaking.midLevel');
         let selectorMidLevelLowerThanTen = sel('levels.matchmaking.midLevelLowerThanTen');
+
+        let selectorEloWidgetV2Svg = sel('levels.matchmaking.eloWidgetV2Svg');
+        newLevelsModule.doAfterAllNodeAppear(selectorEloWidgetV2Svg, (svg) => {
+            if (!svg.hasAttribute('origin-levels')) svg.setAttribute('origin-levels', '');
+            if (svg.style.display === 'none') svg.style.display = '';
+            svg.removeAttribute('hided');
+        });
+
         newLevelsModule.doAfterNodeAppear(selectorMidLevel, (node) => {
             if (node.querySelector("[class*=elowidgeticon]")) return
             let midLevelParent = getNthParent(node, idx('levels.matchmaking.midLevelParentDepth', 1));
             let eloText = midLevelParent.querySelector(sel('levels.matchmaking.eloTextInHeader')).innerText
             let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10);
+            if (!elo || isNaN(elo)) return;
             let level = getLevel(elo, "cs2");
 
             let lvlTextNode = midLevelParent.querySelector(sel('levels.matchmaking.levelTextInHeader'));
             let lvlText = lvlTextNode.innerText;
-            let lvlTextOrigin = lvlText.match(/.+ (\d+)/)[1];
-            lvlTextNode.innerText = lvlText.replace(lvlTextOrigin, level);
+            let lvlTextOrigin = lvlText.match(/.+ (\d+)/)?.[1];
+            if (lvlTextOrigin) lvlTextNode.innerText = lvlText.replace(lvlTextOrigin, level);
 
             let levelIcon = getLevelIcon(level);
+            if (!levelIcon) return;
             let targetPath = levelIcon.querySelector('path[fill="#111111"]');
             if (targetPath) {
                 targetPath.setAttribute('fill', '#1F1F22');
@@ -475,8 +663,10 @@ const newLevelsModule = new Module("eloranking", async () => {
             if (node.querySelector("[class*=elowidgeticon]")) return
             let eloText = getNthParent(node, idx('levels.matchmaking.midLevelLowerThanTenParentDepth', 1)).querySelector(sel('levels.matchmaking.eloTextLowerThanTen')).innerText
             let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10);
+            if (!elo || isNaN(elo)) return;
             let level = getLevel(elo, "cs2");
             let levelIcon = getLevelIcon(level);
+            if (!levelIcon) return;
             levelIcon.classList.add("elowidgeticon");
             node.appendChild(levelIcon);
         });
@@ -591,8 +781,20 @@ const newLevelsModule = new Module("eloranking", async () => {
         newLevelsModule.doAfterNodeAppear(selector, async (node) => {
             let eloText = node.textContent
             let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10);
+            if (!elo || isNaN(elo)) {
+                const parent = getNthParent(node, idx('levels.home.eloWidgetParentDepth', 1));
+                const nativeSvg = parent?.querySelector('svg[class*=SkillIcon__StyledSvg]');
+                if (nativeSvg && !nativeSvg.hasAttribute('origin-levels')) {
+                    nativeSvg.setAttribute('origin-levels', '');
+                    if (nativeSvg.style.display === 'none') nativeSvg.style.display = '';
+                    nativeSvg.removeAttribute('hided');
+                }
+                return;
+            }
             let level = getLevel(elo, "cs2");
-            let levelIcon = getLevelIcon(level).firstChild;
+            let levelIconWrapper = getLevelIcon(level);
+            if (!levelIconWrapper) return;
+            let levelIcon = levelIconWrapper.firstChild;
             levelIcon.style.width = "24px"
             levelIcon.style.height = "24px"
             getNthParent(node, idx('levels.home.eloWidgetParentDepth', 1)).prepend(levelIcon);
@@ -610,8 +812,17 @@ const newLevelsModule = new Module("eloranking", async () => {
             let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10)
             newLevelsModule.doAfterAsync(() => getNthParent(node, idx('levels.cards.eloTextParentDepth', 1)).querySelector('svg'), (oldIcon) => {
                 if (uniqueCheck()) return
+                if (!elo || isNaN(elo)) {
+                    if (oldIcon) {
+                        if (!oldIcon.hasAttribute('origin-levels')) oldIcon.setAttribute('origin-levels', '');
+                        if (oldIcon.style?.display === 'none') oldIcon.style.display = '';
+                        oldIcon.removeAttribute('hided');
+                    }
+                    return;
+                }
                 let currentLevel = getLevel(elo, "cs2");
                 let newIcon = getLevelIcon(currentLevel);
+                if (!newIcon) return;
                 let innerNewIcon = newIcon.firstElementChild;
                 newLevelsModule.appendToAndHide(innerNewIcon, oldIcon)
                 newLevelsModule.removalNode(innerNewIcon)
@@ -723,7 +934,9 @@ async function updatePlayerIcon(nick, oldIcon) {
         const elo = Number.parseInt(gameStats["faceit_elo"], 10);
         currentLevel = getLevel(elo, gameType);
     }
-    const icon = getLevelIcon(currentLevel).firstChild;
+    const iconWrapper = getLevelIcon(currentLevel);
+    if (!iconWrapper) return;
+    const icon = iconWrapper.firstChild;
 
     appendTo(icon, oldIcon);
     newLevelsModule.removalNode(icon);
@@ -755,9 +968,11 @@ async function insertStatsToEloBar(nick, table) {
     }
 
     const levelIcon = getLevelIcon(currentLevel);
-    levelIcon.firstChild.style.width = "38px"
-    levelIcon.firstChild.style.height = "38px"
-    if (levelIcon) node.appendChild(levelIcon)
+    if (levelIcon) {
+        levelIcon.firstChild.style.width = "38px"
+        levelIcon.firstChild.style.height = "38px"
+        node.appendChild(levelIcon)
+    }
 
     let levelRanges = gameLevelRanges[gameType];
     let {min, max} = levelRanges[currentLevel - 1]
