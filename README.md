@@ -11,6 +11,7 @@ This project is a browser extension that retrieves and displays statistics for F
 - Allows you to see the tab information of the match, without having to follow the link
 - Displays match numbers for every 30th match to help you track your progress.
 - Allows sending a specific message on a particular map when it's selected or picked
+- Allows you to view a list of banned players in your last 30 matches
 
 ## Download
 - [Chrome Store](https://chromewebstore.google.com/detail/faceit-forecast/mpkkcddegpblmobincjkbpgfcbejjbcp)

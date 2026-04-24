@@ -82,6 +82,15 @@
   "account": "Konto",
   "fcUserLogo.tooltip": "Forecast-Nutzer",
   "loading": "Laden...",
+  "bans_menu_header": "Gesperrte Spieler",
+  "not_found": "Nicht gefunden",
+  "player_nickname": "Spielername",
+  "ban_reason": "Sperrgrund",
+  "ban_date": "Sperrdatum",
+  "unban_date": "Entsperrdatum",
+  "match": "Spiel",
+  "open_match": "Spiel öffnen",
+  "bans_loading_last_matches": "für die letzten {0} Spiele",
   "discord_cta": "Unserem Discord beitreten",
   "auth_hint": "Verknüpfe dein FACEIT-Konto, um ein personalisiertes Abzeichen zu erhalten"
 }

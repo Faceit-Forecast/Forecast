@@ -27,6 +27,19 @@ const profilesModule = new Module("profiles", () => {
         logo.style.height = 'unset'
     });
 
+    let selectorGameMenuHeadersWrapper = sel('profiles.gameMenuHeadersWrapper');
+    profilesModule.doAfterNodeAppearWhenVisible(selectorGameMenuHeadersWrapper, async (node) => {
+        const existedNodes = node.querySelectorAll(`:scope > div`);
+        for (const element of existedNodes) {
+            const hrefNode = element.querySelector(':scope > a');
+            if (hrefNode.href == window.location.href || hrefNode.href == `${window.location.href}/cs2`) {
+                continue;
+            }
+            createBanMenuHeader(element, node);
+            break;
+        }
+    });
+
     if (lobby.pageType === "matchroom") {
         let selectorStatsMVP = sel('profiles.statsMVP');
         const statsMVPHandler = (selector) => {
@@ -153,4 +166,34 @@ function addFCUserLogo(target, width, height, asChild) {
         : target.after(node);
 
     return node
+}
+
+function createBanMenuHeader(existedNode, node, nickname) {
+    let newBanNode = document.createElement('div');
+    newBanNode.classList.add(...existedNode.classList);
+
+    const existedHrefNode = existedNode.querySelector(':scope > a');
+    let hrefBanNode = document.createElement('a');
+    hrefBanNode.style.display = 'contents';
+    hrefBanNode.href = existedHrefNode.href.replace(/(\/players\/[^/]+).*/, '$1/cs2/bans');
+    hrefBanNode.classList.add(...existedHrefNode.classList);
+    newBanNode.appendChild(hrefBanNode);
+
+    const existedButtonNode = existedHrefNode.querySelector(':scope > button');
+    let buttonBanNode = document.createElement('button');
+    buttonBanNode.classList.add(...existedButtonNode.classList);
+    hrefBanNode.appendChild(buttonBanNode);
+
+    const existedDivNode = existedButtonNode.querySelector(':scope > div');
+    let divBanNode = document.createElement('div');
+    divBanNode.classList.add(...existedDivNode.classList);
+    buttonBanNode.appendChild(divBanNode);
+
+    const existedSpanNode = existedDivNode.querySelector(':scope > span');
+    let spanBanNode = document.createElement('span');
+    spanBanNode.classList.add(...existedSpanNode.classList);
+    spanBanNode.textContent = t("bans_menu_header", "Banned players");
+    divBanNode.appendChild(spanBanNode);
+
+    node.appendChild(newBanNode);
 }

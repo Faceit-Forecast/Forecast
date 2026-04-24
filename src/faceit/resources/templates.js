@@ -15,6 +15,8 @@ let TEAM_WINRATE_TABLE_TEMPLATE;
 let CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE;
 let CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE;
 let SKILL_LEVELS_INFO_TABLE_TEMPLATE;
+let BANS_CARD_TEMPLATE;
+let BANS_STYLES_TEMPLATE;
 let FORECAST_STYLES_TEMPLATE;
 
 function initTemplates() {
@@ -37,6 +39,8 @@ function initTemplates() {
     CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_PLAYER_WINRATE_TABLE_HTML);
     CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_TEAM_WINRATE_TABLE_HTML);
     SKILL_LEVELS_INFO_TABLE_TEMPLATE = htmlToElement(SKILL_LEVELS_INFO_TABLE_HTML);
+    BANS_CARD_TEMPLATE = htmlToElement(BANS_CARD_HTML);
+    BANS_STYLES_TEMPLATE = htmlToElement(BANS_STYLES_HTML);
     FORECAST_STYLES_TEMPLATE = htmlToElement(FORECAST_STYLES_HTML);
 }
 
@@ -417,6 +421,28 @@ const MATCH_COUNTER_ARROW_HTML = /*language=HTML*/ `
             <div class="match-counter-arrow-triangle"></div>
         </div>
     </div>`;
+
+const BANS_CARD_HTML = /*language=HTML*/ `
+    <section class="fc-bans-card">
+        <h3 class="fc-bans-title"></h3>
+        <div class="fc-bans-status"></div>
+    </section>`;
+
+const BANS_STYLES_HTML = `
+    <style id="fc-bans-style">
+        .fc-bans-card { margin-top: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(0,0,0,0.2); }
+        .fc-bans-title { margin: 0 0 10px; font-size: 16px; font-weight: 700; color: #fff; }
+        .fc-bans-status { color: rgba(255,255,255,0.75); font-size: 13px; }
+        .fc-bans-table-wrap { overflow-x: auto; }
+        .fc-bans-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+        .fc-bans-table th, .fc-bans-table td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; font-size: 13px; color: #fff; }
+        .fc-bans-table th { color: rgba(255,255,255,0.75); font-weight: 600; }
+        .fc-bans-table td.fc-bans-empty { color: rgba(255,255,255,0.55); }
+        .fc-bans-player-link { color: #6fb3ff; text-decoration: none; }
+        .fc-bans-player-link:hover { text-decoration: underline; }
+        .fc-bans-link { color: #6fb3ff; text-decoration: none; }
+        .fc-bans-link:hover { text-decoration: underline; }
+    </style>`;
 
 const MATCH_HISTORY_POPUP_HTML = /*language=HTML*/ `
     <div class="show-popup-button-wrap" style="width: 20px; height: 20px;">

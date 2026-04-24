@@ -14,6 +14,7 @@ const lobbyModules = [
     { pages: ['matchroom'], module: matchRoomModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['matchroom'], module: posCatcherModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['history', 'profile'], module: matchHistoryModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['bans'], module: bansModule, isEnabled: null, isEnabledByDefault: true },
 ];
 
 async function initExtension() {
