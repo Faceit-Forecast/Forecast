@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FACEIT FORECAST",
-  "version": "1.7.16",
+  "version": "1.7.17",
   "description": "A convenient extension for detailed statistics on Faceit.",
   "default_locale": "en",
   "author": "TerraMiner",

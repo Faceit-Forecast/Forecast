@@ -460,7 +460,13 @@ const newLevelsModule = new Module("eloranking", async () => {
 
         let calibrationIconSel = sel('levels.profile.calibrationIconContainer');
         newLevelsModule.doAfterAllNodeAppear(calibrationIconSel, (node) => {
-            if (!node.hasAttribute('origin-levels')) node.setAttribute('origin-levels', '');
+            const isCalibration = !!node.querySelector(':scope > svg[class*=SkillIcon__StyledSvg]')
+                && !node.querySelector(':scope > .main-profile-icon');
+            if (isCalibration) {
+                if (!node.hasAttribute('origin-levels')) node.setAttribute('origin-levels', '');
+            } else if (node.hasAttribute('origin-levels')) {
+                node.removeAttribute('origin-levels');
+            }
         });
 
         let lastSeasonSel = sel('levels.profile.lastSeasonRow');
@@ -808,10 +814,12 @@ const newLevelsModule = new Module("eloranking", async () => {
         newLevelsModule.doAfterNodeAppear(selector,  (node) => {
             let uniqueCheck = () => node.matches(`[class*=${collectionLevelIconId}]`)
             if (uniqueCheck()) return
+            if (node.closest('[class*=TakeoverModal], [class*=TakeoverSkillIcon]')) return
             let eloText = node.innerText
             let elo = Number.parseInt(eloText.replace(/[\s,._]/g, ''), 10)
             newLevelsModule.doAfterAsync(() => getNthParent(node, idx('levels.cards.eloTextParentDepth', 1)).querySelector('svg'), (oldIcon) => {
                 if (uniqueCheck()) return
+                if (oldIcon && oldIcon.closest('[class*=TakeoverModal], [class*=TakeoverSkillIcon]')) return
                 if (!elo || isNaN(elo)) {
                     if (oldIcon) {
                         if (!oldIcon.hasAttribute('origin-levels')) oldIcon.setAttribute('origin-levels', '');
