@@ -1,3 +1,7 @@
+[1.7.17] Minor Fixes
+Fixed an issue where the level icon was not displayed on the calibration end widget
+Fixed duplicate level display in the profile overview
+
 [1.7.16] Bug Fixes & Season 8 Update
 Added logic to auto-click on chat button for Quick Position Setup
 Fixed most known issues with new FACEIT calibration system
