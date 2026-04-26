@@ -266,6 +266,8 @@ const matchDataCache = new Map();
 const matchDataV3Cache = new Map();
 const matchDataStatsCache = new Map();
 const fetchInFlight = new Map();
+const playerMatchesCache = new Map();
+const bansDataCache = new Map();
 
 async function getLocalStorageCache(key) {
     try {
@@ -475,6 +477,26 @@ async function fetchV3MatchStats(matchId) {
         `match_v3_${matchId}`,
         4320,
         v3EloValidator
+    );
+}
+
+async function fetchV4PlayerMatches(playerId, limit = 20) {
+    return fetchV4Cached(
+        playerMatchesCache,
+        `${baseUrlV4}/players/${playerId}/history?game=cs2&limit=${limit}`,
+        `Error when retrieving player match history by ID: ${playerId}`,
+        `player_matches_${playerId}`,
+        60
+    );
+}
+
+async function fetchV4PlayerBans(playerId) {
+    return fetchV4Cached(
+        bansDataCache,
+        `${baseUrlV4}/players/${playerId}/bans`,
+        `Error when retrieving player bans by ID: ${playerId}`,
+        `player_bans_${playerId}`,
+        3600
     );
 }
 

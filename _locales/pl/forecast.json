@@ -82,6 +82,15 @@
   "account": "Konto",
   "fcUserLogo.tooltip": "Użytkownik Forecast",
   "loading": "Ładowanie...",
+  "bans_menu_header": "Zbanowani gracze",
+  "not_found": "Nie znaleziono",
+  "player_nickname": "Nick gracza",
+  "ban_reason": "Powód bana",
+  "ban_date": "Data bana",
+  "unban_date": "Data odbanowania",
+  "match": "Mecz",
+  "open_match": "Otwórz mecz",
+  "bans_loading_last_matches": "z ostatnich {0} meczów",
   "discord_cta": "Dołącz do naszego Discorda",
   "auth_hint": "Zdobądź swoją odznakę"
 }

@@ -81,6 +81,15 @@
   "account": "Аккаунт",
   "fcUserLogo.tooltip": "Пользователь Forecast",
   "loading": "Загрузка...",
+  "bans_menu_header": "Забаненные игроки",
+  "not_found": "Ничего не найдено",
+  "player_nickname": "Ник игрока",
+  "ban_reason": "Причина бана",
+  "ban_date": "Дата бана",
+  "unban_date": "Дата разбана",
+  "match": "Матч",
+  "open_match": "Открыть матч",
+  "bans_loading_last_matches": "за последние {0} матчей",
   "discord_cta": "Наш Discord сервер",
   "auth_hint": "Получи свой значок"
 }

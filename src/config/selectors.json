@@ -124,7 +124,8 @@
     "profileCard": "#canvas-body > div > div > aside > div[class*=styles__CardContent] > div[class*=Draggable__DraggableStyled] > div[class*=styles__Container] > h1",
     "profileTooltipV2": "[role=\"dialog\"][id*=\"radix\"] > div[class*=styles__FixedContainer] > div > a > h5",
     "statsMVP": "div > div > div > div > div[class*=Scoreboard__Main] > div > div[class*=styles__Flex] > div[class*=styles__MvpContainer] > div > div[class*=Draggable__DraggableStyled] > div > [class*=styles__Nickname]",
-    "matchPlayer": "div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div"
+    "matchPlayer": "div[class*=ListContentPlayer__SlotWrapper] > div > div[class*=styles__NicknameContainer] > div > div",
+    "gameMenuHeadersWrapper": "div[class*=styles__Content] > div > div > div[class*=styles__Flex] > div[class*=styles__Flex] > div[class*=styles__Holder] > div[class*=styles__ChildrenContainer]"
   },
   "integrations": {
     "statsSlot": "[class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__SkillLevelsSection]), [class*=styles__MainSection] > div > [class*=styles__Container]:has([class*=styles__CurrentElo])",
@@ -170,5 +171,8 @@
     "headerCell": "th, div[class*=MatchTableHeaderCell]",
     "dataRow": "tr, a[class*=MatchLink]",
     "dataCell": "td, div[class*=MatchTableCell]"
+  },
+  "bans": {
+    "bansContentWrapper": "#canvas-body > div > div > div" 
   }
 }

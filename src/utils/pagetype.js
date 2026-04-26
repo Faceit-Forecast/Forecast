@@ -152,6 +152,11 @@ const SETTINGS_PROFILE = new PageType(
     /^https:\/\/www\.faceit\.com\/([^/]+)\/settings\/profile.*/
 );
 
+const BANS = new PageType(
+    "bans",
+    /^https:\/\/www\.faceit\.com\/([^/]+)\/players\/([^/]+)\/cs2\/bans.*/
+);
+
 const UNKNOWN = new PageType(
     "unknown",
     /^https:\/\/www\.faceit\.com\/.*/
@@ -180,6 +185,7 @@ const pageTypes = [
     PROFILE,
     HOME,
     SETTINGS_PROFILE,
+    BANS,
     UNKNOWN
 ];
 

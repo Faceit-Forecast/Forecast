@@ -82,6 +82,15 @@
   "account": "Account",
   "fcUserLogo.tooltip": "Forecast User",
   "loading": "Loading...",
+  "bans_menu_header": "Banned players",
+  "not_found": "Not found",
+  "player_nickname": "Player nickname",
+  "ban_reason": "Ban reason",
+  "ban_date": "Ban date",
+  "unban_date": "Unban date",
+  "match": "Match",
+  "open_match": "Open match",
+  "bans_loading_last_matches": "for the last {0} matches",
   "discord_cta": "Join our Discord",
   "auth_hint": "Get your badge"
 }
