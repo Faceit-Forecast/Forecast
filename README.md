@@ -22,10 +22,10 @@ This project is a browser extension that retrieves and displays statistics for F
 
 ## Screenshots
 
-<img width="1280" height="800" alt="stats" src="https://github.com/user-attachments/assets/b9fe9c35-0a0f-4bf6-bca4-69435851fad1" />
+<img width="1280" height="800" alt="stats" src="https://github.com/user-attachments/assets/0ff6b4fc-4b6c-498b-a230-657d71b3464a" />
 <img width="1280" height="800" alt="profile" src="https://github.com/user-attachments/assets/6bb7df99-0a0a-4a34-bcdd-a08ef40f3704" />
-<img width="1280" height="800" alt="matchroom" src="https://github.com/user-attachments/assets/393ecbcc-6c04-4a75-a1b8-f3ee250c4999" />
-<img width="1280" height="800" alt="history" src="https://github.com/user-attachments/assets/088bd309-7e04-4e49-9fbf-afd2c601e89e" />
+<img width="1280" height="800" alt="matchroom" src="https://github.com/user-attachments/assets/28a2e286-d078-403f-a6b4-21f17321c3ed" />
+<img width="1280" height="800" alt="history" src="https://github.com/user-attachments/assets/1b9e2cae-d928-4714-b79e-411321420047" />
 <img width="1280" height="800" alt="match-predict" src="https://github.com/user-attachments/assets/69629952-6e34-4c88-80ed-03c0a534c381" />
 <img width="1280" height="800" alt="popup-bar" src="https://github.com/user-attachments/assets/e94c27c6-9a92-4284-8e6f-9d507f906a1a" />
 
