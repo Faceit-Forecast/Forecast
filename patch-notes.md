@@ -1,3 +1,9 @@
+[1.8.0] Match Preview & K/R Column
+Added match accept popup with available server regions and map pool preview
+Added K/R (kills per round) column to match history between K/D and ADR
+Minor bug fixes and stability improvements
+<img width="560" height="374" alt="image" src="https://github.com/user-attachments/assets/20e22d81-558c-47cb-999b-95dd3957ca4b" />
+
 [1.7.17] Minor Fixes
 Fixed an issue where the level icon was not displayed on the calibration end widget
 Fixed duplicate level display in the profile overview
