@@ -10,15 +10,18 @@ const lobbyModules = [
     { pages: ['*'], module: newLevelsModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['*'], module: logoSidebarModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['*'], module: profilesModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['*'], module: matchmakingDataModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['stats'], module: rankingModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['matchroom'], module: matchRoomModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['matchroom'], module: posCatcherModule, isEnabled: null, isEnabledByDefault: true },
+    { pages: ['matchroom'], module: customLevelsModule, isEnabled: null, isEnabledByDefault: true },
     { pages: ['history', 'profile'], module: matchHistoryModule, isEnabled: null, isEnabledByDefault: true },
 ];
 
 async function initExtension() {
     if (!(await isExtensionEnabled())) return
     await loadConfigs();
+    await resolveAccessToken();
     initApiEndpoints();
     startMetricsReporter();
     await initializeMatchHistoryCache();

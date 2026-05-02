@@ -4,6 +4,7 @@
 
 let CHALLENGER_TEMPLATE;
 let LEVEL_TEMPLATES;
+let LEVEL_JOKE;
 let ELO_PROGRESS_BAR_TEMPLATE;
 let ELO_PROGRESS_BAR_MASTER_TEMPLATE;
 let ELO_PROGRESS_BAR_SEPARATED_TEMPLATE;
@@ -15,6 +16,7 @@ let TEAM_WINRATE_TABLE_TEMPLATE;
 let CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE;
 let CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE;
 let SKILL_LEVELS_INFO_TABLE_TEMPLATE;
+let MATCHMAKING_PREVIEW_TEMPLATE;
 let FORECAST_STYLES_TEMPLATE;
 
 function initTemplates() {
@@ -26,6 +28,7 @@ function initTemplates() {
     LEVEL_TEMPLATES = new Map(
         Array.from({length: 20}, (_, i) => [i + 1, generateLevelIcon(i + 1)])
     );
+    LEVEL_JOKE = generateLevelIcon('wheelchair');
     ELO_PROGRESS_BAR_TEMPLATE = htmlToElement(ELO_PROGRESS_BAR_HTML);
     ELO_PROGRESS_BAR_MASTER_TEMPLATE = htmlToElement(ELO_PROGRESS_BAR_MASTER_HTML);
     ELO_PROGRESS_BAR_SEPARATED_TEMPLATE = htmlToElement(ELO_PROGRESS_BAR_SEPARATED_HTML);
@@ -37,6 +40,7 @@ function initTemplates() {
     CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_PLAYER_WINRATE_TABLE_HTML);
     CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_TEAM_WINRATE_TABLE_HTML);
     SKILL_LEVELS_INFO_TABLE_TEMPLATE = htmlToElement(SKILL_LEVELS_INFO_TABLE_HTML);
+    MATCHMAKING_PREVIEW_TEMPLATE = htmlToElement(MATCHMAKING_PREVIEW_HTML);
     FORECAST_STYLES_TEMPLATE = htmlToElement(FORECAST_STYLES_HTML);
 }
 
@@ -78,7 +82,8 @@ const LEVEL_COLORS = {
     17: '#1FB2F7',
     18: '#00CBFF',
     19: '#4CDBFF',
-    20: '#fff'
+    20: '#fff',
+    wheelchair: '#fff'
 };
 
 const PROGRESS_PATHS = {
@@ -144,6 +149,9 @@ const LEVEL_DIGITS = {
     20: ['2_20', '0_20']
 };
 
+const WHEELCHAIR_BODY_PATH = 'M11.311 9.795c.614 0 1.111-.491 1.111-1.098 0-.606-.497-1.097-1.11-1.097-.614 0-1.112.491-1.112 1.097 0 .607.498 1.098 1.111 1.098Zm-1.405 3.281c.262-.404.213-.319.544-.578v-.838c-.544.23-1.066.742-1.276 1.097a3.109 3.109 0 0 0-.334 2.377c.106.398.29.772.54 1.1a3.181 3.181 0 0 0 2.096 1.213c.758.059 2.023-.123 2.624-.847l-.4-.7c-.311.424-.741.544-1.1.693a2.409 2.409 0 0 1-1.426-.015 2.38 2.38 0 0 1-1.16-.817 2.333 2.333 0 0 1-.108-2.685Z';
+const WHEELCHAIR_STROKE_PATH = 'M11.355 14.068v-5.47m2.777 3.292h-2.777m0 1.81h2.222l1.11 2.196 1.112-.55';
+
 const SVG_START = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><g clip-path="url(#a)">';
 const SVG_END = '</g><defs><clipPath id="a"><path fill="#fff" d="M0 0h24v24H0z"/></clipPath></defs></svg>';
 const CIRCLE_BG = '<path fill="#111111" d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12Z"/>';
@@ -151,13 +159,20 @@ const PROGRESS_BG = '<path fill="#CDCDCD" fill-opacity=".1" fill-rule="evenodd" 
 
 function generateLevelIcon(level) {
     const color = LEVEL_COLORS[level];
+
+    if (level === 'wheelchair') {
+        const progressSvg = `<path fill="${color}" fill-rule="evenodd" d="${PROGRESS_PATHS.full}" clip-rule="evenodd"/>`;
+        const bodySvg = `<path fill="${color}" d="${WHEELCHAIR_BODY_PATH}"/>`;
+        const strokeSvg = `<path stroke="${color}" stroke-width=".75" d="${WHEELCHAIR_STROKE_PATH}"/>`;
+        return htmlToElement(`<span title="Skill Level Wheelchair" style="display: inline-block;">${SVG_START}${CIRCLE_BG}${progressSvg}${bodySvg}${strokeSvg}${SVG_END}</span>`);
+    }
+
     const progressPath = level >= 10 ? PROGRESS_PATHS.full : PROGRESS_PATHS[level];
     const digitKeys = LEVEL_DIGITS[level];
 
     const progressBg = level >= 11 ? '' : PROGRESS_BG;
 
     const progressSvg = `<path fill="${color}" fill-rule="evenodd" d="${progressPath}" clip-rule="evenodd"/>`;
-
     const digitsSvg = digitKeys.map(key => `<path fill="${color}" d="${DIGIT_PATHS[key]}"/>`).join('');
 
     return htmlToElement(`<span title="Skill Level ${level}" style="display: inline-block;">${SVG_START}${CIRCLE_BG}${progressBg}${progressSvg}${digitsSvg}${SVG_END}</span>`);
@@ -517,6 +532,15 @@ const TEAM_WINRATE_TABLE_HTML = /*language=HTML*/ `
             </thead>
             <tbody class="fc-team-table-body"></tbody>
         </table>
+    </div>`;
+
+const MATCHMAKING_PREVIEW_HTML = /*language=HTML*/ `
+    <div class="fc-mm-panel">
+        <div class="fc-panel-header">
+            <span class="fc-panel-info" data-i18n="mm_preview_title">Match preview</span>
+            <div class="brand-icon fc-brand-icon-inline" data-tooltip="FORECAST"></div>
+        </div>
+        <div class="fc-mm-body"></div>
     </div>`;
 
 const CLASSIC_PLAYER_WINRATE_TABLE_HTML = /*language=HTML*/ `
@@ -1433,6 +1457,145 @@ __MATCHHISTORY_TABLE_ROW_SELECTOR__ {
 .fc-stat-green { color: rgb(61,255,108); }
 .fc-stat-yellow { color: rgb(255,200,0); }
 .fc-stat-red { color: rgb(255,0,43); }
+
+.fc-mm-panel {
+    background: #000;
+    border: 1px solid #242424;
+    border-radius: 12px;
+    overflow: hidden;
+    width: auto;
+    margin: 8px 16px 12px;
+    position: relative;
+}
+.fc-mm-panel .fc-panel-header {
+    padding: 8px 12px;
+}
+.fc-mm-panel .fc-panel-info {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(255, 106, 0, 0.35);
+}
+.fc-mm-section-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #ff6a00;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.85;
+    display: block;
+}
+.fc-mm-empty {
+    color: #444;
+    font-size: 11px;
+    font-style: italic;
+}
+.fc-mm-flag {
+    width: 18px;
+    height: 12px;
+    border-radius: 2px;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+    background: #1a1a1a;
+}
+.fc-mm-server {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.fc-mm-server-name {
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.fc-mm-servers-side {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    min-width: 90px;
+}
+.fc-mm-servers-side .fc-mm-section-label {
+    margin-bottom: 4px;
+}
+.fc-mm-side-divider {
+    background: linear-gradient(180deg, transparent, #1a1a1a 20%, #1a1a1a 80%, transparent);
+}
+.fc-mm-maps-block {
+    padding: 10px 14px 12px;
+    min-width: 0;
+}
+.fc-mm-maps-block .fc-mm-section-label {
+    margin-bottom: 8px;
+}
+.fc-mm-maps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+.fc-mm-map-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 4px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #1a1a1a;
+    min-width: 0;
+}
+.fc-mm-map-pill img {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.fc-mm-map-pill-name {
+    font-size: 11px;
+    color: #fff;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.fc-mm-body[data-mode="both"] {
+    display: grid;
+    grid-template-columns: auto 1px 1fr;
+    gap: 0;
+    padding: 0;
+}
+.fc-mm-body[data-mode="servers"] {
+    display: block;
+    padding: 4px 6px 6px;
+}
+.fc-mm-body[data-mode="servers"] .fc-mm-servers-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 14px 10px;
+    min-width: 0;
+}
+.fc-mm-body[data-mode="servers"] .fc-mm-servers-side .fc-mm-section-label {
+    margin: 0;
+    flex-shrink: 0;
+}
+.fc-mm-body[data-mode="maps"] {
+    display: block;
+    padding: 0;
+}
+.fc-mm-body[data-mode="maps"] .fc-mm-maps-grid {
+    grid-template-columns: repeat(4, 1fr);
+}
 .fc-wr-win { color: rgb(61,255,108); }
 .fc-wr-lose { color: rgb(255,0,43); }
 .fc-wr-tie { color: #ccc; }
@@ -1956,7 +2119,7 @@ __MATCHHISTORY_TABLE_ROW_SELECTOR__ {
     display: flex;
     align-items: center;
     flex-direction: row;
-    justify-content: space-around;
+    justify-content: space-between;
     flex: 1 1 0;
 }
 

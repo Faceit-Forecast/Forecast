@@ -67,7 +67,7 @@ function getHtmlResource(path) {
 }
 
 function getLevelIcon(level, width = 32, height = 32) {
-    const template = LEVEL_TEMPLATES.get(level);
+    const template = level === "joke" ? LEVEL_JOKE : LEVEL_TEMPLATES.get(level);
     if (!template) {
         console.warn(`[FORECAST]: getLevelIcon called with invalid level: ${level}`);
         return null;

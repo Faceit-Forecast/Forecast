@@ -28,6 +28,7 @@
   "adr_color_desc": "Färbt ADR-Statistik. (adr ≥ 75 = grün)",
   "kd_color": "K/D Farbe",
   "kd_color_desc": "Färbt K/D-Statistik. (k/d ≥ 1 = grün)",
+  "kr_desc": "Kills pro Runde. Durchschnittliche Kills pro gespielter Runde.",
   "kr_color": "K/R Farbe",
   "kr_color_desc": "Färbt K/R-Statistik. (k/r ≥ 0.7 = grün)",
   "fcr_desc": "FCR - Beitragsanteil des Spielers im Team basierend auf der Leistung. Summe aller 5 Spieler = 100%. Ideal ist, wenn alle 5 Spieler auf 20% gespielt haben.",
@@ -83,5 +84,15 @@
   "fcUserLogo.tooltip": "Forecast-Nutzer",
   "loading": "Laden...",
   "discord_cta": "Unserem Discord beitreten",
-  "auth_hint": "Verknüpfe dein FACEIT-Konto, um ein personalisiertes Abzeichen zu erhalten"
+  "auth_hint": "Verknüpfe dein FACEIT-Konto, um ein personalisiertes Abzeichen zu erhalten",
+  "mm_servers": "Server",
+  "mm_maps": "Karten",
+  "mm_preview_title": "Match-Vorschau",
+  "mm_preview_feature": "Match-Vorschau",
+  "mm_preview_feature_desc": "Zeigt verfügbare Server und Map-Pool direkt im Match-Annahmedialog an.",
+  "mm_preview_mode_label": "Ansicht",
+  "mm_preview_mode_desc": "Was angezeigt werden soll: nur Server, nur Karten oder beides.",
+  "mm_preview_mode_both": "Beides",
+  "mm_preview_mode_servers": "Server",
+  "mm_preview_mode_maps": "Karten"
 }

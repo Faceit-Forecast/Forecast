@@ -180,6 +180,8 @@ let _currentApiSession = 0;
 function bumpApiSession() {
     _currentApiSession++;
     apiQueue.cancelStale(_currentApiSession);
+    apiQueue.cooldownUntil = 0;
+    apiQueue.lastCall = 0;
     fetchInFlight.clear();
     return _currentApiSession;
 }

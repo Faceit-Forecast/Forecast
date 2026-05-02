@@ -43,7 +43,7 @@ function resolveColumns(row) {
 
     for (let i = 0; i < children.length; i++) {
         const td = children[i];
-        if (td.classList.contains('fcr-fc') || td.classList.contains('avg-elo-fc')) continue;
+        if (td.classList.contains('fcr-fc') || td.classList.contains('avg-elo-fc') || td.classList.contains('kr-fc')) continue;
         if (td.querySelector(sel('matchhistory.scoreResult'))) {
             col.score = td;
         } else if (td.querySelector(sel('matchhistory.faceitRating'))) {
@@ -88,10 +88,10 @@ function resolveHeaderColumns(headerRow, dataRow) {
     if (!headerRow || !dataRow) return hcol;
 
     const dataCells = Array.from(dataRow.children).filter(
-        td => !td.classList.contains('fcr-fc') && !td.classList.contains('avg-elo-fc')
+        td => !td.classList.contains('fcr-fc') && !td.classList.contains('avg-elo-fc') && !td.classList.contains('kr-fc')
     );
     const headerCells = Array.from(headerRow.children).filter(
-        th => !th.classList.contains('avg-elo-fc-header') && !th.classList.contains('fcr-fc-header')
+        th => !th.classList.contains('avg-elo-fc-header') && !th.classList.contains('fcr-fc-header') && !th.classList.contains('kr-fc-header')
     );
 
     const numericIndices = [];
@@ -114,6 +114,10 @@ function resolveHeaderColumns(headerRow, dataRow) {
     if (lastNumericIdx >= 0) {
         hcol.lastNumeric = headerCells[lastNumericIdx] ?? null;
         hcol.kr = hcol.lastNumeric;
+    }
+
+    if (hcol.rating && numericIndices.length >= 1) {
+        hcol.kd = headerCells[numericIndices[0]] ?? null;
     }
 
     return hcol;
@@ -170,6 +174,7 @@ class MatchNodeByMatchStats {
 
         this.col = resolveColumns(this.node);
 
+        this.krNode = null;
         this.fcrNode = null;
         this.avgEloNode = null;
         this.setupPlaceholders();
@@ -226,6 +231,17 @@ class MatchNodeByMatchStats {
     }
 
     setupPlaceholders() {
+
+        const krAnchor = this.col.kd;
+        if (this.settings?.showKR && krAnchor && !this.col.kr && !this.node.querySelector('[class*="kr-fc"]')) {
+            this.krNode = createDataCell();
+            this.krNode.textContent = '-';
+            this.krNode.style.color = white;
+            this.krNode.className = krAnchor.className;
+            this.krNode.classList.add('kr-fc');
+            krAnchor.after(this.krNode);
+            matchHistoryModule.removalNode(this.krNode);
+        }
 
         const fcrAnchor = this.col.kr || this.col.adr;
         if (this.settings?.showFCR && fcrAnchor && !this.node.querySelector('[class*="fcr-fc"]')) {
@@ -310,6 +326,19 @@ class MatchNodeByMatchStats {
                 this.col.score.querySelector('div').lastChild.style.justifyContent = "center";
                 this.col.score.querySelector('div').appendChild(popup);
                 matchHistoryModule.removalNode(popup)
+            }
+        }
+
+        if (this.settings?.showKR && this.krNode) {
+            const krRatio = this.matchStats["K/R Ratio"];
+            const krValue = parseFloat(krRatio);
+            const shouldRound = this.settings?.roundedStats !== false;
+            this.krNode.textContent = krRatio != null ? (shouldRound ? krValue.toFixed(1) : krRatio) : '-';
+
+            if (this.settings?.coloredStatsKR !== false && !isNaN(krValue)) {
+                this.krNode.style.color = krValue >= 0.7 ? green : red;
+            } else {
+                this.krNode.style.color = white;
             }
         }
 
@@ -436,6 +465,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
             coloredStatsKDA: true,
             coloredStatsADR: true,
             coloredStatsKD: true,
+            showKR: true,
             coloredStatsKR: true,
             showFCR: true,
             coloredStatsFCR: true,
@@ -468,7 +498,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         if (!thead) return '';
         const headerRow = thead.querySelector(sel('matchhistory.headerRow'));
         if (!headerRow) return '';
-        const cells = Array.from(headerRow.children).filter(c => !c.classList.contains('avg-elo-fc-header') && !c.classList.contains('fcr-fc-header'));
+        const cells = Array.from(headerRow.children).filter(c => !c.classList.contains('avg-elo-fc-header') && !c.classList.contains('fcr-fc-header') && !c.classList.contains('kr-fc-header'));
         return cells.map(c => c.textContent.trim()).join('|');
     }
 
@@ -476,7 +506,7 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         const headerRow = thead.querySelector(sel('matchhistory.headerRow'));
         if (!headerRow) return;
 
-        headerRow.querySelectorAll('.avg-elo-fc-header, .fcr-fc-header').forEach(el => el.remove());
+        headerRow.querySelectorAll('.avg-elo-fc-header, .fcr-fc-header, .kr-fc-header').forEach(el => el.remove());
 
         let firstDataRow;
         if (isDivLayout()) {
@@ -493,6 +523,14 @@ const matchHistoryModule = new Module("matchhistory", async () => {
             headerAVGElo.classList.add('avg-elo-fc-header')
             headerAVGElo.appendChild(document.createTextNode('AVG ELO'))
             hcol.elo.after(headerAVGElo)
+        }
+
+        if (_settings.showKR && hcol.kd && !headerRow.querySelector('.kr-fc-header')) {
+            let headerKR = createHeaderCell()
+            headerKR.className = hcol.kd.className
+            headerKR.classList.add('kr-fc-header')
+            headerKR.appendChild(document.createTextNode('K/R'))
+            hcol.kd.after(headerKR)
         }
 
         if (_settings.showFCR && hcol.kr && !headerRow.querySelector('.fcr-fc-header')) {
@@ -519,9 +557,10 @@ const matchHistoryModule = new Module("matchhistory", async () => {
             const row = getRowFromLink(aLink);
             if (!row) return;
 
-            row.querySelectorAll('.fcr-fc, .avg-elo-fc, [id*=extended-stats-node]').forEach(el => el.remove());
+            row.querySelectorAll('.fcr-fc, .avg-elo-fc, .kr-fc, [id*=extended-stats-node]').forEach(el => el.remove());
 
             matchNode.node = row;
+            matchNode.krNode = null;
             matchNode.fcrNode = null;
             matchNode.avgEloNode = null;
             matchNode.popup = null;

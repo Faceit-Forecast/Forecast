@@ -326,6 +326,50 @@ body {
     border-top: 1px solid rgba(57, 58, 67, 0.3);
 }
 
+.mm-mode-options {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+    justify-items: end;
+    flex-direction: row;
+    justify-content: flex-end;
+}
+.mm-mode-option {
+    display: block;
+    cursor: pointer;
+}
+.mm-mode-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.mm-mode-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 8px;
+    background: #0a0a0a;
+    border: 1px solid #242424;
+    border-radius: 6px;
+    color: #aaa;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    text-align: center;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.mm-mode-option:hover .mm-mode-pill {
+    color: #fff;
+    border-color: #3a3a3a;
+}
+.mm-mode-option input:checked + .mm-mode-pill {
+    background: rgba(255, 106, 0, 0.15);
+    border-color: rgba(255, 106, 0, 0.55);
+    color: #ff6a00;
+}
+
 .info-button {
     background: none;
     border: 0;
@@ -723,11 +767,11 @@ input:checked + .slider:after {
 }
 
 .settings-grid {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 6px;
     padding: 10px;
-    justify-content: center;
+    align-items: stretch;
 }
 
 .settings-cell {
@@ -740,20 +784,15 @@ input:checked + .slider:after {
     background: #0a0a0a;
     border: 1px solid #242424;
     border-radius: 6px;
-    width: calc(50% - 4px);
+    width: auto;
+    min-width: 0;
     box-sizing: border-box;
     position: relative;
-    transition: width 0.15s ease, opacity 0.15s ease, padding 0.15s ease, margin 0.15s ease, transform 0.15s ease;
+    transition: opacity 0.15s ease;
 }
 
 .settings-cell.hidden-cell {
-    width: 0;
-    padding: 0;
-    margin: 0;
-    opacity: 0;
-    border: none;
-    gap: 0;
-    pointer-events: none;
+    display: none;
 }
 
 .settings-cell.disabled-cell {

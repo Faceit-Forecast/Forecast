@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "levels": {
     "hideOriginalIcons": "[class*=SkillIcon__StyledSvg]:not([origin-levels]):not([origin-levels] *)",
     "hideNestedIcons": "[origin-levels] [hided-levels] [class*=SkillIcon__StyledSvg]",
@@ -153,6 +153,10 @@
   "module": {
     "faceitBugDialog": "[role=\"dialog\"][data-dialog-type=\"LEAF\"]",
     "canvasBody": "#canvas-body"
+  },
+  "matchmakingModal": {
+    "dialog": "div[role=\"dialog\"][data-dialog-type=\"MODAL\"]:has([class*=HeaderProgressBar])",
+    "anchor": "[class*=ConfirmationStyledContainer], [class*=ButtonsContainer], [class*=ButtonContainer], [class*=Footer], [class*=Actions]"
   },
   "matchhistory": {
     "tableParentDepth": 2,

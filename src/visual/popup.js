@@ -875,10 +875,13 @@ const SettingsManager = {
         matchhistory: true,
         poscatcher: true,
         integrations: true,
+        matchmakingData: true,
+        matchmakingDataMode: 'both',
         matchCounter: true,
         coloredStatsKDA: true,
         coloredStatsADR: true,
         coloredStatsKD: true,
+        showKR: true,
         coloredStatsKR: true,
         showFCR: true,
         coloredStatsFCR: true,
@@ -892,7 +895,8 @@ const SettingsManager = {
                 'classicTeamView', 'classicPlayerView',
                 'eloranking', 'matchhistory', 'poscatcher',
                 'matchCounter', 'coloredStatsKDA', 'coloredStatsADR', 'coloredStatsKD',
-                'coloredStatsKR', 'showFCR', 'coloredStatsFCR', 'showAVGElo', 'roundedStats',
+                'showKR', 'coloredStatsKR', 'showFCR', 'coloredStatsFCR', 'showAVGElo', 'roundedStats',
+                'matchmakingData', 'matchmakingDataMode',
                 ...CS2_MAPS.flatMap(map => [`${map}Enabled`, `${map}Message`]), 'integrations'];
 
             const settings = await StorageUtils.get(keys);
@@ -904,6 +908,8 @@ const SettingsManager = {
             this.loadMatchHistorySettings(settings);
 
             this.loadMatchroomSettings(settings);
+
+            this.loadMatchmakingDataSettings(settings);
 
         } catch (error) {
             console.error("Error loading settings:", error);
@@ -917,7 +923,8 @@ const SettingsManager = {
             matchroom: 'matchroom',
             eloranking: 'eloranking',
             matchhistory: 'matchhistory',
-            integrations: 'integrations'
+            integrations: 'integrations',
+            matchmakingData: 'matchmakingData'
         };
 
         Object.entries(elements).forEach(([elementId, settingKey]) => {
@@ -977,6 +984,7 @@ const SettingsManager = {
             coloredStatsKDA: 'coloredStatsKDA',
             coloredStatsADR: 'coloredStatsADR',
             coloredStatsKD: 'coloredStatsKD',
+            showKR: 'showKR',
             coloredStatsKR: 'coloredStatsKR',
             coloredStatsFCR: 'coloredStatsFCR',
             showFCR: 'showFCR',
@@ -990,6 +998,9 @@ const SettingsManager = {
                 element.checked = settings[settingKey] ?? this.defaults[settingKey];
             }
         });
+
+        const showKR = settings.showKR ?? this.defaults.showKR;
+        this.updateKRColoredStatsVisibility(showKR);
 
         const showFCR = settings.showFCR ?? this.defaults.showFCR;
         this.updateFCRColoredStatsVisibility(showFCR);
@@ -1022,15 +1033,95 @@ const SettingsManager = {
         this.updateDependentSettings('matchroom', ['#matchroomSettings'], matchroomEnabled);
     },
 
-    updateFCRColoredStatsVisibility(isEnabled) {
-        const fcrColoredStatsContainer = document.getElementById('fcrColoredStatsContainer');
-        if (!fcrColoredStatsContainer) return;
-
-        if (isEnabled) {
-            fcrColoredStatsContainer.classList.remove('hidden-cell');
+    updateFCRColoredStatsVisibility(isEnabled, animate = false) {
+        if (animate) {
+            this.animateGridCellToggle('fcrColoredStatsContainer', isEnabled);
         } else {
-            fcrColoredStatsContainer.classList.add('hidden-cell');
+            const el = document.getElementById('fcrColoredStatsContainer');
+            if (el) el.classList.toggle('hidden-cell', !isEnabled);
         }
+    },
+
+    updateKRColoredStatsVisibility(isEnabled, animate = false) {
+        if (animate) {
+            this.animateGridCellToggle('krColoredStatsContainer', isEnabled);
+        } else {
+            const el = document.getElementById('krColoredStatsContainer');
+            if (el) el.classList.toggle('hidden-cell', !isEnabled);
+        }
+    },
+
+    animateGridCellToggle(elementId, show) {
+        const cell = document.getElementById(elementId);
+        if (!cell) return;
+
+        const grid = cell.closest('.settings-grid');
+        if (!grid) {
+            cell.classList.toggle('hidden-cell', !show);
+            return;
+        }
+
+        const siblings = Array.from(grid.children).filter(s => s !== cell && !s.classList.contains('hidden-cell'));
+        const firstPositions = new Map();
+        siblings.forEach(s => firstPositions.set(s, s.getBoundingClientRect()));
+
+        const flipSiblings = () => {
+            requestAnimationFrame(() => {
+                siblings.forEach(s => {
+                    const first = firstPositions.get(s);
+                    if (!first) return;
+                    const last = s.getBoundingClientRect();
+                    const dx = first.left - last.left;
+                    const dy = first.top - last.top;
+                    if (dx === 0 && dy === 0) return;
+                    s.style.transition = 'none';
+                    s.style.transform = `translate(${dx}px, ${dy}px)`;
+                    requestAnimationFrame(() => {
+                        s.style.transition = 'transform 0.3s ease';
+                        s.style.transform = '';
+                    });
+                });
+                setTimeout(() => {
+                    siblings.forEach(s => { s.style.transition = ''; s.style.transform = ''; });
+                }, 350);
+            });
+        };
+
+        if (show) {
+            cell.classList.remove('hidden-cell');
+            cell.style.opacity = '0';
+            cell.style.transform = 'scale(0.85)';
+            flipSiblings();
+            requestAnimationFrame(() => {
+                cell.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                cell.style.opacity = '';
+                cell.style.transform = '';
+                setTimeout(() => { cell.style.transition = ''; }, 350);
+            });
+        } else {
+            cell.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            cell.style.opacity = '0';
+            cell.style.transform = 'scale(0.85)';
+            setTimeout(() => {
+                cell.classList.add('hidden-cell');
+                cell.style.opacity = '';
+                cell.style.transform = '';
+                cell.style.transition = '';
+                flipSiblings();
+            }, 200);
+        }
+    },
+
+    loadMatchmakingDataSettings(settings) {
+        const toggle = document.getElementById('matchmakingData');
+        if (toggle) {
+            toggle.checked = settings.matchmakingData ?? this.defaults.matchmakingData;
+        }
+        const mode = settings.matchmakingDataMode ?? this.defaults.matchmakingDataMode;
+        const radio = document.querySelector(`#matchmakingDataModeOptions input[name="matchmakingDataMode"][value="${mode}"]`);
+        if (radio) radio.checked = true;
+        const enabled = settings.matchmakingData ?? this.defaults.matchmakingData;
+        this.updateDependentSettings('matchmakingData', ['#matchmakingDataSettings'], enabled);
     },
 
     async save(data) {
@@ -1165,6 +1256,13 @@ const UIBuilder = {
             nestedContent: 'matchroomGrid'
         },
         {
+            id: 'matchmakingData',
+            labelKey: 'mm_preview_feature',
+            descKey: 'mm_preview_feature_desc',
+            nestedId: 'matchmakingDataSettings',
+            nestedContent: 'matchmakingDataGrid'
+        },
+        {
             id: 'poscatcher',
             labelKey: 'quick_position_setup',
             descKey: 'quick_position_setup_desc',
@@ -1183,7 +1281,14 @@ const UIBuilder = {
         {id: 'coloredStatsKDA', labelKey: 'kda_color', descKey: 'kda_color_desc'},
         {id: 'coloredStatsADR', labelKey: 'adr_color', descKey: 'adr_color_desc'},
         {id: 'coloredStatsKD', labelKey: 'kd_color', descKey: 'kd_color_desc'},
-        {id: 'coloredStatsKR', labelKey: 'kr_color', descKey: 'kr_color_desc'},
+        {id: 'showKR', label: 'K/R', descKey: 'kr_desc', cellId: 'krSettingsCell'},
+        {
+            id: 'coloredStatsKR',
+            labelKey: 'kr_color',
+            descKey: 'kr_color_desc',
+            className: 'hidden-cell',
+            cellId: 'krColoredStatsContainer'
+        },
         {id: 'showFCR', label: 'FCR', descKey: 'fcr_desc', cellId: 'fcrSettingsCell'},
         {
             id: 'coloredStatsFCR',
@@ -1241,6 +1346,9 @@ const UIBuilder = {
             } else if (config.nestedContent === 'matchroomGrid') {
                 nestedContent = '<div class="settings-grid" id="matchroomSettingsGrid"></div>'
                     + `<div class="setting-item"><div class="setting-header"><label for="rangeSlider" data-i18n="match_amount">${t('match_amount')}</label>${this.createInfoTooltip('match_amount_desc', true)}</div><div class="slider-controls"><input type="range" id="rangeSlider" class="range-slider" min="5" max="100" value="30"><span id="sliderValue">30</span></div></div>`;
+            } else if (config.nestedContent === 'matchmakingDataGrid') {
+                const opt = (val, key) => `<label class="mm-mode-option"><input type="radio" name="matchmakingDataMode" value="${val}"><span class="mm-mode-pill" data-i18n="${key}">${t(key)}</span></label>`;
+                nestedContent = `<div class="setting-item mm-mode-row"><div class="setting-header"><label data-i18n="mm_preview_mode_label">${t('mm_preview_mode_label')}</label>${this.createInfoTooltip('mm_preview_mode_desc', true)}</div><div class="mm-mode-options" id="matchmakingDataModeOptions">${opt('both', 'mm_preview_mode_both')}${opt('servers', 'mm_preview_mode_servers')}${opt('maps', 'mm_preview_mode_maps')}</div></div>`;
             } else if (config.nestedContent === 'mapGrid') {
                 nestedContent = '<div class="map-grid"></div>';
             }
@@ -1370,7 +1478,7 @@ function animateValue(element, start, end, duration = 600) {
 
 const EventHandlers = {
     setupMainEventListeners() {
-        const toggles = ['toggleExtension', 'matchroom', 'eloranking', 'matchhistory', 'integrations'];
+        const toggles = ['toggleExtension', 'matchroom', 'eloranking', 'matchhistory', 'integrations', 'matchmakingData'];
 
         toggles.forEach(toggleId => {
             const element = document.getElementById(toggleId);
@@ -1387,6 +1495,16 @@ const EventHandlers = {
                 if (toggleId === 'matchhistory') {
                     SettingsManager.updateDependentSettings('matchhistory', ['#matchHistorySettings'], this.checked);
                 }
+
+                if (toggleId === 'matchmakingData') {
+                    SettingsManager.updateDependentSettings('matchmakingData', ['#matchmakingDataSettings'], this.checked);
+                }
+            });
+        });
+
+        document.querySelectorAll('#matchmakingDataModeOptions input[name="matchmakingDataMode"]').forEach(radio => {
+            radio.addEventListener('change', async function () {
+                if (this.checked) await SettingsManager.save({matchmakingDataMode: this.value});
             });
         });
 
@@ -1489,6 +1607,7 @@ const EventHandlers = {
             'coloredStatsKDA',
             'coloredStatsADR',
             'coloredStatsKD',
+            'showKR',
             'coloredStatsKR',
             'showFCR',
             'coloredStatsFCR',
@@ -1503,8 +1622,11 @@ const EventHandlers = {
             element.addEventListener('change', async function () {
                 await SettingsManager.save({[toggleId]: this.checked});
 
+                if (toggleId === 'showKR') {
+                    SettingsManager.updateKRColoredStatsVisibility(this.checked, true);
+                }
                 if (toggleId === 'showFCR') {
-                    SettingsManager.updateFCRColoredStatsVisibility(this.checked);
+                    SettingsManager.updateFCRColoredStatsVisibility(this.checked, true);
                 }
             });
         });
@@ -1606,7 +1728,6 @@ async function setLanguage(lang) {
     localizeDocument();
     updateTabs();
     AuthManager.updateUI();
-    await PatchNotesManager.loadAndDisplay();
 }
 
 function updateTabs() {
@@ -1671,7 +1792,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         UIUtils.setupTabs();
 
-        PatchNotesManager.init().catch(err => console.error('Failed to init patch notes:', err));
         UIUtils.startOnlineUpdater();
 
         EventHandlers.setupMainEventListeners();
@@ -1682,7 +1802,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         setupLanguageSelector();
 
         initDebugBadge();
-
+        PatchNotesManager.init().catch(err => console.error('Failed to init patch notes:', err));
     } catch (error) {
         console.error("Error during DOMContentLoaded:", error);
     }

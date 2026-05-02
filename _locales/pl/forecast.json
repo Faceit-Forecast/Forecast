@@ -28,6 +28,7 @@
   "adr_color_desc": "Koloruje statystykę ADR. (adr ≥ 75 = zielony)",
   "kd_color": "Kolor K/D",
   "kd_color_desc": "Koloruje statystykę K/D. (k/d ≥ 1 = zielony)",
+  "kr_desc": "Zabójstwa na rundę. Średnia liczba zabójstw na rundę.",
   "kr_color": "Kolor K/R",
   "kr_color_desc": "Koloruje statystykę K/R. (k/r ≥ 0.7 = zielony)",
   "fcr_desc": "FCR - udział wkładu gracza w drużynie na podstawie wydajności. Suma wszystkich 5 graczy = 100%. Ideał to gdy wszyscy 5 graczy zagrali na 20%.",
@@ -83,5 +84,15 @@
   "fcUserLogo.tooltip": "Użytkownik Forecast",
   "loading": "Ładowanie...",
   "discord_cta": "Dołącz do naszego Discorda",
-  "auth_hint": "Zdobądź swoją odznakę"
+  "auth_hint": "Zdobądź swoją odznakę",
+  "mm_servers": "Serwery",
+  "mm_maps": "Mapy",
+  "mm_preview_title": "Podgląd meczu",
+  "mm_preview_feature": "Podgląd meczu",
+  "mm_preview_feature_desc": "Pokazuje dostępne serwery i pulę map bezpośrednio w oknie akceptacji meczu.",
+  "mm_preview_mode_label": "Widok",
+  "mm_preview_mode_desc": "Co wyświetlać: tylko serwery, tylko mapy lub oba.",
+  "mm_preview_mode_both": "Wszystko",
+  "mm_preview_mode_servers": "Serwery",
+  "mm_preview_mode_maps": "Mapy"
 }

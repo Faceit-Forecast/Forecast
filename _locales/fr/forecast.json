@@ -28,6 +28,7 @@
   "adr_color_desc": "Colore la statistique ADR. (adr ≥ 75 = vert)",
   "kd_color": "Couleur K/D",
   "kd_color_desc": "Colore la statistique K/D. (k/d ≥ 1 = vert)",
+  "kr_desc": "Kills par round. Nombre moyen de kills par round joué.",
   "kr_color": "Couleur K/R",
   "kr_color_desc": "Colore la statistique K/R. (k/r ≥ 0.7 = vert)",
   "fcr_desc": "FCR - part de contribution du joueur dans l'équipe basée sur la performance. Somme des 5 joueurs = 100%. Idéal quand les 5 joueurs ont joué à 20%.",
@@ -83,5 +84,15 @@
   "fcUserLogo.tooltip": "Utilisateur Forecast",
   "loading": "Chargement...",
   "discord_cta": "Rejoignez notre Discord",
-"auth_hint": "Obtenez votre badge"
+  "auth_hint": "Obtenez votre badge",
+  "mm_servers": "Serveurs",
+  "mm_maps": "Cartes",
+  "mm_preview_title": "Aperçu du match",
+  "mm_preview_feature": "Aperçu du match",
+  "mm_preview_feature_desc": "Affiche les serveurs disponibles et le pool de cartes directement dans la fenêtre d'acceptation du match.",
+  "mm_preview_mode_label": "Vue",
+  "mm_preview_mode_desc": "Quoi afficher : serveurs uniquement, cartes uniquement, ou les deux.",
+  "mm_preview_mode_both": "Tout",
+  "mm_preview_mode_servers": "Serveurs",
+  "mm_preview_mode_maps": "Cartes"
 }

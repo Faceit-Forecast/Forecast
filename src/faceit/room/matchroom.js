@@ -8,7 +8,7 @@ const matchRoomModule = new Module("matchroom", async () => {
 
     try {
         if (!matchId) return;
-        await getMatchWinRates(matchId);
+        getMatchWinRates(matchId);
     } catch (err) {
         error("Error when retrieving match statistics", err);
     }
@@ -124,11 +124,14 @@ async function displayTeamStats(htmlResource, team1Matches, team2Matches) {
 
     const allMaps = new Set([...Object.keys(team1Matches), ...Object.keys(team2Matches)]);
     const tbody = htmlResource.querySelector('.fc-team-table-body');
+    const mapsArray = [...allMaps].sort();
+    const iconUrls = await Promise.all(mapsArray.map(m => getMapIconUrl(m)));
+    const icons = new Map(mapsArray.map((m, i) => [m, iconUrls[i]]));
 
-    for (const mapName of [...allMaps].sort()) {
+    for (const mapName of mapsArray) {
         const d1 = team1Matches[mapName];
         const d2 = team2Matches[mapName];
-        const iconUrl = await getMapIconUrl(mapName);
+        const iconUrl = icons.get(mapName);
         const displayName = formatMapName(mapName);
 
         const row = tbody.insertRow();
