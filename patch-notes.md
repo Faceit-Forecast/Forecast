@@ -1,3 +1,7 @@
+[1.8.1] Match Preview Fix & Faster Loading
+Fixed server region not showing in match accept popup
+Improved loading speed and reliability of extension data
+
 [1.8.0] Match Preview & K/R Column
 Added match accept popup with available server regions and map pool preview
 Added K/R (kills per round) column to match history between K/D and ADR
