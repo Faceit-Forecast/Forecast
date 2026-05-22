@@ -7,10 +7,21 @@ const SELECTORS_CACHE_KEY = 'forecast-selectors-config';
 const ENDPOINTS_CACHE_KEY = 'forecast-endpoints-config';
 const SELECTORS_CONFIG_PATH = '/config/selectors.json';
 const ENDPOINTS_CONFIG_PATH = '/config/endpoints.json';
+const CDN_FETCH_TIMEOUT_MS = 3000;
 
 let _selectorsConfig = null;
 let _endpointsConfig = null;
 let _configLoadPromise = null;
+
+async function _fetchWithTimeout(url, timeoutMs) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { signal: controller.signal });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
 
 async function _loadBundledJson(relativePath) {
     try {
@@ -26,13 +37,13 @@ async function _loadBundledJson(relativePath) {
 async function _fetchRemoteConfig(path) {
     try {
         const cdnUrl = await getCdnUrl();
-        const response = await fetch(cdnUrl + path);
+        const response = await _fetchWithTimeout(cdnUrl + path, CDN_FETCH_TIMEOUT_MS);
         if (response.ok) return await response.json();
     } catch (e) {}
 
     try {
         const fallbackCdnUrl = isUsingFallback() ? 'https://cdn.fforecast.net' : 'https://cdn.fforecast.dev';
-        const response = await fetch(fallbackCdnUrl + path);
+        const response = await _fetchWithTimeout(fallbackCdnUrl + path, CDN_FETCH_TIMEOUT_MS);
         if (response.ok) return await response.json();
     } catch (e) {}
 

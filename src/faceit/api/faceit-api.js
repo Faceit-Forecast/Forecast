@@ -530,25 +530,77 @@ function getCookie(name) {
     return null;
 }
 
+const API_KEY_FRESH_TTL_MIN = 60 * 24;
+const API_KEY_STALE_KEY = 'forecast-api-key-stale';
+
+let _accessTokenInFlight = null;
+
 async function resolveAccessToken() {
     if (_useProxy) return null;
+
     const cached = await getLocalStorageCache('forecast-api-key');
-    if (cached) return cached;
+    if (cached) {
+        return cached;
+    }
+
+    if (_accessTokenInFlight) return _accessTokenInFlight;
+
+    _accessTokenInFlight = (async () => {
+        const stale = await getStaleApiKey();
+
+        const fetched = await fetchAccessTokenFromBackend();
+        if (fetched) {
+            await setLocalStorageCache('forecast-api-key', fetched, API_KEY_FRESH_TTL_MIN);
+            await CLIENT_STORAGE.set({ [API_KEY_STALE_KEY]: fetched });
+            return fetched;
+        }
+
+        if (stale) {
+            return stale;
+        }
+
+        try {
+            const data = await fetchWithTimeout(
+                "https://raw.githubusercontent.com/Faceit-Forecast/Forecast/refs/heads/master/api-key",
+                {},
+                5000
+            );
+            if (data && data.ok) {
+                const token = (await data.text()).trim();
+                if (token) {
+                    await setLocalStorageCache('forecast-api-key', token, API_KEY_FRESH_TTL_MIN);
+                    await CLIENT_STORAGE.set({ [API_KEY_STALE_KEY]: token });
+                    return token;
+                }
+            }
+        } catch (e) {}
+
+        return null;
+    })();
 
     try {
+        return await _accessTokenInFlight;
+    } finally {
+        _accessTokenInFlight = null;
+    }
+}
+
+async function fetchAccessTokenFromBackend() {
+    try {
         const baseUrl = await getBaseUrlFC();
-        const res = await fetch(`${baseUrl}/v1/faceit/access-token`);
-        if (res.ok) {
+        const res = await fetchWithTimeout(`${baseUrl}/v1/faceit/access-token`, {}, FC_FETCH_TIMEOUT_MS);
+        if (res && res.ok) {
             const token = (await res.text()).trim();
-            if (token) {
-                await setLocalStorageCache('forecast-api-key', token, 5);
-                return token;
-            }
+            return token || null;
         }
     } catch (e) {}
+    return null;
+}
 
-    const data = await fetch("https://raw.githubusercontent.com/Faceit-Forecast/Forecast/refs/heads/master/api-key");
-    const token = (await data.text()).trim();
-    await setLocalStorageCache('forecast-api-key', token, 5);
-    return token;
+async function getStaleApiKey() {
+    return new Promise((resolve) => {
+        CLIENT_STORAGE.get([API_KEY_STALE_KEY], (result) => {
+            resolve(result[API_KEY_STALE_KEY] || null);
+        });
+    });
 }

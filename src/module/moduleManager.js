@@ -21,7 +21,7 @@ const lobbyModules = [
 async function initExtension() {
     if (!(await isExtensionEnabled())) return
     await loadConfigs();
-    await resolveAccessToken();
+    resolveAccessToken();
     initApiEndpoints();
     startMetricsReporter();
     await initializeMatchHistoryCache();

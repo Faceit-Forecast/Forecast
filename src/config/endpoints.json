@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "faceit": {
     "baseUrlV3": "https://www.faceit.com/api/stats/v3",
     "baseUrlV4": "https://open.faceit.com/data/v4",
@@ -7,7 +7,7 @@
     "proxyBaseUrl": null
   },
   "apiQueue": {
-    "rps": 5,
+    "rps": 10,
     "metrics": {
       "enabled": true,
       "intervalMs": 60000

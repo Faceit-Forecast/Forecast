@@ -42,18 +42,33 @@ function fcMmCreateMapImage(mapName) {
     return img;
 }
 
+function fcMmExtractServers(payload, tags) {
+    const candidates = [payload.locations, payload.servers, payload.serverLocations];
+    for (const c of candidates) {
+        if (!Array.isArray(c) || !c.length) continue;
+        const list = c
+            .map(l => {
+                if (typeof l === 'string') return { name: l, flag: '' };
+                return {
+                    name: (l && (l.class_name || l.name || l.guid)) || '',
+                    flag: (l && (l.image_sm || l.image_lg)) || ''
+                };
+            })
+            .filter(s => s.name);
+        if (list.length) return list;
+    }
+
+    return tags
+        .filter(t => typeof t === 'string' && /^[A-Z][A-Za-z ]+$/.test(t))
+        .map(name => ({ name, flag: '' }));
+}
+
 function fcMmExtract(payload) {
     if (!payload || typeof payload !== 'object') return null;
 
-    const locations = Array.isArray(payload.locations) ? payload.locations : [];
-    const servers = locations
-        .map(l => ({
-            name: (l && (l.class_name || l.name || l.guid)) || '',
-            flag: (l && (l.image_sm || l.image_lg)) || ''
-        }))
-        .filter(s => s.name);
-
     const tags = Array.isArray(payload.tags) ? payload.tags : [];
+    const servers = fcMmExtractServers(payload, tags);
+
     const maps = [];
     for (const tag of tags) {
         if (typeof tag !== 'string' || !tag.includes('de_')) continue;
@@ -95,7 +110,6 @@ function fcMmRenderServersBlock(data) {
     label.className = 'fc-mm-section-label';
     label.textContent = t('mm_servers', 'Servers');
     block.appendChild(label);
-
     if (!data.servers.length) {
         block.appendChild(fcMmEmpty());
         return block;
