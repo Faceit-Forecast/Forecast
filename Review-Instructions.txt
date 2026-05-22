@@ -1,0 +1,20 @@
+BUILD INSTRUCTIONS:
+
+1. Install Node.js v16+ and npm v8+
+2. Extract source archive
+3. Run: npm install
+4. Run: npm run build
+5. Output in ./dist/ folder matches submitted extension
+
+The build.js script performs:
+- File copying from ./src to ./dist
+- JavaScript bundling (combining content scripts)
+- Minification of JS, HTML, CSS, SVG, JSON
+- No transpilation or code transformation beyond minification
+
+All source code is readable JavaScript. The build only:
+- Combines multiple JS files into one bundle
+- Removes whitespace and comments for size optimization
+- Preserves function/class names (keep_fnames: true)
+
+Dependencies installed via npm are standard open-source tools for minification only.
