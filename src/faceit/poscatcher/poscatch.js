@@ -118,8 +118,10 @@ const posCatcherModule = new Module("poscatcher", async () => {
             if (!key) return;
             const mapPick = maps[key];
             if (!mapPick) return
-            if (!await isSettingEnabled(`${mapPick}Enabled`, true)) return
-            let message = await getSettingValue(`${mapPick}Message`, "")
+            const profile = await getActiveQpsProfile(Object.values(maps));
+            const entry = profile && profile.maps ? profile.maps[mapPick] : null;
+            if (!entry || entry.enabled === false) return
+            let message = entry.message
             if (typeof message !== "string" || message.trim() === "") return
             let chatButtonSelector = "div[class*=styles__LocalNavigationWrapper] > div[class*=styles__RightSlot] > div > div[class*=MainHeader__ChatButtonContainer] > div > div > button"
             let chatButtonClicked = false;

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "selectorMetrics": {
+    "enabled": true,
+    "sampleRate": 0.1,
+    "intervalMs": 300000
+  },
+  "settingsMetrics": {
+    "enabled": true,
+    "sampleRate": 1,
+    "epochMs": 86400000,
+    "schema": [
+      { "metricKey": "extensionEnabled", "key": "isEnabled", "type": "bool", "default": true },
+      { "metricKey": "logoSidebar", "key": "logoSidebar", "type": "bool", "default": true },
+      { "metricKey": "integrations", "key": "integrations", "type": "bool", "default": true },
+      { "metricKey": "customLevels", "key": "custom-levels", "type": "bool", "default": true },
+      { "metricKey": "quickPosSetup", "key": "poscatcher", "type": "bool", "default": true },
+      { "metricKey": "matchHistory", "key": "matchhistory", "type": "bool", "default": true },
+      { "metricKey": "matchmakingData", "key": "matchmakingData", "type": "bool", "default": true },
+      { "metricKey": "eloRanking", "key": "eloranking", "type": "bool", "default": true },
+      { "metricKey": "profiles", "key": "profiles", "type": "bool", "default": true },
+      { "metricKey": "matchroom", "key": "matchroom", "type": "bool", "default": true },
+      { "metricKey": "matchmakingMode", "key": "matchmakingDataMode", "type": "enum", "values": ["servers", "maps", "both"], "default": "both" },
+      { "metricKey": "sliderValue", "key": "sliderValue", "type": "enum", "values": ["10", "20", "30", "40", "50", "60", "70", "80", "90", "100"], "default": "30" },
+
+      { "metricKey": "teamMapWinrate", "key": "teamMapWinrate", "type": "bool", "default": true },
+      { "metricKey": "playerMapWinrate", "key": "playerMapWinrate", "type": "bool", "default": true },
+      { "metricKey": "showTeamElo", "key": "showTeamElo", "type": "bool", "default": true },
+      { "metricKey": "teamViewMode", "key": "teamViewMode", "type": "enum", "values": ["advanced", "classic", "radar"], "default": "radar" },
+      { "metricKey": "playerViewMode", "key": "playerViewMode", "type": "enum", "values": ["advanced", "classic", "radar"], "default": "radar" },
+
+      { "metricKey": "matchCounter", "key": "matchCounter", "type": "bool", "default": true },
+      { "metricKey": "coloredStatsKDA", "key": "coloredStatsKDA", "type": "bool", "default": true },
+      { "metricKey": "coloredStatsADR", "key": "coloredStatsADR", "type": "bool", "default": true },
+      { "metricKey": "coloredStatsKD", "key": "coloredStatsKD", "type": "bool", "default": true },
+      { "metricKey": "showKR", "key": "showKR", "type": "bool", "default": true },
+      { "metricKey": "coloredStatsKR", "key": "coloredStatsKR", "type": "bool", "default": true },
+      { "metricKey": "showFCR", "key": "showFCR", "type": "bool", "default": true },
+      { "metricKey": "coloredStatsFCR", "key": "coloredStatsFCR", "type": "bool", "default": true },
+      { "metricKey": "showAVGElo", "key": "showAVGElo", "type": "bool", "default": true },
+      { "metricKey": "roundedStats", "key": "roundedStats", "type": "bool", "default": false },
+
+      { "metricKey": "map_de_dust2", "key": "de_dust2Enabled", "type": "bool", "default": true },
+      { "metricKey": "map_de_mirage", "key": "de_mirageEnabled", "type": "bool", "default": true },
+      { "metricKey": "map_de_nuke", "key": "de_nukeEnabled", "type": "bool", "default": true },
+      { "metricKey": "map_de_ancient", "key": "de_ancientEnabled", "type": "bool", "default": true },
+      { "metricKey": "map_de_anubis", "key": "de_anubisEnabled", "type": "bool", "default": true },
+      { "metricKey": "map_de_inferno", "key": "de_infernoEnabled", "type": "bool", "default": true },
+      { "metricKey": "map_de_overpass", "key": "de_overpassEnabled", "type": "bool", "default": true },
+      { "metricKey": "map_de_cache", "key": "de_cacheEnabled", "type": "bool", "default": true },
+
+      { "metricKey": "hasCustomMapMessages", "type": "presenceAny", "suffix": "Message" }
+    ]
+  }
+}

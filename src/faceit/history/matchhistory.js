@@ -481,10 +481,21 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     let tableHeadElement;
     let theadObserver = null;
     let lastHeaderSignature = null;
+    let tableBodyObserver = null;
+    let observedBodyEl = null;
+    let bodyHealScheduled = false;
+    let bodyObserverSuppress = 0;
 
     const matchChain = new MatchNodeChain();
     const inflightStats = new Map();
     const LAZY_STATS_OBSERVER_OPTIONS = { threshold: 0, rootMargin: '400px 0px 400px 0px' };
+
+    const cachedRenderQueue = [];
+    let cachedRenderScheduled = false;
+    const CACHED_RENDER_PER_FRAME = 3;
+    const scheduleFrame = (typeof requestAnimationFrame === 'function')
+        ? requestAnimationFrame
+        : (cb) => setTimeout(cb, 16);
 
     let tableRowAttribute = `forecast-matchhistory-row-${matchHistoryModule.sessionId}`;
     let langKey = extractLanguage();
@@ -545,6 +556,8 @@ const matchHistoryModule = new Module("matchhistory", async () => {
     async function reapplyAllRows() {
         if (!tableElement || !tableElement.isConnected) return;
 
+        bodyObserverSuppress++;
+
         if (tableHeadElement) {
             await insertHeaders(tableHeadElement);
         }
@@ -557,23 +570,62 @@ const matchHistoryModule = new Module("matchhistory", async () => {
             const row = getRowFromLink(aLink);
             if (!row) return;
 
-            row.querySelectorAll('.fcr-fc, .avg-elo-fc, .kr-fc, [id*=extended-stats-node]').forEach(el => el.remove());
+            enqueueCachedRender(() => {
+                if (!row.isConnected) return;
 
-            matchNode.node = row;
-            matchNode.krNode = null;
-            matchNode.fcrNode = null;
-            matchNode.avgEloNode = null;
-            matchNode.popup = null;
-            matchNode.col = resolveColumns(row);
-            matchNode.setupPlaceholders();
-            matchNode.setupStats();
+                row.querySelectorAll('.fcr-fc, .avg-elo-fc, .kr-fc, [id*=extended-stats-node]').forEach(el => el.remove());
 
-            if (matchNode.cachedStats) {
-                matchNode.setupStatsToNode(id, matchNode.cachedStats);
-            } else {
-                registerLazyStatsObserver(matchNode, id);
-            }
+                matchNode.node = row;
+                matchNode.krNode = null;
+                matchNode.fcrNode = null;
+                matchNode.avgEloNode = null;
+                matchNode.popup = null;
+                matchNode.col = resolveColumns(row);
+                matchNode.setupPlaceholders();
+                matchNode.setupStats();
+
+                if (matchNode.cachedStats) {
+                    matchNode.setupStatsToNode(id, matchNode.cachedStats);
+                } else {
+                    registerLazyStatsObserver(matchNode, id);
+                }
+            });
         });
+
+        enqueueCachedRender(() => { if (bodyObserverSuppress > 0) bodyObserverSuppress--; });
+    }
+
+    function hasOrphanedRows() {
+        if (!tableBodyElement) return false;
+        const markedLinks = tableBodyElement.querySelectorAll(`a[${tableRowAttribute}]`);
+        for (const link of markedLinks) {
+            const m = link.href.match(matchIdRegex);
+            if (!m || !matchChain.has(m[1])) continue;
+            const row = getRowFromLink(link);
+            if (!row) continue;
+            if (!row.querySelector('.kr-fc, .fcr-fc, .avg-elo-fc, [id*=extended-stats-node]')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function setupTableBodyObserver(tbody) {
+        if (!tbody) return;
+        if (observedBodyEl === tbody && tableBodyObserver) return;
+        if (tableBodyObserver) tableBodyObserver.disconnect();
+        observedBodyEl = tbody;
+
+        tableBodyObserver = new MutationObserver(() => {
+            if (bodyObserverSuppress > 0 || bodyHealScheduled) return;
+            if (!hasOrphanedRows()) return;
+            bodyHealScheduled = true;
+            setTimeout(() => {
+                bodyHealScheduled = false;
+                reapplyAllRows();
+            }, 80);
+        });
+        tableBodyObserver.observe(tbody, { childList: true, subtree: true });
     }
 
     function setupTheadObserver(thead) {
@@ -628,6 +680,10 @@ const matchHistoryModule = new Module("matchhistory", async () => {
 
         if (!tableBodyElement || !tableBodyElement.isConnected) {
             tableBodyElement = tableElement.querySelector(sel('matchhistory.tableBody') || 'tbody');
+        }
+
+        if (tableBodyElement) {
+            setupTableBodyObserver(tableBodyElement);
         }
     }
 
@@ -691,15 +747,44 @@ const matchHistoryModule = new Module("matchhistory", async () => {
         for (const matchNode of batch) {
             const cached = peekCacheSync(matchNode.matchId);
             if (cached) {
-                try {
+                enqueueCachedRender(() => {
+                    if (!matchNode.node || !matchNode.node.isConnected) return;
+                    if (matchNode.cachedStats) return;
                     matchNode.loadMatchStats(id, cached);
-                } catch (e) {
-                    error(e);
-                }
+                });
                 continue;
             }
             registerLazyStatsObserver(matchNode, id);
         }
+    }
+
+    function enqueueCachedRender(renderFn) {
+        cachedRenderQueue.push(renderFn);
+        drainCachedRenderQueue();
+    }
+
+    function drainCachedRenderQueue() {
+        if (cachedRenderScheduled) return;
+        cachedRenderScheduled = true;
+
+        scheduleFrame(function step() {
+            let processed = 0;
+            while (processed < CACHED_RENDER_PER_FRAME && cachedRenderQueue.length) {
+                const renderFn = cachedRenderQueue.shift();
+                try {
+                    renderFn();
+                } catch (e) {
+                    error(e);
+                }
+                processed++;
+            }
+
+            if (cachedRenderQueue.length) {
+                scheduleFrame(step);
+            } else {
+                cachedRenderScheduled = false;
+            }
+        });
     }
 
     function registerLazyStatsObserver(matchNode, id) {

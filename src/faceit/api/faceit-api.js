@@ -6,21 +6,43 @@ let baseUrlV3 = "https://www.faceit.com/api/stats/v3";
 let baseUrlV4 = "https://open.faceit.com/data/v4";
 let _useProxy = false;
 
-function initApiEndpoints() {
+async function initApiEndpoints() {
     const v3 = ep('faceit.baseUrlV3');
     const v4 = ep('faceit.baseUrlV4');
     if (v3) baseUrlV3 = v3;
     if (v4) baseUrlV4 = v4;
 
-    const useProxy = ep('faceit.useProxy');
-    const proxyBaseUrl = ep('faceit.proxyBaseUrl');
-    if (useProxy && proxyBaseUrl) {
+    if (await shouldUseV4Proxy()) {
         _useProxy = true;
-        baseUrlV3 = proxyBaseUrl + '/v3';
-        baseUrlV4 = proxyBaseUrl + '/v4';
+        baseUrlV4 = await resolveProxyV4Base();
     }
 
     applyApiQueueConfig();
+}
+
+async function resolveProxyV4Base() {
+    const override = ep('faceit.proxyBaseUrl');
+    if (override) return override;
+    return (await getApiUrl()) + '/v1/faceit';
+}
+
+async function shouldUseV4Proxy() {
+    if (ep('faceit.useProxy') === true) return true;
+    const rollout = ep('faceit.proxyRollout');
+    if (typeof rollout !== 'number' || rollout <= 0) return false;
+    if (rollout >= 100) return true;
+    const deviceId = await getDeviceId();
+    if (!deviceId) return false;
+    return _proxyBucket(deviceId) < rollout;
+}
+
+function _proxyBucket(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0) % 100;
 }
 
 function applyApiQueueConfig() {
@@ -195,6 +217,9 @@ const API_BASE_DELAY = 1000;
 const API_MAX_RETRY_AFTER = 30000;
 const API_MAX_BACKOFF = 15000;
 
+const FC_NOT_READY_RETRIES = 5;
+const FC_NOT_READY_RETRY_DELAY = 1500;
+
 function _parseRetryAfter(headerValue) {
     if (!headerValue) return null;
     const sec = parseFloat(headerValue);
@@ -213,7 +238,8 @@ function _backoffDelay(attempt) {
     return exp + Math.random() * 250;
 }
 
-async function _performRequestWithRetry(url, buildInit, errorMsg, mySession) {
+async function _performRequestWithRetry(url, buildInit, errorMsg, mySession, usesApiKey = false) {
+    let authRetried = false;
     for (let attempt = 0; attempt <= API_MAX_RETRIES; attempt++) {
         if (mySession !== _currentApiSession) return null;
 
@@ -252,6 +278,12 @@ async function _performRequestWithRetry(url, buildInit, errorMsg, mySession) {
         }
 
         if (!res.ok) {
+            if (usesApiKey && (res.status === 401 || res.status === 403) && !authRetried
+                    && attempt < API_MAX_RETRIES && mySession === _currentApiSession) {
+                authRetried = true;
+                await invalidateAccessToken();
+                continue;
+            }
             const txt = await res.text().catch(() => '');
             error(`${errorMsg}: ${res.status} ${res.statusText}. Response: ${txt}`);
             return null;
@@ -298,22 +330,15 @@ async function fetchInternal(url, errorMsg, acceptHeader = 'application/json, te
         const headers = {
             'accept': acceptHeader,
             'accept-language': 'ru,en-US;q=0.9,en;q=0.8',
+            'faceit-referer': 'web-next',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin',
         };
-
-        if (_useProxy) {
-            headers['X-Extension-Version'] = EXTENSION_VERSION;
-            const deviceId = await getDeviceId();
-            if (deviceId) headers['X-Device-ID'] = deviceId;
-        } else {
-            headers['faceit-referer'] = 'web-next';
-            headers['sec-fetch-dest'] = 'empty';
-            headers['sec-fetch-mode'] = 'cors';
-            headers['sec-fetch-site'] = 'same-origin';
-        }
 
         return {
             headers,
-            credentials: _useProxy ? 'omit' : 'include'
+            credentials: 'include'
         };
     };
 
@@ -340,7 +365,7 @@ async function fetchV4(url, errorMsg) {
         };
     };
 
-    return apiQueue.enqueue(url, () => _performRequestWithRetry(url, buildInit, errorMsg, mySession), mySession);
+    return apiQueue.enqueue(url, () => _performRequestWithRetry(url, buildInit, errorMsg, mySession, !_useProxy), mySession);
 }
 
 const fetchV3 = (url, errorMsg) => fetchInternal(url, errorMsg, 'application/json, text/plain, */*');
@@ -359,14 +384,110 @@ async function fetchWithFallback(url, errorMsg, relativeFallbackUrl) {
     }
 }
 
+const FC_API_DB_NAME = 'forecast-api-cache';
+const FC_API_DB_VERSION = 1;
+const FC_API_DB_STORE = 'responses';
+let _fcApiDbPromise = null;
+
+function fcApiDbOpen() {
+    if (_fcApiDbPromise) return _fcApiDbPromise;
+    _fcApiDbPromise = new Promise((resolve, reject) => {
+        let req;
+        try { req = indexedDB.open(FC_API_DB_NAME, FC_API_DB_VERSION); } catch (e) { reject(e); return; }
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains(FC_API_DB_STORE)) {
+                const store = db.createObjectStore(FC_API_DB_STORE, { keyPath: 'key' });
+                store.createIndex('expiry', 'expiry', { unique: false });
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+    return _fcApiDbPromise;
+}
+
+async function getApiCache(key) {
+    try {
+        const db = await fcApiDbOpen();
+        return await new Promise(resolve => {
+            const tx = db.transaction(FC_API_DB_STORE, 'readonly');
+            const req = tx.objectStore(FC_API_DB_STORE).get(key);
+            req.onsuccess = () => {
+                const item = req.result;
+                if (!item) { resolve(null); return; }
+                if (Date.now() > item.expiry) { deleteApiCache(key); resolve(null); return; }
+                resolve(item.data);
+            };
+            req.onerror = () => resolve(null);
+        });
+    } catch (e) { return null; }
+}
+
+async function setApiCache(key, data, ttlMinutes) {
+    try {
+        const db = await fcApiDbOpen();
+        const expiry = Date.now() + ttlMinutes * 60 * 1000;
+        await new Promise(resolve => {
+            const tx = db.transaction(FC_API_DB_STORE, 'readwrite');
+            tx.objectStore(FC_API_DB_STORE).put({ key, data, expiry });
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+            tx.onabort = () => resolve();
+        });
+    } catch (e) {}
+}
+
+async function deleteApiCache(key) {
+    try {
+        const db = await fcApiDbOpen();
+        const tx = db.transaction(FC_API_DB_STORE, 'readwrite');
+        tx.objectStore(FC_API_DB_STORE).delete(key);
+    } catch (e) {}
+}
+
+async function fcApiCacheCleanupExpired() {
+    try {
+        const db = await fcApiDbOpen();
+        const tx = db.transaction(FC_API_DB_STORE, 'readwrite');
+        const req = tx.objectStore(FC_API_DB_STORE).index('expiry').openCursor(IDBKeyRange.upperBound(Date.now()));
+        req.onsuccess = () => { const c = req.result; if (c) { c.delete(); c.continue(); } };
+    } catch (e) {}
+}
+
+async function fcMigrateLegacyStorageCacheOnce() {
+    try {
+        const flagKey = 'fc-api-cache-idb-migrated';
+        const got = await CLIENT_STORAGE.get([flagKey]);
+        if (got && got[flagKey]) return;
+        const all = await CLIENT_STORAGE.get(null);
+        const kill = Object.keys(all || {}).filter(k => /^(match_|match_stats_|match_v3_|player_)/.test(k));
+        if (kill.length) await CLIENT_STORAGE.remove(kill);
+        await CLIENT_STORAGE.set({ [flagKey]: 1 });
+    } catch (e) {}
+}
+
+let _fcCacheInit = null;
+function fcEnsureCacheInit() {
+    if (!_fcCacheInit) {
+        _fcCacheInit = (async () => {
+            await fcMigrateLegacyStorageCacheOnce();
+            await fcApiCacheCleanupExpired();
+        })().catch(() => {});
+    }
+    return _fcCacheInit;
+}
+
 async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, fallbackUrl = null, validator = null) {
+    fcEnsureCacheInit();
+
     if (cache.has(url)) {
         const memData = cache.get(url);
         if (!validator || validator(memData)) return memData;
         cache.delete(url);
     }
 
-    const localData = await getLocalStorageCache(localKey);
+    const localData = await getApiCache(localKey);
     if (localData && (!validator || validator(localData))) {
         cache.set(url, localData);
         return localData;
@@ -377,23 +498,32 @@ async function fetchCached(cache, url, errorMsg, fetchFn, localKey, ttlMinutes, 
     }
 
     const promise = (async () => {
-        const data = fallbackUrl ? await fetchWithFallback(url, errorMsg, fallbackUrl) : await fetchFn(url, errorMsg);
-        if (data != null) {
+        let data = null;
+        const maxAttempts = validator ? FC_NOT_READY_RETRIES : 1;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            data = fallbackUrl ? await fetchWithFallback(url, errorMsg, fallbackUrl) : await fetchFn(url, errorMsg);
+            if (!validator || (data != null && validator(data))) break;
+            if (attempt < maxAttempts) await _sleep(FC_NOT_READY_RETRY_DELAY);
+        }
+        if (data != null && (!validator || validator(data))) {
             cache.set(url, data);
-            if (!validator || validator(data)) {
-                await setLocalStorageCache(localKey, data, ttlMinutes);
-            }
+            await setApiCache(localKey, data, ttlMinutes);
         }
         return data;
     })();
 
     fetchInFlight.set(url, promise);
-    promise.finally(() => fetchInFlight.delete(url));
+
+    promise.finally(() => {
+        if (fetchInFlight.get(url) === promise) {
+            fetchInFlight.delete(url);
+        }
+    });
 
     return promise;
 }
 
-const fetchV4Cached = (cache, url, errorMsg, localKey, ttlMinutes, fallbackUrl) => fetchCached(cache, url, errorMsg, fetchV4, localKey, ttlMinutes, fallbackUrl);
+const fetchV4Cached = (cache, url, errorMsg, localKey, ttlMinutes, fallbackUrl, validator = null) => fetchCached(cache, url, errorMsg, fetchV4, localKey, ttlMinutes, fallbackUrl, validator);
 const fetchV3Cached = (cache, url, errorMsg, localKey, ttlMinutes, validator = null) => fetchCached(cache, url, errorMsg, fetchV3, localKey, ttlMinutes, null, validator);
 
 function v3EloValidator(data) {
@@ -403,6 +533,14 @@ function v3EloValidator(data) {
     );
 }
 
+function matchReadyValidator(data) {
+    return !!(data && data.teams);
+}
+
+function matchStatsReadyValidator(data) {
+    return !!(data && Array.isArray(data.rounds) && data.rounds.length > 0);
+}
+
 async function fetchMatchStats(matchId) {
     return fetchV4Cached(
         matchDataCache,
@@ -410,7 +548,8 @@ async function fetchMatchStats(matchId) {
         `Error when retrieving match statistics by ID ${matchId}`,
         `match_${matchId}`,
         4320,
-        `matches/${matchId}`
+        `matches/${matchId}`,
+        matchReadyValidator
     );
 }
 
@@ -421,32 +560,22 @@ async function fetchMatchStatsDetailed(matchId) {
         `Error when retrieving detailed match statistics by ID: ${matchId}`,
         `match_stats_${matchId}`,
         4320,
-        `matches/${matchId}/stats`
+        `matches/${matchId}/stats`,
+        matchStatsReadyValidator
     );
 }
 
 async function fetchPlayerInGameStats(playerId, game, matchAmount = 30, to = 0, from = 0) {
     const param = to === 0 ? "" : `&to=${to}`;
-    const param1 = from === 0 ? "" : `&from=${to}`;
+    const param1 = from === 0 ? "" : `&from=${from}`;
     const url = `${baseUrlV4}/players/${playerId}/games/${game}/stats?limit=${matchAmount}${param}${param1}`;
     return fetchV4Cached(
         playerGamesDataCache,
         url,
         `Error when requesting player game data by ID: ${playerId}`,
         `player_games_${playerId}_${game}_${matchAmount}_${to}_${from}`,
-        5,
+        240,
         `players/${playerId}/games/${game}/stats?limit=${matchAmount}${param}${param1}`
-    );
-}
-
-async function fetchPlayerStatsById(playerId) {
-    return fetchV4Cached(
-        playerDataCache,
-        `${baseUrlV4}/players/${playerId}`,
-        `Error when requesting player data by ID: ${playerId}`,
-        `player_${playerId}`,
-        5,
-        `players/${playerId}`
     );
 }
 
@@ -559,22 +688,6 @@ async function resolveAccessToken() {
             return stale;
         }
 
-        try {
-            const data = await fetchWithTimeout(
-                "https://raw.githubusercontent.com/Faceit-Forecast/Forecast/refs/heads/master/api-key",
-                {},
-                5000
-            );
-            if (data && data.ok) {
-                const token = (await data.text()).trim();
-                if (token) {
-                    await setLocalStorageCache('forecast-api-key', token, API_KEY_FRESH_TTL_MIN);
-                    await CLIENT_STORAGE.set({ [API_KEY_STALE_KEY]: token });
-                    return token;
-                }
-            }
-        } catch (e) {}
-
         return null;
     })();
 
@@ -603,4 +716,10 @@ async function getStaleApiKey() {
             resolve(result[API_KEY_STALE_KEY] || null);
         });
     });
+}
+
+async function invalidateAccessToken() {
+    try {
+        await CLIENT_STORAGE.remove(['forecast-api-key']);
+    } catch (e) {}
 }

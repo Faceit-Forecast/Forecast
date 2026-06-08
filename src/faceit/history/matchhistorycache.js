@@ -14,11 +14,12 @@ const DB_VERSION = 1;
 
 const cacheMap = new Map();
 let db = null;
+let _dbPromise = null;
 
 function tryCleanCache() {
     getLocalStorageCache(cookieCacheId).then(nextCleanUpTime => {
         let currentTime = Date.now();
-        if (!nextCleanUpTime || nextCleanUpTime > currentTime) {
+        if (!nextCleanUpTime || nextCleanUpTime < currentTime) {
             setLocalStorageCache(cookieCacheId, currentTime + cleanUpPeriod, 1440);
             cleanCache();
         }
@@ -26,10 +27,13 @@ function tryCleanCache() {
 }
 
 async function initDB() {
-    return new Promise((resolve, reject) => {
+    if (db) return db;
+    if (_dbPromise) return _dbPromise;
+
+    _dbPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-        request.onerror = () => reject(request.error);
+        request.onerror = () => { _dbPromise = null; reject(request.error); };
         request.onsuccess = () => {
             db = request.result;
             resolve(db);
@@ -45,6 +49,8 @@ async function initDB() {
             }
         };
     });
+
+    return _dbPromise;
 }
 
 function hasValidElo(entry) {

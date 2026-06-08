@@ -15,6 +15,8 @@ let PLAYER_WINRATE_TABLE_TEMPLATE;
 let TEAM_WINRATE_TABLE_TEMPLATE;
 let CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE;
 let CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE;
+let RADAR_TEAM_STATS_TABLE_TEMPLATE;
+let RADAR_PLAYER_STATS_TABLE_TEMPLATE;
 let SKILL_LEVELS_INFO_TABLE_TEMPLATE;
 let MATCHMAKING_PREVIEW_TEMPLATE;
 let FORECAST_STYLES_TEMPLATE;
@@ -39,6 +41,8 @@ function initTemplates() {
     TEAM_WINRATE_TABLE_TEMPLATE = htmlToElement(TEAM_WINRATE_TABLE_HTML);
     CLASSIC_PLAYER_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_PLAYER_WINRATE_TABLE_HTML);
     CLASSIC_TEAM_WINRATE_TABLE_TEMPLATE = htmlToElement(CLASSIC_TEAM_WINRATE_TABLE_HTML);
+    RADAR_TEAM_STATS_TABLE_TEMPLATE = htmlToElement(RADAR_TEAM_STATS_TABLE_HTML);
+    RADAR_PLAYER_STATS_TABLE_TEMPLATE = htmlToElement(RADAR_PLAYER_STATS_TABLE_HTML);
     SKILL_LEVELS_INFO_TABLE_TEMPLATE = htmlToElement(SKILL_LEVELS_INFO_TABLE_HTML);
     MATCHMAKING_PREVIEW_TEMPLATE = htmlToElement(MATCHMAKING_PREVIEW_HTML);
     FORECAST_STYLES_TEMPLATE = htmlToElement(FORECAST_STYLES_HTML);
@@ -47,6 +51,7 @@ function initTemplates() {
 function htmlToElement(html) {
     const doc = parser.parseFromString(html.trim(), 'text/html');
     const content = doc.body.firstElementChild || doc.head.firstElementChild;
+    if (content && content.classList) content.classList.add('fc-scope');
     const wrapper = document.createElement('div');
     wrapper.appendChild(content);
     return wrapper;
@@ -579,6 +584,32 @@ const CLASSIC_TEAM_WINRATE_TABLE_HTML = /*language=HTML*/ `
         </div>
     </div>`;
 
+const RADAR_TEAM_STATS_TABLE_HTML = /*language=HTML*/ `
+    <div class="fc-team-panel fc-radar">
+        <div class="fc-panel-header">
+            <div class="fc-seg">
+                <button type="button" class="fc-seg-btn" data-m="wr" data-i18n="radar_wr_full">WINRATE</button>
+                <button type="button" class="fc-seg-btn" data-m="avg" data-i18n="radar_avg_full">AVG KILLS</button>
+            </div>
+            <span class="fc-panel-info fc-panel-stats-text"></span>
+            <div class="brand-icon fc-brand-icon-inline" data-tooltip="FORECAST"></div>
+        </div>
+        <div class="fc-radar-body"></div>
+    </div>`;
+
+const RADAR_PLAYER_STATS_TABLE_HTML = /*language=HTML*/ `
+    <div class="fc-player-panel fc-radar">
+        <div class="fc-panel-header">
+            <div class="fc-seg">
+                <button type="button" class="fc-seg-btn" data-m="wr" data-i18n="radar_wr">WR</button>
+                <button type="button" class="fc-seg-btn" data-m="avg" data-i18n="radar_avg">AVG</button>
+            </div>
+            <span class="fc-panel-info fc-panel-stats-text"></span>
+            <div class="brand-icon fc-brand-icon-inline" data-tooltip="FORECAST"></div>
+        </div>
+        <div class="fc-radar-body"></div>
+    </div>`;
+
 const SKILL_LEVELS_INFO_TABLE_HTML = /*language=HTML*/ `
     <div class="modalinfos-content">
         <div class="challengerinfos-header">
@@ -734,16 +765,17 @@ const SKILL_LEVELS_INFO_TABLE_HTML = /*language=HTML*/ `
     </div>`;
 
 const FORECAST_STYLES_HTML = `<style>
+.fc-scope, [class^="fc-"], [class*=" fc-"] {
+    line-height: normal;
+}
+
 .profile-level-container::before {
     content: "" !important;
     position: absolute !important;
     inset: 0px !important;
-    border-width: 1px !important;
-    border-style: solid !important;
-    border-color: rgba(241, 241, 241, 0.05) !important;
+    border-style: none !important;
     border-radius: 8px !important;
     pointer-events: none !important;
-    z-index: -1 !important;
     border-block-start: 1px solid !important;
     border-image-slice: 1 !important;
     border-image-source: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--glow-color), transparent 75%) 15%, var(--glow-color) 40%, color-mix(in srgb, var(--glow-color), white 20%) 50%, var(--glow-color) 60%, color-mix(in srgb, var(--glow-color), transparent 75%) 85%, transparent 100%) !important;
@@ -1096,7 +1128,7 @@ const FORECAST_STYLES_HTML = `<style>
     position: relative;
 }
 
-.level span::before, .level-large span::before, .stat-block span::before {
+.level span[styled-title]::before, .level-large span[styled-title]::before, .stat-block span[styled-title]::before {
     content: attr(styled-title);
     position: absolute;
     top: -28px;
@@ -1112,7 +1144,7 @@ const FORECAST_STYLES_HTML = `<style>
     font-size: 12px;
 }
 
-.level:hover span::before, .level-large:hover span::before, .stat-block span:hover::before {
+.level:hover span[styled-title]::before, .level-large:hover span[styled-title]::before, .stat-block span[styled-title]:hover::before {
     opacity: 1;
     visibility: visible;
 }
@@ -1262,10 +1294,11 @@ __MATCHHISTORY_TABLE_ROW_SELECTOR__ {
     display: flex !important;
     flex-direction: column !important;
     gap: 12px !important;
-    position: absolute;
-    transform: translateY(-50%);
-    translate: 25px -19px;
-    margin: 6px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    z-index: 2147483000;
 }
 
 .popup-scoreboard-wrapper {
@@ -1280,9 +1313,8 @@ __MATCHHISTORY_TABLE_ROW_SELECTOR__ {
     -webkit-backdrop-filter: blur(7px);
 }
 
-@-moz-document url-prefix() {
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
     .popup-scoreboard-wrapper {
-        backdrop-filter: none !important;
         background: rgba(0, 0, 0, .9);
     }
 }
@@ -1736,6 +1768,9 @@ __MATCHHISTORY_TABLE_ROW_SELECTOR__ {
 
 .fc-classic-table td:first-child {
     text-align: left;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
 .fc-classic-table td:last-child {
@@ -1881,9 +1916,8 @@ __MATCHHISTORY_TABLE_ROW_SELECTOR__ {
     -webkit-backdrop-filter: blur(7px);
 }
 
-@-moz-document url-prefix() {
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
     .fc-user-logo-tooltip {
-        backdrop-filter: none !important;
         background: rgba(0, 0, 0, 0.95);
     }
 }
@@ -1938,6 +1972,7 @@ __MATCHHISTORY_TABLE_ROW_SELECTOR__ {
 
 .fc-logo-container {
     position: relative;
+    flex-shrink: 0;
     width: 44px;
     height: 44px;
 }
@@ -2176,5 +2211,151 @@ __MATCHHISTORY_TABLE_ROW_SELECTOR__ {
 .avg-elo-value-enemy {
     color: #ff5555;
 }
+
+.fc-radar .fc-panel-header { gap: 8px; }
+.fc-seg {
+    display: inline-flex;
+    align-items: center;
+    background: #0a0a0a;
+    border: 1px solid #242424;
+    border-radius: 6px;
+    padding: 2px 3px;
+    gap: 0;
+    flex: 0 0 auto;
+}
+.fc-seg-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #aaa;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    text-align: center;
+    height: 19px;
+    padding: 0 7px;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+.fc-seg-btn + .fc-seg-btn::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 11px;
+    background: rgba(255, 255, 255, 0.08);
+}
+.fc-seg-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    width: 0;
+    height: 1.5px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.5);
+    transition: width 0.25s ease, left 0.25s ease, background 0.15s ease;
+}
+.fc-seg-btn:not(.fc-seg-on):hover { color: #fff; }
+.fc-seg-btn:hover::after { width: 60%; left: 20%; }
+.fc-seg-btn.fc-seg-on { color: #ff6a00; }
+.fc-seg-btn.fc-seg-on::after { width: 60%; left: 20%; background: #ff6a00; }
+.fc-radar .fc-panel-stats-text { flex: 1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.fc-radar-body { padding: 8px 6px 8px; }
+.fc-radar-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fc-rad-corner { position: absolute; top: 3px; display: flex; flex-direction: column; gap: 1px; pointer-events: none; }
+.fc-rad-corner-l { left: 5px; align-items: flex-start; }
+.fc-rad-corner-r { right: 5px; align-items: flex-end; }
+.fc-rad-corner-name { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: #ccc; max-width: 132px; }
+.fc-rad-corner-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-rad-corner-r .fc-rad-corner-name { flex-direction: row-reverse; }
+.fc-rad-corner-name i { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 8px; }
+.fc-rad-corner-stat { font-size: 9px; font-weight: 600; color: #777; text-transform: uppercase; letter-spacing: 0.03em; }
+.fc-rad-corner-stat b { font-weight: 800; }
+.fc-rad-corner-lbl { font-size: 9.5px; font-weight: 700; color: #777; text-transform: uppercase; letter-spacing: 0.05em; }
+.fc-rad-corner-big { font-size: 21px; font-weight: 800; line-height: 1.05; }
+.fc-radar-svg { width: 100%; max-width: 360px; height: auto; display: block; }
+.fc-rad-dyn { transition: opacity 0.5s ease; }
+.fc-radar-wrap.fc-rad-building .fc-rad-dyn { opacity: 0.55; }
+.fc-radar-legend { display: flex; gap: 14px; justify-content: center; font-size: 9px; font-weight: 700; color: #bbb; flex-wrap: wrap; }
+.fc-rl-item { display: flex; align-items: center; gap: 5px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-rl-item i { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 9px; }
+.fc-radar-empty { text-align: center; color: #555; font-size: 10px; padding: 24px 0; }
+
+.fc-pmaps-top { display: flex; justify-content: space-between; align-items: flex-start; padding: 4px 9px 0; }
+.fc-pmaps-ov-r { text-align: right; }
+.fc-tov-name { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: #ccc; margin-bottom: 1px; max-width: 130px; }
+.fc-tov-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-pmaps-ov-r .fc-tov-name { flex-direction: row-reverse; }
+.fc-tov-name i { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 8px; }
+.fc-tov-stat { font-size: 9px; font-weight: 600; color: #777; text-transform: uppercase; letter-spacing: 0.03em; }
+.fc-tov-stat b { font-weight: 800; font-size: 11px; }
+.fc-tsep { color: #444; font-weight: 700; }
+.fc-phero { display: flex; gap: 10px; padding: 6px 6px 8px; align-items: stretch; justify-content: center; }
+.fc-phero-card { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 9px; background: #0a0a0a;
+    border: 1px solid #1f1f1f; border-radius: 10px; padding: 14px 10px; }
+.fc-phero-1 .fc-phero-card { max-width: 240px; padding: 18px 16px; gap: 12px; }
+.fc-phero-hd { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.fc-phero-hd img { width: 42px; height: 42px; border-radius: 7px; object-fit: cover; }
+.fc-phero-1 .fc-phero-hd img { width: 56px; height: 56px; }
+.fc-phero-hd span { font-size: 13px; font-weight: 800; color: #eee; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
+.fc-phero-1 .fc-phero-hd span { font-size: 17px; }
+.fc-phero-stat-line { display: flex; align-items: baseline; gap: 6px; }
+.fc-phero-val { font-size: 21px; font-weight: 800; line-height: 1; }
+.fc-phero-1 .fc-phero-val { font-size: 30px; }
+.fc-phero-statlbl { font-size: 9px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+.fc-phero-1 .fc-phero-statlbl { font-size: 11px; }
+.fc-phero-games { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+.fc-phero-1 .fc-phero-games { font-size: 13px; }
+.fc-phero-2 { gap: 7px; padding: 6px 4px 8px; }
+.fc-phero-2 .fc-phero-card { padding: 11px 6px; gap: 7px; }
+.fc-phero-2 .fc-phero-hd img { width: 34px; height: 34px; }
+.fc-phero-2 .fc-phero-hd span { font-size: 11px; }
+.fc-phero-2 .fc-phero-val { font-size: 18px; }
+.fc-phero-2 .fc-phero-statlbl { font-size: 11px; }
+.fc-phero-2 .fc-phero-games { font-size: 9.5px; }
+
+.fc-bars { display: flex; flex-direction: column; gap: 10px; padding: 4px 4px 2px; }
+.fc-bars-card { background: #0a0a0a; border: 1px solid #1f1f1f; border-radius: 8px; padding: 9px 10px; }
+.fc-bars-maphdr, .fc-bars-map { display: flex; align-items: center; gap: 7px; }
+.fc-bars-maphdr { margin-bottom: 4px; }
+.fc-bars-maphdr img, .fc-bars-map img { width: 18px; height: 18px; border-radius: 3px; object-fit: cover; }
+.fc-bars-maphdr span { font-size: 11px; font-weight: 700; color: #ddd; text-transform: uppercase; }
+.fc-bars-hero { gap: 16px; padding: 12px 6px; }
+.fc-bars-map { justify-content: center; }
+.fc-bars-map img { width: 26px; height: 26px; }
+.fc-bars-map span { font-size: 17px; font-weight: 800; color: #eee; text-transform: uppercase; letter-spacing: 0.5px; }
+.fc-bars-rows { display: flex; flex-direction: column; gap: 12px; }
+.fc-bar-row { display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 8px; }
+.fc-bars-card .fc-bar-row { margin-top: 7px; }
+.fc-bar-who { font-size: 9px; font-weight: 700; letter-spacing: 0.3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-bar-track { position: relative; height: 16px; background: #1a1a1a; border-radius: 4px; overflow: hidden; }
+.fc-bars-hero .fc-bar-track { height: 22px; }
+.fc-bar-track > i { display: block; height: 100%; width: 0; border-radius: 4px; transition: width 0.55s cubic-bezier(.22,1,.36,1); }
+.fc-bar-val { font-size: 11px; font-weight: 700; color: #eee; min-width: 46px; text-align: right; }
+.fc-bars-hero .fc-bar-val { font-size: 16px; }
+.fc-bar-val small { display: block; font-size: 8px; font-weight: 600; color: #555; }
+.fc-bar-metric { font-size: 7px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.3px; }
+.fc-bars-hero .fc-bar-metric { font-size: 9px; }
+.fc-bar-games { display: block; font-size: 8.5px; font-weight: 700; color: #777; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 1px; }
+.fc-bars-hero .fc-bar-games { font-size: 10px; }
+
+.fc-roster-rank { display: inline-flex; align-items: center; gap: 9px; margin: 0 14px; padding: 7px 14px;
+    border-radius: 12px; background: rgba(0, 0, 0, .5); border: 1px solid #2c2c30;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .45);
+    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    .fc-roster-rank { background: rgba(12, 12, 14, .85); }
+}
+.fc-roster-rank-right { flex-direction: row-reverse; }
+.fc-roster-ico { width: 38px !important; height: 38px !important; flex: 0 0 38px; }
+.fc-roster-elo { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: 0.3px; }
 </style>`;
 

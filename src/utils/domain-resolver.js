@@ -65,19 +65,9 @@ async function getApiUrl() {
     return DOMAIN_URLS[domain].api;
 }
 
-async function getAuthUrl() {
-    const domain = await getActiveDomain();
-    return DOMAIN_URLS[domain].auth;
-}
-
 async function getCdnUrl() {
     const domain = await getActiveDomain();
     return DOMAIN_URLS[domain].cdn;
-}
-
-async function getSiteUrl() {
-    const domain = await getActiveDomain();
-    return DOMAIN_URLS[domain].site;
 }
 
 function isUsingFallback() {

@@ -15,7 +15,6 @@ const CLIENT_STORAGE_SYNC = CLIENT_API.storage.sync;
 const PRIMARY_CDN_URL = 'https://cdn.fforecast.net';
 const FALLBACK_CDN_URL = 'https://cdn.fforecast.dev';
 const MAPS_CONFIG_URL_PATH = '/config/mappool.json';
-const MAPS_CONFIG_URL = PRIMARY_CDN_URL + MAPS_CONFIG_URL_PATH;
 const MAPS_CONFIG_CACHE_KEY = 'maps-config-cache';
 const MAPS_CONFIG_CACHE_TTL = 1000 * 60 * 60 * 6;
 
@@ -25,12 +24,14 @@ const MAPS_ICONS_SIZE = 48;
 let mapsConfig = null;
 let CS2_MAPS = [];
 
-const PATCH_NOTES_URL = 'https://raw.githubusercontent.com/TerraMiner/Forecast/master/patch-notes.md';
-const PATCH_NOTES_CACHE_KEY = 'patch-notes-cache';
-const PATCH_NOTES_CACHE_TTL = 1000 * 60 * 30;
+const PATCH_NOTES_PATH = '/config/patch-notes/';
+const PATCH_NOTES_CACHE_TTL = 1000 * 60 * 60;
+const PATCH_NOTES_SCROLL_THRESHOLD = 40;
 
 const SUPPORTED_LANGUAGES = ['en', 'ru', 'de', 'fr', 'uk', 'pl'];
 const DEFAULT_LANGUAGE = 'en';
+const LOCALE_PATH_PREFIX = '/config/locales/';
+const LOCALE_CACHE_TTL = 1000 * 60 * 60 * 6;
 
 const TAB_LABELS = {
     "general": "General",
@@ -47,28 +48,75 @@ function detectBrowserLanguage() {
     return SUPPORTED_LANGUAGES.includes(browserLang) ? browserLang : DEFAULT_LANGUAGE;
 }
 
-async function loadTranslationsFromFile(lang) {
+function _getLocaleLocal(key) {
+    return new Promise((resolve) => {
+        CLIENT_API.storage.local.get([key], (result) => resolve(result[key] ?? null));
+    });
+}
+
+function _setLocaleLocal(items) {
+    return new Promise((resolve) => {
+        CLIENT_API.storage.local.set(items, resolve);
+    });
+}
+
+async function _fetchLocaleData(lang) {
+    const cacheKey = `forecast-locale-${lang}`;
+    try {
+        const cached = await _getLocaleLocal(cacheKey);
+        const cachedTime = await _getLocaleLocal(`${cacheKey}-time`);
+        if (cached && cachedTime && (Date.now() - cachedTime < LOCALE_CACHE_TTL)) {
+            return cached;
+        }
+    } catch (e) {}
+
+    await _ensurePopupDomain();
+    const path = `${LOCALE_PATH_PREFIX}${lang}.json`;
+    const cdn = activeCdnUrl;
+    let data = null;
+    try {
+        const response = await fetch(`${cdn}${path}`);
+        if (response.ok) data = await response.json();
+    } catch (e) {}
+    if (!data) {
+        try {
+            const fallbackCdn = cdn === PRIMARY_CDN_URL ? FALLBACK_CDN_URL : PRIMARY_CDN_URL;
+            const response = await fetch(`${fallbackCdn}${path}`);
+            if (response.ok) data = await response.json();
+        } catch (e) {}
+    }
+    if (data) {
+        try {
+            await _setLocaleLocal({[cacheKey]: data, [`${cacheKey}-time`]: Date.now()});
+        } catch (e) {}
+        return data;
+    }
+
+    try {
+        const cached = await _getLocaleLocal(cacheKey);
+        if (cached) return cached;
+    } catch (e) {}
+
+    return null;
+}
+
+async function _loadBundledLocale(lang) {
     try {
         const url = CLIENT_RUNTIME.getURL(`_locales/${lang}/forecast.json`);
         const response = await fetch(url);
-        if (response.ok) {
-            translations[lang] = await response.json();
-        }
-    } catch (e) {
-        console.error("Failed to load translations for " + lang, e);
+        if (response.ok) return await response.json();
+    } catch (e) {}
+    return null;
+}
+
+async function loadTranslationsFromFile(lang) {
+    if (!translations[DEFAULT_LANGUAGE]) {
+        const bundled = await _loadBundledLocale(DEFAULT_LANGUAGE);
+        if (bundled) translations[DEFAULT_LANGUAGE] = bundled;
     }
 
-    if (lang !== DEFAULT_LANGUAGE && !translations[DEFAULT_LANGUAGE]) {
-        try {
-            const fallbackUrl = CLIENT_RUNTIME.getURL(`_locales/${DEFAULT_LANGUAGE}/forecast.json`);
-            const fallbackResponse = await fetch(fallbackUrl);
-            if (fallbackResponse.ok) {
-                translations[DEFAULT_LANGUAGE] = await fallbackResponse.json();
-            }
-        } catch (e) {
-            console.error("Failed to load fallback translations", e);
-        }
-    }
+    const data = await _fetchLocaleData(lang);
+    if (data) translations[lang] = data;
 }
 
 function t(key, fallback = null) {
@@ -99,58 +147,236 @@ function localizeDocument() {
 
 const PatchNotesManager = {
     currentVersion: null,
+    rev: null,
+    pages: 1,
+    total: 0,
+    loadedPages: 0,
+    loading: false,
+    container: null,
+    lang: null,
+    servedLang: null,
+
+    _pagePath(lang, n) {
+        return lang === 'en' ? `${PATCH_NOTES_PATH}p${n}.json` : `${PATCH_NOTES_PATH}${lang}/p${n}.json`;
+    },
+
+    _pageKey(n) {
+        return `patch-notes-${this.lang}-page-${n}`;
+    },
+
+    _revKey() {
+        return `patch-notes-${this.lang}-rev`;
+    },
+
+    _timeKey() {
+        return `patch-notes-${this.lang}-time`;
+    },
+
+    _updateLangBadge() {
+        const badge = document.querySelector('.patch-notes-lang-badge');
+        if (badge) badge.textContent = (this.servedLang || 'en').toUpperCase();
+    },
 
     async init() {
         this.currentVersion = CLIENT_RUNTIME.getManifest().version;
-        await this.loadAndDisplay();
-    },
+        this.container = document.getElementById('patch-notes-container');
+        if (!this.container) return;
 
-    async loadAndDisplay() {
-        const container = document.getElementById('patch-notes-container');
-        if (!container) return;
+        this.lang = (typeof currentLanguage === 'string' && currentLanguage) ? currentLanguage : 'en';
 
         try {
-            const content = await this.fetchWithCache();
-            const patchNotes = this.parse(content);
-            this.render(container, patchNotes);
-        } catch (error) {
-            console.error('Failed to load patch notes:', error);
-            container.innerHTML = `<div class="patch-notes-error">${t('failed_load_patch_notes')}</div>`;
+            await _ensurePopupDomain();
+        } catch (e) {
         }
+
+        await this.loadFirstPage();
+        this.setupScroll();
     },
 
-    async fetchWithCache() {
+    async fetchByPath(path) {
+        const cdn = activeCdnUrl;
+        let response;
+        try {
+            response = await fetch(`${cdn}${path}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        } catch (e) {
+            const fallbackCdn = cdn === PRIMARY_CDN_URL ? FALLBACK_CDN_URL : PRIMARY_CDN_URL;
+            response = await fetch(`${fallbackCdn}${path}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    },
+
+    async fetchPage(n) {
         if (isTest) {
             const url = CLIENT_RUNTIME.getURL('patch-notes.md');
             const response = await fetch(url);
             if (!response.ok) throw new Error(`Failed to load local file: ${response.status}`);
-            return await response.text();
+            const notes = this._parseMarkdown(await response.text());
+            this.servedLang = 'en';
+            return {rev: 'local', pageSize: notes.length, total: notes.length, pages: 1, latest: this.currentVersion, notes};
         }
 
-        try {
-            const cached = await StorageUtils.get([PATCH_NOTES_CACHE_KEY, `${PATCH_NOTES_CACHE_KEY}-time`]);
-            const cachedData = cached[PATCH_NOTES_CACHE_KEY];
-            const cachedTime = cached[`${PATCH_NOTES_CACHE_KEY}-time`];
+        if (n === 0) {
+            if (this.lang && this.lang !== 'en') {
+                try {
+                    const page = await this.fetchByPath(this._pagePath(this.lang, 0));
+                    this.servedLang = this.lang;
+                    return page;
+                } catch (e) {}
+            }
+            this.servedLang = 'en';
+            return await this.fetchByPath(this._pagePath('en', 0));
+        }
+        return await this.fetchByPath(this._pagePath(this.servedLang || 'en', n));
+    },
 
-            if (cachedData && cachedTime && (Date.now() - cachedTime < PATCH_NOTES_CACHE_TTL)) {
-                return cachedData;
+    async loadFirstPage() {
+        try {
+            const cached = await StorageUtils.get([this._pageKey(0), this._timeKey()]);
+            const cachedPage = cached[this._pageKey(0)];
+            const cachedTime = cached[this._timeKey()];
+            if (cachedPage && cachedTime && (Date.now() - cachedTime < PATCH_NOTES_CACHE_TTL)) {
+                this._applyFirstPage(cachedPage);
+                this._updateLangBadge();
+                return;
             }
         } catch (e) {
         }
 
-        const response = await fetch(PATCH_NOTES_URL);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const content = await response.text();
+        let page;
+        try {
+            page = await this.fetchPage(0);
+        } catch (error) {
+            console.error('Failed to load patch notes:', error);
+            try {
+                const cached = await StorageUtils.get([this._pageKey(0)]);
+                if (cached[this._pageKey(0)]) {
+                    this._applyFirstPage(cached[this._pageKey(0)]);
+                    this._updateLangBadge();
+                    return;
+                }
+            } catch (e) {
+            }
+            this.container.innerHTML = `<div class="patch-notes-error">${t('failed_load_patch_notes', 'Failed to load patch notes')}</div>`;
+            return;
+        }
 
         try {
+            const prev = await StorageUtils.get([this._revKey()]);
+            if (prev[this._revKey()] && prev[this._revKey()] !== page.rev) {
+                await this._clearPageCache();
+            }
+        } catch (e) {
+        }
+
+        page._served = this.servedLang;
+        try {
             await StorageUtils.set({
-                [PATCH_NOTES_CACHE_KEY]: content,
-                [`${PATCH_NOTES_CACHE_KEY}-time`]: Date.now()
+                [this._pageKey(0)]: page,
+                [this._timeKey()]: Date.now(),
+                [this._revKey()]: page.rev
             });
         } catch (e) {
         }
 
-        return content;
+        this._applyFirstPage(page);
+        this._updateLangBadge();
+    },
+
+    _applyFirstPage(page) {
+        if (page._served) this.servedLang = page._served;
+        this.rev = page.rev;
+        this.pages = page.pages || 1;
+        this.total = page.total || (page.notes ? page.notes.length : 0);
+        this.loadedPages = 0;
+        this.render(page.notes, false);
+        this.loadedPages = 1;
+    },
+
+    async loadMore() {
+        if (this.loading || this.loadedPages >= this.pages) return;
+        this.loading = true;
+        const n = this.loadedPages;
+        try {
+            let page = null;
+            try {
+                const cached = await StorageUtils.get([this._pageKey(n)]);
+                const c = cached[this._pageKey(n)];
+                if (c && c.rev === this.rev) page = c;
+            } catch (e) {
+            }
+
+            if (!page) {
+                page = await this.fetchPage(n);
+                if (page.rev !== this.rev) {
+                    await this._clearPageCache();
+                    try {
+                        await StorageUtils.set({[this._timeKey()]: 0});
+                    } catch (e) {
+                    }
+                    await this.loadFirstPage();
+                    return;
+                }
+                try {
+                    await StorageUtils.set({[this._pageKey(n)]: page});
+                } catch (e) {
+                }
+            }
+
+            this.render(page.notes, true);
+            this.loadedPages++;
+        } catch (e) {
+            console.error('Failed to load more patch notes:', e);
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    setupScroll() {
+        if (this.pages <= 1) return;
+        this.container.addEventListener('scroll', () => {
+            if (this.container.scrollTop + this.container.clientHeight >= this.container.scrollHeight - PATCH_NOTES_SCROLL_THRESHOLD) {
+                this.loadMore();
+            }
+        });
+    },
+
+    async _clearPageCache() {
+        try {
+            const all = await StorageUtils.get(null);
+            const prefix = `patch-notes-${this.lang}-page-`;
+            const toRemove = Object.keys(all).filter(k => k.startsWith(prefix));
+            if (toRemove.length) await new Promise(res => CLIENT_STORAGE_SYNC.remove(toRemove, res));
+        } catch (e) {
+        }
+    },
+
+    _parseMarkdown(content) {
+        const patchNotes = [];
+        const lines = content.split(/\r?\n/);
+        let currentNote = null;
+
+        for (const rawLine of lines) {
+            const line = rawLine.trim();
+            const headerMatch = line.match(/^\[([^\]]+)\]\s*(.+)$/);
+
+            if (headerMatch) {
+                if (currentNote) patchNotes.push(currentNote);
+                currentNote = {version: headerMatch[1], title: headerMatch[2], description: [], images: []};
+            } else if (currentNote) {
+                const imgMatch = line.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+                if (imgMatch) {
+                    const altMatch = line.match(/alt=["']([^"']+)["']/i);
+                    currentNote.images.push({src: imgMatch[1], alt: altMatch ? altMatch[1] : 'Patch note image'});
+                } else if (line.trim()) {
+                    currentNote.description.push(line.trim());
+                }
+            }
+        }
+
+        if (currentNote) patchNotes.push(currentNote);
+        return patchNotes;
     },
 
     sanitizeText(text) {
@@ -177,46 +403,6 @@ const PatchNotesManager = {
         return div.innerHTML;
     },
 
-    parse(content) {
-        const patchNotes = [];
-        const lines = content.split(/\r?\n/);
-        let currentNote = null;
-
-        for (const rawLine of lines) {
-            const line = rawLine.trim();
-            const headerMatch = line.match(/^\[([^\]]+)\]\s*(.+)$/);
-
-            if (headerMatch) {
-                if (currentNote) {
-                    patchNotes.push(currentNote);
-                }
-                currentNote = {
-                    version: headerMatch[1],
-                    title: headerMatch[2],
-                    description: [],
-                    images: []
-                };
-            } else if (currentNote) {
-                const imgMatch = line.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
-                if (imgMatch) {
-                    const altMatch = line.match(/alt=["']([^"']+)["']/i);
-                    currentNote.images.push({
-                        src: imgMatch[1],
-                        alt: altMatch ? altMatch[1] : 'Patch note image'
-                    });
-                } else if (line.trim()) {
-                    currentNote.description.push(line.trim());
-                }
-            }
-        }
-
-        if (currentNote) {
-            patchNotes.push(currentNote);
-        }
-
-        return patchNotes;
-    },
-
     compareVersions(v1, v2) {
         const parts1 = v1.split('.').map(Number);
         const parts2 = v2.split('.').map(Number);
@@ -230,18 +416,20 @@ const PatchNotesManager = {
         return 0;
     },
 
-    render(container, patchNotes) {
-        if (patchNotes.length === 0) {
-            container.innerHTML = `<div class="patch-notes-error">${t('no_patch_notes')}</div>`;
+    render(notes, append) {
+        if (!notes || notes.length === 0) {
+            if (!append) {
+                this.container.innerHTML = `<div class="patch-notes-error">${t('no_patch_notes', 'No patch notes available')}</div>`;
+            }
             return;
         }
 
         const loadingSvgUrl = CLIENT_RUNTIME.getURL('src/visual/icons/loading.svg');
         const loadedSvgUrl = CLIENT_RUNTIME.getURL('src/visual/icons/loaded.svg');
 
-        const notesHtml = patchNotes.map(note => {
+        const notesHtml = notes.map(note => {
             const isReleased = this.compareVersions(this.currentVersion, note.version) >= 0;
-            const tooltipText = isReleased ? t('update_installed') : t('update_pending_review');
+            const tooltipText = isReleased ? t('update_installed', 'You have this update installed') : t('update_pending_review', 'Update is ready but the store is reviewing it. Please wait for approval.');
             const iconUrl = isReleased ? loadedSvgUrl : loadingSvgUrl;
 
             const safeVersion = this.sanitizeText(note.version);
@@ -276,9 +464,22 @@ const PatchNotesManager = {
             `;
         }).join('');
 
-        container.innerHTML = notesHtml;
+        let added;
+        if (append) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = notesHtml;
+            added = Array.from(tmp.children);
+            added.forEach(el => this.container.appendChild(el));
+        } else {
+            this.container.innerHTML = notesHtml;
+            added = Array.from(this.container.children);
+        }
 
-        container.querySelectorAll('.patch-note-image').forEach(img => {
+        added.forEach(el => this._wireNote(el));
+    },
+
+    _wireNote(el) {
+        el.querySelectorAll('.patch-note-image').forEach(img => {
             img.addEventListener('click', () => this.openImageOverlay(img.src, img.alt));
 
             img.addEventListener('error', function () {
@@ -293,7 +494,7 @@ const PatchNotesManager = {
             });
         });
 
-        this.setupStatusTooltips(container);
+        this.setupStatusTooltips(el);
     },
 
     setupStatusTooltips(container) {
@@ -410,6 +611,49 @@ const StorageUtils = {
     }
 };
 
+const QPS_PROFILES_KEY = 'qpsProfiles';
+const QPS_ACTIVE_KEY = 'qpsActiveProfile';
+const QPS_MAX_PROFILES = 5;
+
+function _qpsMigrateFromFlat(mapIds, flat) {
+    const maps = {};
+    mapIds.forEach(id => {
+        const message = flat[`${id}Message`];
+        const enabled = flat[`${id}Enabled`];
+        const hasMessage = typeof message === 'string' && message !== '';
+        if (hasMessage || enabled !== undefined) {
+            maps[id] = {
+                enabled: enabled !== false,
+                message: typeof message === 'string' ? message : ''
+            };
+        }
+    });
+    const name = (typeof t === 'function') ? t('qps_default_profile_name', 'Profile 1') : 'Profile 1';
+    return { id: 'default', name, maps };
+}
+
+async function ensureQpsProfiles(mapIds) {
+    const stored = await StorageUtils.get([QPS_PROFILES_KEY, QPS_ACTIVE_KEY]);
+    let profiles = stored[QPS_PROFILES_KEY];
+
+    if (Array.isArray(profiles) && profiles.length > 0) {
+        let active = stored[QPS_ACTIVE_KEY];
+        if (!active || !profiles.some(p => p.id === active)) {
+            active = profiles[0].id;
+            await StorageUtils.set({ [QPS_ACTIVE_KEY]: active });
+        }
+        return { profiles, active };
+    }
+
+    const flatKeys = [];
+    (mapIds || []).forEach(id => flatKeys.push(`${id}Enabled`, `${id}Message`));
+    const flat = flatKeys.length ? await StorageUtils.get(flatKeys) : {};
+    const profile = _qpsMigrateFromFlat(mapIds || [], flat);
+    profiles = [profile];
+    await StorageUtils.set({ [QPS_PROFILES_KEY]: profiles, [QPS_ACTIVE_KEY]: profile.id });
+    return { profiles, active: profile.id };
+}
+
 const DOMAIN_STORAGE_KEY_POPUP = 'active_domain';
 const AUTH_STORAGE_KEY = 'forecast_auth';
 const DEVICE_ID_KEY = 'deviceId';
@@ -455,11 +699,6 @@ async function getPopupAuthHost() {
     return POPUP_DOMAIN_URLS[domain].auth;
 }
 
-async function getPopupSiteUrl() {
-    const domain = await _ensurePopupDomain();
-    return POPUP_DOMAIN_URLS[domain].site;
-}
-
 CLIENT_API.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes[DOMAIN_STORAGE_KEY_POPUP]) {
         _popupDomain = changes[DOMAIN_STORAGE_KEY_POPUP].newValue;
@@ -489,13 +728,19 @@ const AuthManager = {
             if (stored[AUTH_STORAGE_KEY]) {
                 const authData = stored[AUTH_STORAGE_KEY];
                 if (authData.expiresAt > Date.now()) {
-                    this.state = {
-                        isAuthenticated: true,
-                        user: authData.user
-                    };
+                    const serverStatus = await this.verifySessionStatus();
+                    if (serverStatus === 'unlinked') {
+                        await StorageUtils.set({[AUTH_STORAGE_KEY]: null});
+                        this.state = {isAuthenticated: false, user: null};
+                    } else {
+                        this.state = {
+                            isAuthenticated: true,
+                            user: authData.user
+                        };
 
-                    authData.expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000);
-                    await StorageUtils.set({[AUTH_STORAGE_KEY]: authData});
+                        authData.expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000);
+                        await StorageUtils.set({[AUTH_STORAGE_KEY]: authData});
+                    }
                 }
             }
 
@@ -641,6 +886,34 @@ const AuthManager = {
         return crypto.randomUUID();
     },
 
+
+    async verifySessionStatus() {
+        try {
+            if (!this.deviceId) return 'unknown';
+            const apiUrl = await getPopupApiUrl();
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            let res;
+            try {
+                res = await fetch(`${apiUrl}/v1/auth/session-status`, {
+                    headers: {'X-Device-ID': this.deviceId},
+                    signal: controller.signal
+                });
+            } finally {
+                clearTimeout(timeout);
+            }
+            if (!res.ok) return 'unknown';
+            const data = await res.json();
+            if (typeof data.linked !== 'boolean') return 'unknown';
+            try {
+                CLIENT_API.storage.local.set({'forecast-auth-last-verified': Date.now()});
+            } catch (e) {}
+            return data.linked ? 'linked' : 'unlinked';
+        } catch (e) {
+            return 'unknown';
+        }
+    },
+
     async logout() {
         try {
             if (this.deviceId) {
@@ -677,7 +950,7 @@ const AuthManager = {
                 <div class="auth-user">
                     <img class="auth-avatar" src="" alt="" style="display:none;">
                     <span class="auth-nickname">${this.state.user.nickname}</span>
-                    <button id="logoutBtn" class="auth-btn auth-btn-logout">${t('logout')}</button>
+                    <button id="logoutBtn" class="auth-btn auth-btn-logout">${t('logout', 'Logout')}</button>
                 </div>
             `;
 
@@ -708,7 +981,7 @@ const AuthManager = {
                             <img src="icons/loaded.svg" class="success-icon" width="16" height="16" alt="">
                             <img src="icons/error.svg" class="error-icon" width="16" height="16" alt="">
                         </div>
-                        ${t('login')}
+                        ${t('login', 'Login')}
                     </button>
                 </div>
             `;
@@ -862,6 +1135,102 @@ const MapsConfigManager = {
     }
 };
 
+const QuickPositionProfiles = {
+    profiles: [],
+    activeId: null,
+
+    async init() {
+        const { profiles, active } = await ensureQpsProfiles(CS2_MAPS);
+        this.profiles = profiles;
+        this.activeId = active;
+        this.renderMenu();
+        this.updateControls();
+    },
+
+    active() {
+        return this.profiles.find(p => p.id === this.activeId) || this.profiles[0] || null;
+    },
+
+    async persist() {
+        await StorageUtils.set({ [QPS_PROFILES_KEY]: this.profiles, [QPS_ACTIVE_KEY]: this.activeId });
+    },
+
+    renderMenu() {
+        const label = document.getElementById('qpsProfileTriggerLabel');
+        const active = this.active();
+        if (label) label.textContent = active ? active.name : '';
+
+        const menu = document.getElementById('qpsProfileMenu');
+        if (!menu) return;
+        menu.innerHTML = '';
+        this.profiles.forEach(p => {
+            const li = document.createElement('li');
+            li.className = 'qps-profile-option' + (p.id === this.activeId ? ' active' : '');
+            li.setAttribute('role', 'option');
+            li.setAttribute('aria-selected', p.id === this.activeId ? 'true' : 'false');
+            li.dataset.id = p.id;
+            li.textContent = p.name;
+            menu.appendChild(li);
+        });
+    },
+
+    updateControls() {
+        const addBtn = document.getElementById('qpsProfileAdd');
+        const delBtn = document.getElementById('qpsProfileDelete');
+        if (addBtn) addBtn.disabled = this.profiles.length >= QPS_MAX_PROFILES;
+        if (delBtn) delBtn.disabled = this.profiles.length <= 1;
+    },
+
+    setMap(mapId, patch) {
+        const profile = this.active();
+        if (!profile) return Promise.resolve();
+        if (!profile.maps) profile.maps = {};
+        const entry = profile.maps[mapId] || { enabled: false, message: '' };
+        profile.maps[mapId] = { ...entry, ...patch };
+        return this.persist();
+    },
+
+    async switchTo(id) {
+        if (!this.profiles.some(p => p.id === id)) return;
+        this.activeId = id;
+        await StorageUtils.set({ [QPS_ACTIVE_KEY]: id });
+        this.renderMenu();
+        SettingsManager.applyQuickPositionMaps();
+    },
+
+    async add() {
+        if (this.profiles.length >= QPS_MAX_PROFILES) return;
+        const id = 'p' + Date.now();
+        const name = `${t('qps_profile_label', 'Profile')} ${this.profiles.length + 1}`;
+        this.profiles.push({ id, name, maps: {} });
+        this.activeId = id;
+        await this.persist();
+        this.renderMenu();
+        this.updateControls();
+        SettingsManager.applyQuickPositionMaps();
+    },
+
+    async remove() {
+        if (this.profiles.length <= 1) return;
+        this.profiles = this.profiles.filter(p => p.id !== this.activeId);
+        this.activeId = this.profiles[0].id;
+        await this.persist();
+        this.renderMenu();
+        this.updateControls();
+        SettingsManager.applyQuickPositionMaps();
+    },
+
+    async rename(name) {
+        const profile = this.active();
+        if (!profile) return;
+        const clean = (name || '').trim().slice(0, 24);
+        if (!clean || clean === profile.name) return;
+        profile.name = clean;
+        await this.persist();
+        this.renderMenu();
+    }
+};
+
 const SettingsManager = {
     defaults: {
         isEnabled: true,
@@ -869,6 +1238,9 @@ const SettingsManager = {
         matchroom: true,
         teamMapWinrate: true,
         playerMapWinrate: true,
+        showTeamElo: true,
+        teamViewMode: 'radar',
+        playerViewMode: 'radar',
         classicTeamView: false,
         classicPlayerView: false,
         eloranking: true,
@@ -892,7 +1264,8 @@ const SettingsManager = {
     async load() {
         try {
             const keys = ['isEnabled', 'sliderValue', 'matchroom', 'teamMapWinrate', 'playerMapWinrate',
-                'classicTeamView', 'classicPlayerView',
+                'showTeamElo',
+                'teamViewMode', 'playerViewMode', 'classicTeamView', 'classicPlayerView',
                 'eloranking', 'matchhistory', 'poscatcher',
                 'matchCounter', 'coloredStatsKDA', 'coloredStatsADR', 'coloredStatsKD',
                 'showKR', 'coloredStatsKR', 'showFCR', 'coloredStatsFCR', 'showAVGElo', 'roundedStats',
@@ -903,6 +1276,7 @@ const SettingsManager = {
 
             this.applySettings(settings);
 
+            await QuickPositionProfiles.init();
             this.loadQuickPositionSettings(settings);
 
             this.loadMatchHistorySettings(settings);
@@ -952,25 +1326,35 @@ const SettingsManager = {
             quickPositionToggle.checked = settings.poscatcher ?? this.defaults.poscatcher;
         }
 
+        this.applyQuickPositionMaps();
+
+        this.updateMapSettingsVisibility(quickPositionToggle?.checked ?? this.defaults.poscatcher);
+    },
+
+    applyQuickPositionMaps() {
+        const profile = QuickPositionProfiles.active();
+        const maps = (profile && profile.maps) ? profile.maps : {};
+
         CS2_MAPS.forEach(map => {
             const enabledToggle = document.getElementById(`${map}Enabled`);
             const messageInput = document.getElementById(`${map}Message`);
             const counter = document.getElementById(`${map}Counter`);
+            const entry = maps[map] || { enabled: false, message: '' };
 
             if (enabledToggle) {
-                enabledToggle.checked = settings[`${map}Enabled`] || false;
+                enabledToggle.checked = entry.enabled === true;
+                const mapCell = enabledToggle.closest('.map-cell');
+                if (mapCell) mapCell.classList.toggle('enabled', entry.enabled === true);
             }
 
             if (messageInput) {
-                messageInput.value = settings[`${map}Message`] || '';
+                messageInput.value = entry.message || '';
                 if (counter) {
                     counter.textContent = `${messageInput.value.length}`;
                     UIUtils.updateCharCounter(counter, messageInput.value.length, 100);
                 }
             }
         });
-
-        this.updateMapSettingsVisibility(quickPositionToggle?.checked ?? this.defaults.poscatcher);
     },
 
     loadMatchHistorySettings(settings) {
@@ -1018,8 +1402,7 @@ const SettingsManager = {
         const settingsElements = {
             teamMapWinrate: 'teamMapWinrate',
             playerMapWinrate: 'playerMapWinrate',
-            classicTeamView: 'classicTeamView',
-            classicPlayerView: 'classicPlayerView'
+            showTeamElo: 'showTeamElo'
         };
 
         Object.entries(settingsElements).forEach(([elementId, settingKey]) => {
@@ -1028,6 +1411,14 @@ const SettingsManager = {
                 element.checked = settings[settingKey] ?? this.defaults[settingKey];
             }
         });
+
+        const teamViewMode = settings.teamViewMode ?? (settings.classicTeamView ? 'classic' : this.defaults.teamViewMode);
+        const teamViewRadio = document.querySelector(`#teamViewModeOptions input[value="${teamViewMode}"]`);
+        if (teamViewRadio) teamViewRadio.checked = true;
+
+        const playerViewMode = settings.playerViewMode ?? (settings.classicPlayerView ? 'classic' : this.defaults.playerViewMode);
+        const playerViewRadio = document.querySelector(`#playerViewModeOptions input[value="${playerViewMode}"]`);
+        if (playerViewRadio) playerViewRadio.checked = true;
 
         const matchroomEnabled = settings.matchroom ?? this.defaults.matchroom;
         this.updateDependentSettings('matchroom', ['#matchroomSettings'], matchroomEnabled);
@@ -1240,8 +1631,7 @@ const UIBuilder = {
             id: 'matchhistory',
             labelKey: 'advanced_match_history',
             descKey: 'advanced_match_history_desc',
-            nestedId: 'matchHistorySettings',
-            nestedContent: 'matchHistoryGrid'
+            nestedId: 'matchHistorySettings'
         },
         {
             id: 'eloranking',
@@ -1252,22 +1642,19 @@ const UIBuilder = {
             id: 'matchroom',
             labelKey: 'advanced_matchroom',
             descKey: 'advanced_matchroom_desc',
-            nestedId: 'matchroomSettings',
-            nestedContent: 'matchroomGrid'
+            nestedId: 'matchroomSettings'
         },
         {
             id: 'matchmakingData',
             labelKey: 'mm_preview_feature',
             descKey: 'mm_preview_feature_desc',
-            nestedId: 'matchmakingDataSettings',
-            nestedContent: 'matchmakingDataGrid'
+            nestedId: 'matchmakingDataSettings'
         },
         {
             id: 'poscatcher',
             labelKey: 'quick_position_setup',
             descKey: 'quick_position_setup_desc',
-            nestedId: 'mapSettings',
-            nestedContent: 'mapGrid'
+            nestedId: 'mapSettings'
         },
         {
             id: 'integrations',
@@ -1303,9 +1690,8 @@ const UIBuilder = {
 
     MATCHROOM_SETTINGS: [
         {id: 'teamMapWinrate', labelKey: 'team_map_winrate', descKey: 'team_map_winrate_desc'},
-        {id: 'classicTeamView', labelKey: 'classic_team_view', descKey: 'classic_team_view_desc'},
         {id: 'playerMapWinrate', labelKey: 'player_map_winrate', descKey: 'player_map_winrate_desc'},
-        {id: 'classicPlayerView', labelKey: 'classic_player_view', descKey: 'classic_player_view_desc'}
+        {id: 'showTeamElo', labelKey: 'show_team_elo', descKey: 'show_team_elo_desc'}
     ],
 
     ABOUT_LINKS: [
@@ -1337,25 +1723,79 @@ const UIBuilder = {
         return `<div class="settings-cell${extraClass}"${cellId}><span class="settings-cell-label" ${labelAttr}>${labelText}</span>${this.createInfoTooltip(config.descKey, true)}${this.createSwitch(config.id)}</div>`;
     },
 
-    createSettingGroup(config) {
-        let nestedHtml = '';
-        if (config.nestedId) {
-            let nestedContent = '';
-            if (config.nestedContent === 'matchHistoryGrid') {
-                nestedContent = '<div class="settings-grid" id="matchHistorySettingsGrid"></div>';
-            } else if (config.nestedContent === 'matchroomGrid') {
-                nestedContent = '<div class="settings-grid" id="matchroomSettingsGrid"></div>'
-                    + `<div class="setting-item"><div class="setting-header"><label for="rangeSlider" data-i18n="match_amount">${t('match_amount')}</label>${this.createInfoTooltip('match_amount_desc', true)}</div><div class="slider-controls"><input type="range" id="rangeSlider" class="range-slider" min="5" max="100" value="30"><span id="sliderValue">30</span></div></div>`;
-            } else if (config.nestedContent === 'matchmakingDataGrid') {
-                const opt = (val, key) => `<label class="mm-mode-option"><input type="radio" name="matchmakingDataMode" value="${val}"><span class="mm-mode-pill" data-i18n="${key}">${t(key)}</span></label>`;
-                nestedContent = `<div class="setting-item mm-mode-row"><div class="setting-header"><label data-i18n="mm_preview_mode_label">${t('mm_preview_mode_label')}</label>${this.createInfoTooltip('mm_preview_mode_desc', true)}</div><div class="mm-mode-options" id="matchmakingDataModeOptions">${opt('both', 'mm_preview_mode_both')}${opt('servers', 'mm_preview_mode_servers')}${opt('maps', 'mm_preview_mode_maps')}</div></div>`;
-            } else if (config.nestedContent === 'mapGrid') {
-                nestedContent = '<div class="map-grid"></div>';
-            }
-            nestedHtml = `<div class="nested-setting visible" id="${config.nestedId}">${nestedContent}</div>`;
-        }
+    createPillGroup(name, groupId, options) {
+        const pills = options.map(([value, key]) =>
+            `<label class="mm-mode-option"><input type="radio" name="${name}" value="${value}"><span class="mm-mode-pill" data-i18n="${key}">${t(key)}</span></label>`
+        ).join('');
+        return `<div class="mm-mode-options" id="${groupId}">${pills}</div>`;
+    },
 
-        return `<div class="setting-group"><div class="setting-item"><div class="setting-header"><label for="${config.id}" data-i18n="${config.labelKey}">${t(config.labelKey)}</label>${this.createInfoTooltip(config.descKey)}</div>${this.createSwitch(config.id)}</div>${nestedHtml}</div>`;
+    createPillRow(labelKey, descKey, name, groupId, options) {
+        return `<div class="setting-item mm-mode-row"><div class="setting-header"><label data-i18n="${labelKey}">${t(labelKey)}</label></div>`
+            + `<div class="mm-mode-wrap">${this.createInfoTooltip(descKey, true)}${this.createPillGroup(name, groupId, options)}</div></div>`;
+    },
+
+    createMatchAmountRow() {
+        return `<div class="setting-item"><div class="setting-header"><label for="rangeSlider" data-i18n="match_amount">${t('match_amount')}</label>${this.createInfoTooltip('match_amount_desc', true)}</div>`
+            + `<div class="slider-controls"><input type="range" id="rangeSlider" class="range-slider" min="10" max="100" value="30"><span id="sliderValue">30</span></div></div>`;
+    },
+
+    nestedContentHtml(config) {
+        if (!config.nestedId) return '';
+        const viewModes = [['advanced', 'team_view_advanced'], ['classic', 'team_view_classic'], ['radar', 'team_view_radar']];
+        let inner = '';
+        switch (config.id) {
+            case 'matchhistory':
+                inner = '<div class="settings-grid" id="matchHistorySettingsGrid"></div>';
+                break;
+            case 'matchroom':
+                inner = '<div class="settings-grid" id="matchroomSettingsGrid"></div>'
+                    + this.createPillRow('team_view_mode', 'team_view_mode_desc', 'teamViewMode', 'teamViewModeOptions', viewModes)
+                    + this.createPillRow('player_view_mode', 'player_view_mode_desc', 'playerViewMode', 'playerViewModeOptions', viewModes)
+                    + this.createMatchAmountRow();
+                break;
+            case 'matchmakingData':
+                inner = this.createPillRow('mm_preview_mode_label', 'mm_preview_mode_desc', 'matchmakingDataMode', 'matchmakingDataModeOptions',
+                    [['both', 'mm_preview_mode_both'], ['servers', 'mm_preview_mode_servers'], ['maps', 'mm_preview_mode_maps']]);
+                break;
+            case 'poscatcher': {
+                const renameSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>';
+                const addSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+                const deleteSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+                const chevronSvg = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+                inner = `<div class="qps-profile-bar">`
+                    + `<div class="qps-profile-dropdown" id="qpsProfileDropdown">`
+                    + `<button type="button" class="qps-profile-trigger" id="qpsProfileTrigger" aria-haspopup="listbox" aria-expanded="false" aria-label="${t('qps_profile_label', 'Profile')}"><span class="qps-profile-trigger-label" id="qpsProfileTriggerLabel"></span><span class="qps-profile-trigger-arrow">${chevronSvg}</span></button>`
+                    + `<ul class="qps-profile-menu" id="qpsProfileMenu" role="listbox" hidden></ul>`
+                    + `</div>`
+                    + `<input type="text" class="qps-profile-name-input" id="qpsProfileNameInput" maxlength="24" hidden aria-label="${t('qps_profile_rename', 'Rename profile')}">`
+                    + `<button type="button" class="qps-profile-btn" id="qpsProfileRename" title="${t('qps_profile_rename', 'Rename profile')}" aria-label="${t('qps_profile_rename', 'Rename profile')}">${renameSvg}</button>`
+                    + `<button type="button" class="qps-profile-btn" id="qpsProfileAdd" title="${t('qps_profile_add', 'Add profile')}" aria-label="${t('qps_profile_add', 'Add profile')}">${addSvg}</button>`
+                    + `<button type="button" class="qps-profile-btn" id="qpsProfileDelete" title="${t('qps_profile_delete', 'Delete profile')}" aria-label="${t('qps_profile_delete', 'Delete profile')}">${deleteSvg}</button>`
+                    + `</div>`
+                    + '<div class="map-grid"></div>';
+                break;
+            }
+        }
+        return `<div class="nested-setting visible" id="${config.nestedId}">${inner}</div>`;
+    },
+
+    createFeatureRow(config) {
+        const hasDetail = !!config.nestedId;
+        const chevron = hasDetail ? this.icon('chevron', 12, 12) : '';
+        return `<div class="feature-row${hasDetail ? ' clickable' : ''}" data-id="${config.id}">`
+            + `<div class="setting-header"><label data-i18n="${config.labelKey}">${t(config.labelKey)}</label></div>`
+            + `<div class="feature-row-controls">${this.createInfoTooltip(config.descKey)}${this.createSwitch(config.id)}</div>`
+            + `<span class="fr-chevron">${chevron}</span>`
+            + `</div>`;
+    },
+
+    createFeatureDetail(config) {
+        if (!config.nestedId) return '';
+        return `<div class="feature-detail" data-feature="${config.id}" hidden>`
+            + `<div class="feature-detail-head"><button type="button" class="feature-back">${this.icon('chevron', 14, 14)}<span data-i18n="back">${t('back', 'Back')}</span></button><span class="feature-detail-title" data-i18n="${config.labelKey}">${t(config.labelKey)}</span></div>`
+            + this.nestedContentHtml(config)
+            + `</div>`;
     },
 
     createAboutCell(config) {
@@ -1389,7 +1829,9 @@ const UIBuilder = {
     buildFeaturesSection() {
         const container = document.getElementById('featuresContainer');
         if (!container) return;
-        container.innerHTML = this.FEATURES_CONFIG.map(c => this.createSettingGroup(c)).join('');
+        const rows = this.FEATURES_CONFIG.map(c => this.createFeatureRow(c)).join('');
+        const details = this.FEATURES_CONFIG.map(c => this.createFeatureDetail(c)).join('');
+        container.innerHTML = `<div class="feature-list" id="featureList">${rows}</div><div class="feature-detail-host" id="featureDetailHost">${details}</div>`;
     },
 
     buildAboutSection() {
@@ -1512,9 +1954,19 @@ const EventHandlers = {
         const sliderValueDisplay = document.getElementById('sliderValue');
 
         if (rangeSlider && sliderValueDisplay) {
-            rangeSlider.addEventListener('input', async function () {
-                sliderValueDisplay.textContent = this.value;
-                await SettingsManager.save({sliderValue: Number.parseInt(this.value, 10)});
+            rangeSlider.addEventListener('change', function () {
+                const slider = this;
+                const from = Number.parseInt(slider.value, 10);
+                const snapped = Math.min(100, Math.max(10, Math.round(from / 10) * 10));
+                sliderValueDisplay.textContent = snapped;
+                SettingsManager.save({sliderValue: snapped});
+                const start = performance.now(), dur = 170;
+                const animate = now => {
+                    const tt = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - tt, 3);
+                    slider.value = Math.round(from + (snapped - from) * e);
+                    if (tt < 1) requestAnimationFrame(animate);
+                };
+                requestAnimationFrame(animate);
             });
         }
 
@@ -1532,6 +1984,44 @@ const EventHandlers = {
                 content.classList.toggle('collapsed');
             });
         }
+    },
+
+    setupFeatureNav() {
+        const list = document.getElementById('featureList');
+        const host = document.getElementById('featureDetailHost');
+        if (!list || !host) return;
+
+        const main = document.querySelector('.main-content');
+        const details = host.querySelectorAll('.feature-detail');
+
+        const showList = () => {
+            details.forEach(d => d.hidden = true);
+            list.hidden = false;
+            if (main) main.scrollTop = 0;
+        };
+
+        const showDetail = (id) => {
+            const target = host.querySelector(`.feature-detail[data-feature="${id}"]`);
+            if (!target) return;
+            list.hidden = true;
+            details.forEach(d => d.hidden = d !== target);
+            if (main) main.scrollTop = 0;
+        };
+
+        list.querySelectorAll('.feature-row').forEach(row => {
+            if (!host.querySelector(`.feature-detail[data-feature="${row.dataset.id}"]`)) return;
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('.switch') || e.target.closest('.info-tooltip-wrapper')) return;
+                showDetail(row.dataset.id);
+            });
+        });
+
+        host.querySelectorAll('.feature-back').forEach(btn => btn.addEventListener('click', showList));
+
+        const featuresTab = document.querySelector('.tab-button[data-tab="features"]');
+        if (featuresTab) featuresTab.addEventListener('click', showList);
+
+        showList();
     },
 
     setupCopyButton() {
@@ -1566,6 +2056,8 @@ const EventHandlers = {
             });
         }
 
+        this.setupQuickPositionProfileBar();
+
         CS2_MAPS.forEach(map => {
             const enabledToggle = document.getElementById(`${map}Enabled`);
             if (enabledToggle) {
@@ -1576,7 +2068,7 @@ const EventHandlers = {
                 }
 
                 enabledToggle.addEventListener('change', async function () {
-                    await SettingsManager.save({[`${map}Enabled`]: this.checked});
+                    await QuickPositionProfiles.setMap(map, { enabled: this.checked });
                     SettingsManager.updateMapSpecificVisibility(map, this.checked);
 
                     if (mapCell) {
@@ -1595,10 +2087,81 @@ const EventHandlers = {
                         counter.textContent = length;
                         UIUtils.updateCharCounter(counter, length, 16);
                     }
-                    await SettingsManager.save({[`${map}Message`]: this.value});
+                    await QuickPositionProfiles.setMap(map, { message: this.value });
                 });
             }
         });
+    },
+
+    setupQuickPositionProfileBar() {
+        const dropdown = document.getElementById('qpsProfileDropdown');
+        const trigger = document.getElementById('qpsProfileTrigger');
+        const menu = document.getElementById('qpsProfileMenu');
+
+        const onDocClick = (e) => {
+            if (dropdown && !dropdown.contains(e.target)) closeMenu();
+        };
+        const closeMenu = () => {
+            if (menu) menu.hidden = true;
+            if (trigger) trigger.setAttribute('aria-expanded', 'false');
+            document.removeEventListener('click', onDocClick);
+        };
+        const openMenu = () => {
+            if (menu) menu.hidden = false;
+            if (trigger) trigger.setAttribute('aria-expanded', 'true');
+            document.addEventListener('click', onDocClick);
+        };
+
+        if (trigger && menu) {
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (menu.hidden) openMenu(); else closeMenu();
+            });
+            menu.addEventListener('click', async (e) => {
+                const option = e.target.closest('.qps-profile-option');
+                if (!option) return;
+                closeMenu();
+                await QuickPositionProfiles.switchTo(option.dataset.id);
+            });
+            if (dropdown) {
+                dropdown.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeMenu();
+                });
+            }
+        }
+
+        const addBtn = document.getElementById('qpsProfileAdd');
+        if (addBtn) addBtn.addEventListener('click', () => QuickPositionProfiles.add());
+
+        const deleteBtn = document.getElementById('qpsProfileDelete');
+        if (deleteBtn) deleteBtn.addEventListener('click', () => QuickPositionProfiles.remove());
+
+        const renameBtn = document.getElementById('qpsProfileRename');
+        const nameInput = document.getElementById('qpsProfileNameInput');
+        if (renameBtn && dropdown && nameInput) {
+            const beginRename = () => {
+                const profile = QuickPositionProfiles.active();
+                if (!profile) return;
+                closeMenu();
+                nameInput.value = profile.name;
+                dropdown.hidden = true;
+                nameInput.hidden = false;
+                nameInput.focus();
+                nameInput.select();
+            };
+            const endRename = async (commit) => {
+                if (nameInput.hidden) return;
+                if (commit) await QuickPositionProfiles.rename(nameInput.value);
+                nameInput.hidden = true;
+                dropdown.hidden = false;
+            };
+            renameBtn.addEventListener('click', beginRename);
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); endRename(true); }
+                else if (e.key === 'Escape') { e.preventDefault(); endRename(false); }
+            });
+            nameInput.addEventListener('blur', () => endRename(true));
+        }
     },
 
     setupMatchHistoryEventListeners() {
@@ -1636,8 +2199,7 @@ const EventHandlers = {
         const settingsToggles = [
             'teamMapWinrate',
             'playerMapWinrate',
-            'classicTeamView',
-            'classicPlayerView'
+            'showTeamElo'
         ];
 
         settingsToggles.forEach(toggleId => {
@@ -1646,6 +2208,18 @@ const EventHandlers = {
 
             element.addEventListener('change', async function () {
                 await SettingsManager.save({[toggleId]: this.checked});
+            });
+        });
+
+        document.querySelectorAll('#teamViewModeOptions input[name="teamViewMode"]').forEach(radio => {
+            radio.addEventListener('change', async function () {
+                if (this.checked) await SettingsManager.save({teamViewMode: this.value});
+            });
+        });
+
+        document.querySelectorAll('#playerViewModeOptions input[name="playerViewMode"]').forEach(radio => {
+            radio.addEventListener('change', async function () {
+                if (this.checked) await SettingsManager.save({playerViewMode: this.value});
             });
         });
     },
@@ -1728,6 +2302,12 @@ async function setLanguage(lang) {
     localizeDocument();
     updateTabs();
     AuthManager.updateUI();
+    if (PatchNotesManager.container) {
+        PatchNotesManager.lang = currentLanguage;
+        PatchNotesManager.loadedPages = 0;
+        PatchNotesManager.loading = false;
+        PatchNotesManager.loadFirstPage().catch(() => {});
+    }
 }
 
 function updateTabs() {
@@ -1791,6 +2371,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         await SettingsManager.load();
 
         UIUtils.setupTabs();
+
+        EventHandlers.setupFeatureNav();
 
         UIUtils.startOnlineUpdater();
 

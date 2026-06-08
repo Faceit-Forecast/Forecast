@@ -1,3 +1,19 @@
+[1.8.2] Team Analytics & Redesigned Settings
+New matchroom analytics table format — spider chart
+Average team ELO is now shown above the rosters
+The matchroom now shows data only for the current match's map pool
+In past matchrooms, stats are calculated as of the match date
+Redesigned extension settings tab
+Added settings profiles to Quick Position Setup
+Improved patch notes system
+Improved match history rendering performance
+Faster extension startup
+Fixes:
+Match preview in match history no longer goes off-screen
+Fixed some issues with the levels table display
+Fixed issues related to text element scaling
+Compatibility fixes (incl. Firefox) and network request optimization
+
 [1.8.1] Match Preview Fix & Faster Loading
 Fixed server region not showing in match accept popup
 Improved loading speed and reliability of extension data

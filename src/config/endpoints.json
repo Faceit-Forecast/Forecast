@@ -1,9 +1,10 @@
 {
-  "version": 3,
+  "version": 5,
   "faceit": {
     "baseUrlV3": "https://www.faceit.com/api/stats/v3",
     "baseUrlV4": "https://open.faceit.com/data/v4",
     "useProxy": false,
+    "proxyRollout": 0,
     "proxyBaseUrl": null
   },
   "apiQueue": {
@@ -18,6 +19,7 @@
       "mapsConfig": "/config/mappool.json",
       "selectorsConfig": "/config/selectors.json",
       "endpointsConfig": "/config/endpoints.json",
+      "metricsConfig": "/config/metrics.json",
       "mapIcon": "/web/images/maps/48"
     }
   }

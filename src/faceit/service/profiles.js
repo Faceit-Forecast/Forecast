@@ -42,8 +42,10 @@ const profilesModule = new Module("profiles", () => {
         let selectorMatchPlayer = sel('profiles.matchPlayer');
         const matchId = extractMatchId();
         fetchMatchStats(matchId).then((matchDetails) => {
+            if (!matchDetails || !matchDetails.teams) return;
             const team1 = matchDetails["teams"]["faction1"];
             const team2 = matchDetails["teams"]["faction2"];
+            if (!team1?.roster || !team2?.roster) return;
             const nicknameToIdMap = new Map(
                 [
                     ...team1.roster.map(player => ({

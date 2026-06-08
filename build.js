@@ -456,6 +456,15 @@ async function build() {
         }
     }
 
+    const distLocalesDir = path.join(config.distDir, '_locales');
+    if (fs.existsSync(distLocalesDir)) {
+        for (const localeDir of fs.readdirSync(distLocalesDir)) {
+            if (localeDir === 'en') continue;
+            const runtimeLocale = path.join(distLocalesDir, localeDir, 'forecast.json');
+            if (fs.existsSync(runtimeLocale)) fs.unlinkSync(runtimeLocale);
+        }
+    }
+
     if (fs.existsSync(config.manifestPath)) {
         const distManifest = path.join(config.distDir, 'manifest.json');
         fs.copyFileSync(config.manifestPath, distManifest);

@@ -21,19 +21,24 @@ const lobbyModules = [
 async function initExtension() {
     if (!(await isExtensionEnabled())) return
     await loadConfigs();
+    await initApiEndpoints();
     resolveAccessToken();
-    initApiEndpoints();
+    loadMetricsConfig();
+    await normalizeMatchAmount();
     startMetricsReporter();
-    await initializeMatchHistoryCache();
+    startSelectorMetricsReporter();
+    startSettingsMetricsReporter();
+    initializeMatchHistoryCache();
     initTemplates();
     await resourcesModule.produceOf("load");
-    await i18nModule.produceOf("load");
+    i18nModule.produceOf("load").catch(e => error("i18n background load failed", e));
 
-    for (let lobbyModule of lobbyModules) {
+    await Promise.all(lobbyModules.map(async (lobbyModule) => {
         lobbyModule.isEnabled = await isSettingEnabled(lobbyModule.module.id, lobbyModule.isEnabledByDefault);
-    }
+    }));
 
     startPingService();
+    syncAuthState();
 
     setInterval(async function () {
         try {

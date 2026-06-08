@@ -53,11 +53,6 @@ function getLevelColor(level) {
     return LEVEL_COLORS[level] || '#FFFFFF';
 }
 
-function getEloColor(elo, gameType = 'cs2') {
-    const level = getLevel(elo, gameType);
-    return getLevelColor(level);
-}
-
 function insertAllLevelsToTable(table, currentLevel) {
     LEVEL_TEMPLATES.forEach((icon, level) => {
         let svgNode = icon.cloneNode(true)
@@ -125,8 +120,16 @@ async function insertAllStatisticToNewTable(table) {
         let prevLevelColor = getLevelColor(level - 1) || getLevelColor(level);
         let currentLevelColor = getLevelColor(level);
 
-        progressBar.style.setProperty('--gradient-start', prevLevelColor);
-        progressBar.style.setProperty('--gradient-end', currentLevelColor);
+        if (level === levelRanges.length) {
+            progressBar.style.setProperty('--gradient-start', '#fff');
+            progressBar.style.setProperty('--gradient-end', '#fff');
+        } else if (level === levelRanges.length - 1) {
+            progressBar.style.setProperty('--gradient-start', prevLevelColor);
+            progressBar.style.setProperty('--gradient-end', '#fff');
+        } else {
+            progressBar.style.setProperty('--gradient-start', prevLevelColor);
+            progressBar.style.setProperty('--gradient-end', currentLevelColor);
+        }
 
         let levelMinEloTextNode = levelNode.querySelector(`[class~="level-value"]`)
         const {min, max} = levelRanges[level - 1]
@@ -138,7 +141,6 @@ async function insertAllStatisticToNewTable(table) {
         } else if (currentLevel === levelRanges.length) {
             levelNode.setAttribute("reached", '')
             progressBar.style.width = "100%";
-            document.querySelector("[class*=progress-bar-20]").style.background = "rgb(255, 85, 0)";
         } else if (currentLevel === level && elo >= min && elo <= max) {
             levelNode.setAttribute("reached", '')
             progressBar.style.width = `${progressBarPercentage}%`;

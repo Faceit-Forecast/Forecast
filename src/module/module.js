@@ -13,6 +13,7 @@ class Module {
         this.nodesToRemove = [];
         this.hidedNodes = [];
         this.tasks = [];
+        this.observers = [];
         this.observeHandler = new ObserveHandler();
     }
 
@@ -70,6 +71,11 @@ class Module {
             clearInterval(task)
         })
         this.tasks.length = 0
+
+        this.observers.forEach((observer) => {
+            observer.disconnect()
+        })
+        this.observers.length = 0
     }
 
     #generateSessionId() {
@@ -208,6 +214,13 @@ class Module {
         const task = setInterval(callback, period)
         this.tasks.push(task)
         return () => clearInterval(task)
+    }
+
+    observe(target, callback, options) {
+        const observer = new MutationObserver(callback)
+        observer.observe(target, options)
+        this.observers.push(observer)
+        return observer
     }
 
     async produceOf(action) {

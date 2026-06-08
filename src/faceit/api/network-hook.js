@@ -2,6 +2,9 @@
  * Copyright (c) 2025 TerraMiner. All Rights Reserved.
  */
 (() => {
+    if (window.__forecastNetworkHooked) return;
+    window.__forecastNetworkHooked = true;
+
     const MATCH_RE = /\/api\/match\/v2\/match\/[^/?#]+/;
 
     const isMatchUrl = (url) => {

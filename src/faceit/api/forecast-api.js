@@ -68,13 +68,18 @@ async function registerDevice() {
 
 async function fetchFC(url, options = {}) {
     try {
+        const { meta, ...fetchOptions } = options;
         const deviceId = await getDeviceId();
-        const headers = options.headers || {};
+        const headers = fetchOptions.headers || {};
         if (deviceId) {
             headers['X-Device-ID'] = deviceId;
         }
         headers['X-Extension-Version'] = EXTENSION_VERSION;
-        const res = await fetchWithTimeout(url, { ...options, headers });
+        const res = await fetchWithTimeout(url, { ...fetchOptions, headers });
+
+        if (meta) {
+            meta.status = res.status;
+        }
 
         if (!res.ok) {
             if (res.status !== 204) {
@@ -100,6 +105,45 @@ async function fetchPing() {
             CLIENT_STORAGE.set({ deviceId: newDeviceId });
         }
     }
+}
+
+const FC_AUTH_STORAGE_KEY = 'forecast_auth';
+const FC_AUTH_VERIFY_THROTTLE_KEY = 'forecast-auth-last-verified';
+const FC_AUTH_VERIFY_THROTTLE_MS = 6 * 60 * 60 * 1000;
+const FC_AUTH_RENEW_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function syncAuthState() {
+    try {
+        const now = Date.now();
+
+        const throttle = await new Promise((resolve) => {
+            CLIENT_STORAGE.get([FC_AUTH_VERIFY_THROTTLE_KEY], (r) => resolve(r[FC_AUTH_VERIFY_THROTTLE_KEY] || 0));
+        });
+        if (throttle && now - throttle < FC_AUTH_VERIFY_THROTTLE_MS) return;
+
+        const baseUrl = await getBaseUrlFC();
+        const status = await fetchFC(`${baseUrl}/v1/auth/session-status`);
+
+        if (!status || typeof status.linked !== 'boolean') return;
+
+        await CLIENT_STORAGE.set({ [FC_AUTH_VERIFY_THROTTLE_KEY]: now });
+
+        const stored = await new Promise((resolve) => {
+            CLIENT_STORAGE_SYNC.get([FC_AUTH_STORAGE_KEY], (r) => resolve(r[FC_AUTH_STORAGE_KEY]));
+        });
+
+        if (status.linked === false) {
+            if (stored) {
+                await new Promise((resolve) => CLIENT_STORAGE_SYNC.set({ [FC_AUTH_STORAGE_KEY]: null }, resolve));
+            }
+            return;
+        }
+
+        if (stored && stored.user) {
+            stored.expiresAt = now + FC_AUTH_RENEW_MS;
+            await new Promise((resolve) => CLIENT_STORAGE_SYNC.set({ [FC_AUTH_STORAGE_KEY]: stored }, resolve));
+        }
+    } catch (e) {}
 }
 
 function sanitizeHtml(html) {
@@ -131,6 +175,7 @@ function isValidUrl(url) {
 async function fetchBannerData(language, slot) {
     const cacheKey = `forecast-banner-cache-${language}-${slot}`;
     const FRESH_TTL_MS = 5 * 60 * 1000;
+    const STALE_MAX_MS = 24 * 60 * 60 * 1000;
 
     const cached = await new Promise((resolve) => {
         CLIENT_STORAGE.get([cacheKey], (result) => {
@@ -146,7 +191,8 @@ async function fetchBannerData(language, slot) {
     }
 
     const baseUrl = await getBaseUrlFC();
-    const bannerData = await fetchFC(`${baseUrl}/v2/integrations/banner?lang=${language}&slot=${slot}`);
+    const meta = {};
+    const bannerData = await fetchFC(`${baseUrl}/v2/integrations/banner?lang=${language}&slot=${slot}`, { meta });
 
     if (bannerData) {
         CLIENT_STORAGE.set({
@@ -158,8 +204,12 @@ async function fetchBannerData(language, slot) {
         return bannerData;
     }
 
-    if (cached?.data) {
-        sendBannerMetric(cached.data.bannerId, language, slot);
+    if (meta.status === 204) {
+        CLIENT_STORAGE.remove([cacheKey]);
+        return null;
+    }
+
+    if (cached?.data && cached.timestamp && Date.now() - cached.timestamp < STALE_MAX_MS) {
         return cached.data;
     }
 

@@ -210,20 +210,26 @@ const newLevelsModule = new Module("eloranking", async () => {
     let selector2 = sel('levels.skillLevelEloSpan');
     let gameType = extractGameType("cs2");
 
-    let preppendIconOnEloNodeFound = async (cardEloNode) => {
-        if (cardEloNode.id && cardEloNode.id.includes(levelIconId)) return;
+    let applyLevelIcon = (cardEloNode) => {
         let eloText = cardEloNode.innerText.replace(/[\s,._]/g, '');
         if (!eloText) return;
         let eloNodeParent = getNthParent(cardEloNode, idx('levels.skillLevelEloSpanParentDepth', 1));
+        let checkParent = getNthParent(cardEloNode, idx('levels.skillLevelEloSpanCheckDepth', 2));
+        if (!checkParent) return;
+        let existing = checkParent.querySelector(`[id*=${levelIconId}]`);
         if (!isNumber(eloText)) {
+            if (existing) existing.remove();
             if (eloNodeParent && !eloNodeParent.hasAttribute('origin-levels')) {
                 eloNodeParent.setAttribute('origin-levels', '');
             }
             return;
         }
-        if (getNthParent(cardEloNode, idx('levels.skillLevelEloSpanCheckDepth', 2)).querySelector(`[id*=${levelIconId}]`)) return;
-        let elo = Number.parseInt(eloText, 10)
-        let currentLevel = getLevel(elo, gameType);
+        let currentLevel = getLevel(Number.parseInt(eloText, 10), gameType);
+        if (existing) {
+            if (existing.id === `${levelIconId}${currentLevel}`) return;
+            existing.remove();
+        }
+        if (eloNodeParent) eloNodeParent.removeAttribute('origin-levels');
         let levelIconWrapper = getLevelIcon(currentLevel);
         if (!levelIconWrapper) return;
         let newIcon = levelIconWrapper.firstChild;
@@ -232,13 +238,19 @@ const newLevelsModule = new Module("eloranking", async () => {
         newLevelsModule.removalNode(newIcon);
     }
 
+    let preppendIconOnEloNodeFound = async (cardEloNode) => {
+        if (cardEloNode.id && cardEloNode.id.includes(levelIconId)) return;
+        applyLevelIcon(cardEloNode);
+        newLevelsModule.observe(cardEloNode, () => applyLevelIcon(cardEloNode), { childList: true, characterData: true, subtree: true });
+    }
+
     await newLevelsModule.doAfterAllNodeAppear(selector2, preppendIconOnEloNodeFound);
 
     let selectorLastKnown = sel('levels.popoverLastKnownRow');
     await newLevelsModule.doAfterAllNodeAppear(selectorLastKnown, (row) => {
         row.setAttribute('fc-last-known', '');
-        const inlineRow = row.querySelector('[class*=InlineRow]');
-        const textSpan = inlineRow?.querySelector(':scope > span:last-child');
+        const inlineRow = row.querySelector(sel('levels.popoverLastKnownInlineRow'));
+        const textSpan = inlineRow?.querySelector(sel('levels.popoverLastKnownValueSpan'));
         const eloText = textSpan?.innerText?.replace(/[\s,._]/g, '') || '';
         if (!isNumber(eloText)) {
             row.setAttribute('origin-levels', '');
@@ -376,7 +388,7 @@ const newLevelsModule = new Module("eloranking", async () => {
                 characterData: true,
                 subtree: true
             }
-            new MutationObserver(updateIcon).observe(node, observeOptions);
+            newLevelsModule.observe(node, updateIcon, observeOptions);
         });
 
         let selector2 = sel('levels.profile.matchHistoryElo');
@@ -539,7 +551,7 @@ const newLevelsModule = new Module("eloranking", async () => {
 
             updateIcon();
 
-            new MutationObserver(updateIcon).observe(node, {
+            newLevelsModule.observe(node, updateIcon, {
                 childList: true,
                 characterData: true,
                 subtree: true

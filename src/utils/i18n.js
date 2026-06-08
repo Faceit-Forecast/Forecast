@@ -4,15 +4,8 @@
 
 const I18N_SUPPORTED_LANGUAGES = ['en', 'ru', 'de', 'fr', 'uk', 'pl'];
 const I18N_DEFAULT_LANGUAGE = 'en';
-
-const I18N_LANGUAGE_NAMES = {
-    en: "English",
-    ru: "Русский",
-    de: "Deutsch",
-    fr: "Français",
-    uk: "Українська",
-    pl: "Polski"
-};
+const I18N_LOCALE_PATH_PREFIX = '/config/locales/';
+const I18N_LOCALE_CACHE_TTL = 1000 * 60 * 60 * 6;
 
 let i18nCurrentLanguage = I18N_DEFAULT_LANGUAGE;
 let i18nTranslations = {};
@@ -44,28 +37,50 @@ function detectI18nBrowserLanguage() {
     return I18N_SUPPORTED_LANGUAGES.includes(browserLang) ? browserLang : I18N_DEFAULT_LANGUAGE;
 }
 
-async function loadTranslations(lang) {
+async function _fetchLocaleData(lang) {
+    const cacheKey = `forecast-locale-${lang}`;
+    try {
+        const cached = await _getLocalConfig(cacheKey);
+        const cachedTime = await _getLocalConfig(`${cacheKey}-time`);
+        if (cached && cachedTime && (Date.now() - cachedTime < I18N_LOCALE_CACHE_TTL)) {
+            return cached;
+        }
+    } catch (e) {}
+
+    const remote = await _fetchRemoteConfig(`${I18N_LOCALE_PATH_PREFIX}${lang}.json`);
+    if (remote) {
+        try {
+            await _setLocalConfig(cacheKey, remote);
+            await _setLocalConfig(`${cacheKey}-time`, Date.now());
+        } catch (e) {}
+        return remote;
+    }
+
+    try {
+        const cached = await _getLocalConfig(cacheKey);
+        if (cached) return cached;
+    } catch (e) {}
+
+    return null;
+}
+
+async function _loadBundledLocale(lang) {
     try {
         const url = CLIENT_RUNTIME.getURL(`_locales/${lang}/forecast.json`);
         const response = await fetch(url);
-        if (response.ok) {
-            i18nTranslations[lang] = await response.json();
-        }
-    } catch (e) {
-        error("Failed to load translations for " + lang, e);
+        if (response.ok) return await response.json();
+    } catch (e) {}
+    return null;
+}
+
+async function loadTranslations(lang) {
+    if (!i18nTranslations[I18N_DEFAULT_LANGUAGE]) {
+        const bundled = await _loadBundledLocale(I18N_DEFAULT_LANGUAGE);
+        if (bundled) i18nTranslations[I18N_DEFAULT_LANGUAGE] = bundled;
     }
 
-    if (lang !== I18N_DEFAULT_LANGUAGE && !i18nTranslations[I18N_DEFAULT_LANGUAGE]) {
-        try {
-            const fallbackUrl = CLIENT_RUNTIME.getURL(`_locales/${I18N_DEFAULT_LANGUAGE}/forecast.json`);
-            const fallbackResponse = await fetch(fallbackUrl);
-            if (fallbackResponse.ok) {
-                i18nTranslations[I18N_DEFAULT_LANGUAGE] = await fallbackResponse.json();
-            }
-        } catch (e) {
-            error("Failed to load fallback translations", e);
-        }
-    }
+    const data = await _fetchLocaleData(lang);
+    if (data) i18nTranslations[lang] = data;
 }
 
 function t(key, fallback = null) {

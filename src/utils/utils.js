@@ -116,6 +116,74 @@ async function setSettingValue(name, value) {
     });
 }
 
+const QPS_PROFILES_KEY = 'qpsProfiles';
+const QPS_ACTIVE_KEY = 'qpsActiveProfile';
+const QPS_MAX_PROFILES = 5;
+
+function _qpsStorageGet(keys) {
+    return new Promise((resolve, reject) => {
+        CLIENT_STORAGE_SYNC.get(keys, (result) => {
+            const errorMessage = CLIENT_RUNTIME.lastError;
+            if (errorMessage) reject(new Error(errorMessage));
+            else resolve(result || {});
+        });
+    });
+}
+
+function _qpsStorageSet(obj) {
+    return new Promise((resolve, reject) => {
+        CLIENT_STORAGE_SYNC.set(obj, () => {
+            const errorMessage = CLIENT_RUNTIME.lastError;
+            if (errorMessage) reject(new Error(errorMessage));
+            else resolve();
+        });
+    });
+}
+
+function _qpsMigrateFromFlat(mapIds, flat) {
+    const maps = {};
+    mapIds.forEach(id => {
+        const message = flat[`${id}Message`];
+        const enabled = flat[`${id}Enabled`];
+        const hasMessage = typeof message === 'string' && message !== '';
+        if (hasMessage || enabled !== undefined) {
+            maps[id] = {
+                enabled: enabled !== false,
+                message: typeof message === 'string' ? message : ''
+            };
+        }
+    });
+    const name = (typeof t === 'function') ? t('qps_default_profile_name', 'Profile 1') : 'Profile 1';
+    return { id: 'default', name, maps };
+}
+
+async function ensureQpsProfiles(mapIds) {
+    const stored = await _qpsStorageGet([QPS_PROFILES_KEY, QPS_ACTIVE_KEY]);
+    let profiles = stored[QPS_PROFILES_KEY];
+
+    if (Array.isArray(profiles) && profiles.length > 0) {
+        let active = stored[QPS_ACTIVE_KEY];
+        if (!active || !profiles.some(p => p.id === active)) {
+            active = profiles[0].id;
+            await _qpsStorageSet({ [QPS_ACTIVE_KEY]: active });
+        }
+        return { profiles, active };
+    }
+
+    const flatKeys = [];
+    (mapIds || []).forEach(id => flatKeys.push(`${id}Enabled`, `${id}Message`));
+    const flat = flatKeys.length ? await _qpsStorageGet(flatKeys) : {};
+    const profile = _qpsMigrateFromFlat(mapIds || [], flat);
+    profiles = [profile];
+    await _qpsStorageSet({ [QPS_PROFILES_KEY]: profiles, [QPS_ACTIVE_KEY]: profile.id });
+    return { profiles, active: profile.id };
+}
+
+async function getActiveQpsProfile(mapIds) {
+    const { profiles, active } = await ensureQpsProfiles(mapIds);
+    return profiles.find(p => p.id === active) || profiles[0] || null;
+}
+
 function parseNumber(text, isFloat = false) {
     if (!text) return NaN;
     const cleaned = text.replace(/[^\d.,-]/g, '').replace(',', '.');
@@ -146,6 +214,18 @@ async function isSettingEnabled(name, def) {
         return def;
     }
     return settings[name];
+}
+
+async function normalizeMatchAmount() {
+    const stored = await CLIENT_STORAGE_SYNC.get(['sliderValue']);
+    const raw = stored.sliderValue;
+    if (raw === undefined || raw === null) return;
+    const n = Number(raw);
+    if (!isFinite(n)) return;
+    const snapped = Math.min(100, Math.max(10, Math.round(n / 10) * 10));
+    if (snapped !== raw) {
+        await CLIENT_STORAGE_SYNC.set({ sliderValue: snapped });
+    }
 }
 
 async function getSettings(settingsMap) {

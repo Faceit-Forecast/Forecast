@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 8,
   "levels": {
     "hideOriginalIcons": "[class*=SkillIcon__StyledSvg]:not([origin-levels]):not([origin-levels] *)",
     "hideNestedIcons": "[origin-levels] [hided-levels] [class*=SkillIcon__StyledSvg]",
@@ -20,10 +20,12 @@
     "trayHeadingWrapper": "[class*=styles__HeadingWrapper]",
     "trayHeadingWrapperParentDepth": 2,
     "trayBottomArea": "[class*=styles__BottomAreaWrapper]",
-    "skillLevelEloSpan": "[role=\"dialog\"] > div[class*=styles__ScrollableContainer] > div[class*=SkillLevel__StatsContainer] > div > span",
+    "skillLevelEloSpan": "[role=\"dialog\"] > div[class*=styles__ScrollableContainer] > div[class*=SkillLevel__StatsContainer] > div > span, [role=\"dialog\"] > div[class*=styles__FixedContainer] > div[class*=SkillLevel__StatsContainer] > div > span",
     "skillLevelEloSpanParentDepth": 1,
     "skillLevelEloSpanCheckDepth": 2,
-    "popoverLastKnownRow": "[role=\"dialog\"] div[class*=styles__ScrollableContainer] div[class*=RatingsAndStats__Row]:has(svg[class*=SkillIcon__StyledSvg]):not([fc-last-known])",
+    "popoverLastKnownRow": "[role=\"dialog\"] div[class*=styles__ScrollableContainer] div[class*=RatingsAndStats__Row]:has(svg[class*=SkillIcon__StyledSvg]):not([fc-last-known]), [role=\"dialog\"] div[class*=styles__ScrollableContainer] div[class*=LastKnown__Container]:has(svg[class*=SkillIcon__StyledSvg]):not([fc-last-known]), [role=\"dialog\"] div[class*=styles__FixedContainer] div[class*=LastKnown__Container]:has(svg[class*=SkillIcon__StyledSvg]):not([fc-last-known])",
+    "popoverLastKnownInlineRow": "[class*=InlineRow], [class*=LastKnown__ValueRow]",
+    "popoverLastKnownValueSpan": ":scope > span:last-child",
     "matchroom": {
       "subtitle": "[class*=Subtitle__Holder]",
       "subtitleParentDepth": 2,
@@ -137,9 +139,11 @@
     "teamTable": "[name=\"info\"][class*=Overview__Column]",
     "infoName": "[name=\"info\"]",
     "nickNode": "div[class*=styles__PopoverStyled] > div[class*=styles__FixedContainer] > div[class*=styles__NameContainer] > a > h5",
-    "ratingsContainer": "div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__BoxedContainer]",
+    "ratingsContainer": "div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__BoxedContainer], div[class*=styles__ScrollableContainer] > div[class*=RatingsAndStats__Container]",
     "bannerFallback": "[class*=forecast-banner]",
-    "overviewStack": "[class*=Overview__Stack]"
+    "overviewStack": "[class*=Overview__Stack]",
+    "headerFaction": "[class*=styles__HeaderWrapper] [class*=styles__Container] > [class*=styles__Faction]",
+    "headerFactionItem": "[class*=styles__Faction]"
   },
   "poscatcher": {
     "anchor": "[name=info] > div[class*=Overview__Stack] > div[class*=Ready__Container]",
