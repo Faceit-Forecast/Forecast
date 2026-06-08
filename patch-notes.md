@@ -13,6 +13,7 @@ Match preview in match history no longer goes off-screen
 Fixed some issues with the levels table display
 Fixed issues related to text element scaling
 Compatibility fixes (incl. Firefox) and network request optimization
+<img width="404" height="420" alt="image" src="https://cdn.fforecast.net/web/images/patch-notes/1.8.2-radar.png?v=2" />
 
 [1.8.1] Match Preview Fix & Faster Loading
 Fixed server region not showing in match accept popup
